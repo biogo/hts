@@ -101,7 +101,11 @@ func NewWriterLevel(w io.Writer, level int) *Writer {
 	}
 }
 
-func (self *Writer) flush() error {
+func (self *Writer) Next() int {
+	return int(self.next)
+}
+
+func (self *Writer) Flush() error {
 	if self.err != nil {
 		return self.err
 	}
@@ -137,7 +141,7 @@ func (self *Writer) Close() error {
 		return nil
 	}
 	self.closed = true
-	return self.flush()
+	return self.Flush()
 }
 
 func (self *Writer) Write(p []byte) (int, error) {
@@ -154,7 +158,7 @@ func (self *Writer) Write(p []byte) (int, error) {
 		p = p[c:]
 		self.next += uint(c)
 		if self.next == MaxBlockSize {
-			return n, self.flush()
+			return n, self.Flush()
 		}
 	}
 

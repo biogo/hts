@@ -109,8 +109,8 @@ func TestRoundTripMulti(t *testing.T) {
 	if _, err := w.Write([]byte("payload1")); err != nil {
 		t.Fatalf("Write: %v", err)
 	}
-	if err := w.flush(); err != nil {
-		t.Fatalf("flush: %v", err)
+	if err := w.Flush(); err != nil {
+		t.Fatalf("Flush: %v", err)
 	}
 	o := int64(buf.Len())
 	if _, err := w.Write([]byte("payloadTwo")); err != nil {
@@ -180,8 +180,8 @@ func TestRoundTripMultiSeek(t *testing.T) {
 	if _, err := w.Write([]byte("payload1")); err != nil {
 		t.Fatalf("Write: %v", err)
 	}
-	if err := w.flush(); err != nil {
-		t.Fatalf("flush: %v", err)
+	if err := w.Flush(); err != nil {
+		t.Fatalf("Flush: %v", err)
 	}
 	offset := cw.bytes
 	if _, err := w.Write([]byte("payloadTwo")); err != nil {
