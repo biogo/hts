@@ -1,6 +1,6 @@
-boom
+bam
 ====
 
-samtools bindings for Go
+Pure Go SAM and BAM handling
 
-go get install code.google.com/p/biogo.boom
+go get install code.google.com/p/biogo.bam
