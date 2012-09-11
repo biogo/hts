@@ -46,37 +46,37 @@ type Offset struct {
 	Block uint16
 }
 
-func (self *Reader) Seek(off Offset, whence int) error {
-	self.err = self.gz.Seek(off.File, whence)
-	if self.err != nil {
-		return self.err
+func (bg *Reader) Seek(off Offset, whence int) error {
+	bg.err = bg.gz.Seek(off.File, whence)
+	if bg.err != nil {
+		return bg.err
 	}
 	if off.Block > 0 {
-		_, self.err = io.CopyN(ioutil.Discard, self.gz, int64(off.Block))
+		_, bg.err = io.CopyN(ioutil.Discard, bg.gz, int64(off.Block))
 	}
-	return self.err
+	return bg.err
 }
 
-func (self *Reader) Close() error {
-	return self.gz.Close()
+func (bg *Reader) Close() error {
+	return bg.gz.Close()
 }
 
-func (self *Reader) Read(p []byte) (int, error) {
-	if self.err != nil {
-		return 0, self.err
+func (bg *Reader) Read(p []byte) (int, error) {
+	if bg.err != nil {
+		return 0, bg.err
 	}
-	return self.gz.Read(p)
+	return bg.gz.Read(p)
 }
 
-func (self *Reader) CurrBlockSize() (int, error) {
-	if self.err != nil {
-		return -1, self.err
+func (bg *Reader) CurrBlockSize() (int, error) {
+	if bg.err != nil {
+		return -1, bg.err
 	}
-	i := bytes.Index(self.Extra, []byte("BC\x02"))
-	if i+4 >= len(self.Extra) {
+	i := bytes.Index(bg.Extra, []byte("BC\x02\x00"))
+	if i+4 >= len(bg.Extra) {
 		return -1, gzip.ErrHeader
 	}
-	return int(self.Extra[i+3] | self.Extra[i+4]<<8), nil
+	return int(bg.Extra[i+4] | bg.Extra[i+5]<<8), nil
 }
 
 type Writer struct {
@@ -101,66 +101,68 @@ func NewWriterLevel(w io.Writer, level int) *Writer {
 	}
 }
 
-func (self *Writer) Next() int {
-	return int(self.next)
+func (bg *Writer) Next() int {
+	return int(bg.next)
 }
 
-func (self *Writer) Flush() error {
-	if self.err != nil {
-		return self.err
+func (bg *Writer) Flush() error {
+	if bg.err != nil {
+		return bg.err
 	}
-	if self.written && self.next == 0 {
+	if bg.written && bg.next == 0 {
 		return nil
 	}
-	self.written = true
-	var gz *gzip.Writer
-	gz, self.err = gzip.NewWriterLevel(self.w, self.level)
-	if self.err != nil {
-		return self.err
+	bg.written = true
+	var gz *egzip.Writer
+	gz, bg.err = egzip.NewWriterLevel(bg.w, bg.level)
+	if bg.err != nil {
+		return bg.err
 	}
 	gz.Header = gzip.Header{
-		Comment: self.Comment,
-		Extra:   append([]byte{'B', 'C', 0x2, byte(self.next), byte(self.next >> 8)}, self.Extra...),
-		ModTime: self.ModTime,
-		Name:    self.Name,
-		OS:      self.OS,
+		Comment: bg.Comment,
+		Extra:   append([]byte{'B', 'C', 0x2, 0x0, byte(bg.next), byte(bg.next >> 8)}, bg.Extra...),
+		ModTime: bg.ModTime,
+		Name:    bg.Name,
+		OS:      bg.OS,
 	}
-	_, self.err = gz.Write(self.buf[:self.next])
-	if self.err != nil {
-		return self.err
+	_, bg.err = gz.Write(bg.buf[:bg.next])
+	if bg.err != nil {
+		return bg.err
 	}
-	self.next = 0
+	bg.next = 0
 	return gz.Close()
 }
 
-func (self *Writer) Close() error {
-	if self.err != nil {
-		return self.err
+func (bg *Writer) Close() error {
+	if bg.err != nil {
+		return bg.err
 	}
-	if self.closed {
+	if bg.closed {
 		return nil
 	}
-	self.closed = true
-	return self.Flush()
+	bg.closed = true
+	return bg.Flush()
 }
 
-func (self *Writer) Write(p []byte) (int, error) {
-	if self.err != nil {
-		return 0, self.err
+func (bg *Writer) Write(p []byte) (int, error) {
+	if bg.err != nil {
+		return 0, bg.err
 	}
-	if self.closed {
+	if bg.closed {
 		return len(p), nil
 	}
+
+	bg.written = false
 	var n int
 	for len(p) > 0 {
-		c := copy(self.buf[self.next:], p)
+		c := copy(bg.buf[bg.next:], p)
 		n += c
 		p = p[c:]
-		self.next += uint(c)
-		if self.next == MaxBlockSize {
-			return n, self.Flush()
+		bg.next += uint(c)
+		if bg.next == MaxBlockSize {
+			return n, bg.Flush()
 		}
 	}
 
-	return n, self.err
+	return n, bg.err
 }

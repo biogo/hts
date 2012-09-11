@@ -82,8 +82,8 @@ func TestRoundTrip(t *testing.T) {
 	if bl, err := r.CurrBlockSize(); err != nil || bl != 7 {
 		t.Fatalf("CurrBlockSize() is %d, want %d", bl, 7)
 	}
-	if string(r.Extra) != "BC\x02\x07\x00extra" {
-		t.Fatalf("extra is %q, want %q", r.Extra, "BC\x02\x07\x00extra")
+	if string(r.Extra) != "BC\x02\x00\x07\x00extra" {
+		t.Fatalf("extra is %q, want %q", r.Extra, "BC\x02\x00\x07\x00extra")
 	}
 	if r.ModTime.Unix() != 1e8 {
 		t.Fatalf("mtime is %d, want %d", r.ModTime.Unix(), uint32(1e8))
@@ -132,8 +132,8 @@ func TestRoundTripMulti(t *testing.T) {
 	if r.Comment != "comment" {
 		t.Fatalf("comment is %q, want %q", r.Comment, "comment")
 	}
-	if string(r.Extra) != "BC\x02\x08\x00extra" {
-		t.Fatalf("extra is %q, want %q", r.Extra, "BC\x02\x08\x00extra")
+	if string(r.Extra) != "BC\x02\x00\x08\x00extra" {
+		t.Fatalf("extra is %q, want %q", r.Extra, "BC\x02\x00\x08\x00extra")
 	}
 	if r.ModTime.Unix() != 1e8 {
 		t.Fatalf("mtime is %d, want %d", r.ModTime.Unix(), uint32(1e8))
@@ -207,8 +207,8 @@ func TestRoundTripMultiSeek(t *testing.T) {
 	if r.Comment != "comment" {
 		t.Fatalf("comment is %q, want %q", r.Comment, "comment")
 	}
-	if string(r.Extra) != "BC\x02\x08\x00extra" {
-		t.Fatalf("extra is %q, want %q", r.Extra, "BC\x02\x08\x00extra")
+	if string(r.Extra) != "BC\x02\x00\x08\x00extra" {
+		t.Fatalf("extra is %q, want %q", r.Extra, "BC\x02\x00\x08\x00extra")
 	}
 	if r.ModTime.Unix() != 1e8 {
 		t.Fatalf("mtime is %d, want %d", r.ModTime.Unix(), uint32(1e8))
