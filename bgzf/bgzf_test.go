@@ -64,7 +64,7 @@ func TestRoundTrip(t *testing.T) {
 	if err := w.Close(); err != nil {
 		t.Fatalf("Writer.Close: %v", err)
 	}
-
+	wbl := buf.Len()
 	r, err := NewReader(buf, false)
 	if err != nil {
 		t.Fatalf("NewReader: %v", err)
@@ -79,11 +79,12 @@ func TestRoundTrip(t *testing.T) {
 	if r.Comment != "comment" {
 		t.Fatalf("comment is %q, want %q", r.Comment, "comment")
 	}
-	if bl, err := r.CurrBlockSize(); err != nil || bl != 7 {
-		t.Fatalf("CurrBlockSize() is %d, want %d", bl, 7)
+	if bl, err := r.CurrBlockSize(); err != nil || bl != wbl {
+		t.Fatalf("CurrBlockSize() is %d, want %d", bl, wbl)
 	}
-	if string(r.Extra) != "BC\x02\x00\x07\x00extra" {
-		t.Fatalf("extra is %q, want %q", r.Extra, "BC\x02\x00\x07\x00extra")
+	blEnc := string([]byte{byte(wbl - 1), byte((wbl - 1) >> 8)})
+	if string(r.Extra) != "BC\x02\x00"+blEnc+"extra" {
+		t.Fatalf("extra is %q, want %q", r.Extra, "BC\x02\x00"+blEnc+"extra")
 	}
 	if r.ModTime.Unix() != 1e8 {
 		t.Fatalf("mtime is %d, want %d", r.ModTime.Unix(), uint32(1e8))
@@ -99,6 +100,7 @@ func TestRoundTrip(t *testing.T) {
 // TestRoundTripMulti tests that bgzipping and then bgunzipping is the identity
 // function for a multiple member bgzf.
 func TestRoundTripMulti(t *testing.T) {
+	var wbl [2]int
 	buf := new(bytes.Buffer)
 
 	w := NewWriter(buf)
@@ -112,6 +114,7 @@ func TestRoundTripMulti(t *testing.T) {
 	if err := w.Flush(); err != nil {
 		t.Fatalf("Flush: %v", err)
 	}
+	wbl[0] = buf.Len()
 	o := int64(buf.Len())
 	if _, err := w.Write([]byte("payloadTwo")); err != nil {
 		t.Fatalf("Write: %v", err)
@@ -119,6 +122,7 @@ func TestRoundTripMulti(t *testing.T) {
 	if err := w.Close(); err != nil {
 		t.Fatalf("Writer.Close: %v", err)
 	}
+	wbl[1] = buf.Len() - wbl[0]
 
 	var (
 		b     []byte
@@ -132,8 +136,9 @@ func TestRoundTripMulti(t *testing.T) {
 	if r.Comment != "comment" {
 		t.Fatalf("comment is %q, want %q", r.Comment, "comment")
 	}
-	if string(r.Extra) != "BC\x02\x00\x08\x00extra" {
-		t.Fatalf("extra is %q, want %q", r.Extra, "BC\x02\x00\x08\x00extra")
+	blEnc := string([]byte{byte(wbl[0] - 1), byte((wbl[0] - 1) >> 8)})
+	if string(r.Extra) != "BC\x02\x00"+blEnc+"extra" {
+		t.Fatalf("extra is %q, want %q", r.Extra, "BC\x02\x00"+blEnc+"extra")
 	}
 	if r.ModTime.Unix() != 1e8 {
 		t.Fatalf("mtime is %d, want %d", r.ModTime.Unix(), uint32(1e8))
@@ -143,26 +148,21 @@ func TestRoundTripMulti(t *testing.T) {
 	}
 
 	bl, err = r.CurrBlockSize()
-	if err != nil || bl != 8 {
-		t.Fatalf("CurrBlockSize() is %d, want %d", bl, 8)
+	if err != nil || bl != wbl[0] {
+		t.Fatalf("CurrBlockSize() is %d, want %d", bl, wbl[0])
 	}
 	b = make([]byte, bl+1)
 	n, err = r.Read(b)
-	if err != nil {
+	if err != nil && err != NewBlock {
 		t.Fatalf("Read: %v", err)
 	}
 	if string(b[:n]) != "payload1" {
 		t.Fatalf("payload is %q, want %q", string(b[:n]), "payload1")
 	}
 
-	n, err = r.Read(b)
-	if err != nil && err != ErrNewBlock {
-		t.Fatalf("Read: %v", err)
-	}
-
 	bl, err = r.CurrBlockSize()
-	if err != nil || bl != 10 {
-		t.Fatalf("CurrBlockSize() is %d, want %d", bl, 10)
+	if err != nil || bl != wbl[1] {
+		t.Fatalf("CurrBlockSize() is %d, want %d", bl, wbl[1])
 	}
 	b = make([]byte, bl+1)
 	n, err = r.Read(b)
@@ -191,6 +191,7 @@ func TestRoundTripMultiSeek(t *testing.T) {
 	}
 	fname := f.Name()
 
+	var wbl [2]int
 	cw := &countWriter{w: f}
 	w := NewWriter(cw)
 	w.Comment = "comment"
@@ -204,12 +205,14 @@ func TestRoundTripMultiSeek(t *testing.T) {
 		t.Fatalf("Flush: %v", err)
 	}
 	offset := cw.bytes
+	wbl[0] = int(offset)
 	if _, err := w.Write([]byte("payloadTwo")); err != nil {
 		t.Fatalf("Write: %v", err)
 	}
 	if err := w.Close(); err != nil {
 		t.Fatalf("Writer.Close: %v", err)
 	}
+	wbl[1] = int(cw.bytes - offset)
 
 	var (
 		b     []byte
@@ -220,14 +223,15 @@ func TestRoundTripMultiSeek(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Reopen temp file: %v", err)
 	}
-	r, err := NewReader(f, false)
+	r, err := NewReader(f, true)
 	if err != nil {
 		t.Fatalf("NewReader: %v", err)
 	}
 	if r.Comment != "comment" {
 		t.Fatalf("comment is %q, want %q", r.Comment, "comment")
 	}
-	if string(r.Extra) != "BC\x02\x00\x08\x00extra" {
+	blEnc := string([]byte{byte(wbl[0] - 1), byte((wbl[0] - 1) >> 8)})
+	if string(r.Extra) != "BC\x02\x00"+blEnc+"extra" {
 		t.Fatalf("extra is %q, want %q", r.Extra, "BC\x02\x00\x08\x00extra")
 	}
 	if r.ModTime.Unix() != 1e8 {
@@ -237,12 +241,12 @@ func TestRoundTripMultiSeek(t *testing.T) {
 		t.Fatalf("name is %q, want %q", r.Name, "name")
 	}
 	bl, err = r.CurrBlockSize()
-	if err != nil || bl != 8 {
-		t.Fatalf("CurrBlockSize() is %d, want %d", bl, 8)
+	if err != nil || bl != wbl[0] {
+		t.Fatalf("CurrBlockSize() is %d, want %d", bl, wbl[0])
 	}
 	b = make([]byte, bl+1)
 	n, err = r.Read(b)
-	if err != nil {
+	if err != nil && err != NewBlock {
 		t.Fatalf("Read: %v", err)
 	}
 	if string(b[:n]) != "payload1" {
@@ -252,7 +256,7 @@ func TestRoundTripMultiSeek(t *testing.T) {
 		t.Fatalf("Seek: %v", err)
 	}
 	n, err = r.Read(b)
-	if err != nil {
+	if err != nil && err != NewBlock {
 		t.Fatalf("Read: %v", err)
 	}
 	if string(b[:n]) != "payload1" {
@@ -262,7 +266,7 @@ func TestRoundTripMultiSeek(t *testing.T) {
 		t.Fatalf("Seek: %v", err)
 	}
 	bl, err = r.CurrBlockSize()
-	if err != nil || bl != len("payloadTwo") {
+	if err != nil || bl != wbl[1] {
 		t.Fatalf("CurrBlockSize() is %d, want %d", bl, len("payloadTwo"))
 	}
 	b = make([]byte, bl+1)

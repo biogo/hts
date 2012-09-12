@@ -29,7 +29,6 @@ type Record struct {
 	ref     *Reference
 	pos     int
 	mapQ    byte
-	bin     uint16
 	cigar   []CigarOp
 	flag    Flags
 	mateRef *Reference
@@ -70,7 +69,6 @@ func NewRecord(name string, ref, mRef *Reference, p, mPos, tLen int, mapQ byte, 
 		qual:    qual,
 		auxTags: aux,
 	}
-	r.bin = reg2bin(r.pos, r.End())
 	return r, nil
 }
 
@@ -127,6 +125,11 @@ func (r *Record) Tags() []Aux {
 // Start returns the lower-coordinate end of the alignment.
 func (r *Record) Start() int {
 	return r.pos
+}
+
+// Bin returns the BAM index bin of the record.
+func (r *Record) Bin() int {
+	return int(reg2bin(r.pos, r.End()))
 }
 
 // Len returns the length of the alignment template.
@@ -212,7 +215,7 @@ func (r *Record) MateStart() int {
 // String returns a string representation of the Record.
 func (r *Record) String() string {
 	end := r.End()
-	return fmt.Sprintf("%s %v %v %d %s:%d..%d %d %s:%d %d %s %v %v",
+	return fmt.Sprintf("%s %v %v %d %s:%d..%d (%d) %d %s:%d %d %s %v %v",
 		r.name,
 		r.flag,
 		r.cigar,
@@ -220,6 +223,7 @@ func (r *Record) String() string {
 		r.ref.Name(),
 		r.pos,
 		end,
+		int(reg2bin(r.pos, end)),
 		end-r.pos,
 		r.mateRef.Name(),
 		r.matePos,
@@ -361,7 +365,7 @@ func (r *Record) marshal(br *bamRecord) int {
 			Pos:       int32(r.pos),
 			NLen:      byte(len(r.name) + 1),
 			MapQ:      r.mapQ,
-			Bin:       r.bin,
+			Bin:       reg2bin(r.pos, r.End()), //r.bin,
 			NCigar:    uint16(len(r.cigar)),
 			Flag:      r.flag,
 			LSeq:      int32(len(r.qual)),

@@ -33,7 +33,7 @@ const (
 
 var (
 	ErrNotASeeker = errors.New("egzip: not a seeker")
-	ErrNewBlock   = errors.New("egzip: new block")
+	NewBlock      = errors.New("egzip: new block")
 )
 
 func makeReader(r io.Reader) flate.Reader {
@@ -58,7 +58,7 @@ func makeReader(r io.Reader) flate.Reader {
 // returned by Read as tentative until they receive the io.EOF
 // marking the end of the data.
 type Reader struct {
-	BlockLimited bool // Stop reading at the end of a member and return ErrNewBlock.
+	BlockLimited bool // Stop reading at the end of a member and return NewBlock.
 	*gzip.Header
 	r            flate.Reader
 	s            io.Seeker
@@ -246,7 +246,7 @@ func (z *Reader) Read(p []byte) (n int, err error) {
 	z.digest.Reset()
 	z.size = 0
 	if z.BlockLimited {
-		err = ErrNewBlock
+		err = NewBlock
 		return
 	}
 	return z.Read(p)

@@ -16,25 +16,30 @@
 package bam
 
 import (
+	"code.google.com/p/biogo.bam/bgzf"
 	"io"
 )
 
 type Reader struct {
-	r   io.Reader
+	r   *bgzf.Reader
 	h   *Header
 	rec bamRecord
 }
 
-func NewReader(r io.Reader) (*Reader, error) {
+func NewReader(r io.Reader, limited bool) (*Reader, error) {
+	bg, err := bgzf.NewReader(r, limited)
+	if err != nil {
+		return nil, err
+	}
 	br := &Reader{
-		r: r,
+		r: bg,
 		h: &Header{
 			seenRefs:   set{},
 			seenGroups: set{},
 			seenProgs:  set{},
 		},
 	}
-	err := br.h.read(r)
+	err = br.h.read(br.r)
 	if err != nil {
 		return nil, err
 	}

@@ -129,14 +129,6 @@ func (bh *Header) formatHeader() ([]byte, error) {
 	return nil, nil
 }
 
-var lut = map[tag]func([]byte, *Header) error{
-	headerTag:    headerLine,
-	refDictTag:   referenceLine,
-	readGroupTag: readGroupLine,
-	programTag:   programLine,
-	commentTag:   commentLine,
-}
-
 func (bh *Header) parseHeader(text []byte) error {
 	var t tag
 	for i, l := range bytes.Split(text, []byte{'\n'}) {
@@ -150,11 +142,21 @@ func (bh *Header) parseHeader(text []byte) error {
 			return badHeader
 		}
 		copy(t[:], l[1:3])
-		gen, ok := lut[t]
-		if !ok {
+		var err error
+		switch {
+		case t == headerTag:
+			err = headerLine(l, bh)
+		case t == refDictTag:
+			err = referenceLine(l, bh)
+		case t == readGroupTag:
+			err = readGroupLine(l, bh)
+		case t == programTag:
+			err = programLine(l, bh)
+		case t == commentTag:
+			err = commentLine(l, bh)
+		default:
 			return badHeader
 		}
-		err := gen(l, bh)
 		if err != nil {
 			return fmt.Errorf("%v: line %d: %q", err, i+1, l)
 		}
@@ -592,7 +594,7 @@ func readRefRecords(r io.Reader, n int32) ([]*Reference, error) {
 		err   error
 	)
 	for i := range rr {
-		rr[i] = &Reference{id: -1}
+		rr[i] = &Reference{id: int32(i)}
 		err = binary.Read(r, Endian, &lName)
 		if err != nil {
 			return nil, err

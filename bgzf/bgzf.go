@@ -19,13 +19,20 @@ import (
 	"bytes"
 	"code.google.com/p/biogo.bam/bgzf/egzip"
 	"compress/gzip"
+	"errors"
 	"io"
 	"io/ioutil"
 )
 
-const MaxBlockSize = 0x10000
+const (
+	BlockSize    = 0x0ff00 // Size of input data block.
+	MaxBlockSize = 0x10000 // Maximum size of output block.
+)
 
-var ErrNewBlock = egzip.ErrNewBlock
+var (
+	NewBlock  = egzip.NewBlock
+	ErrClosed = errors.New("bgzf: write to closed writer")
+)
 
 type Reader struct {
 	gzip.Header
@@ -68,7 +75,16 @@ func (bg *Reader) Read(p []byte) (int, error) {
 	if bg.err != nil {
 		return 0, bg.err
 	}
-	return bg.gz.Read(p)
+	n, err := bg.gz.Read(p)
+	if n < len(p) && err == nil {
+		var pn int
+		pn, err = bg.Read(p[n:])
+		n += pn
+	}
+	if n > 0 && err == io.EOF {
+		err = nil
+	}
+	return n, err
 }
 
 func (bg *Reader) CurrBlockSize() (int, error) {
@@ -76,10 +92,10 @@ func (bg *Reader) CurrBlockSize() (int, error) {
 		return -1, bg.err
 	}
 	i := bytes.Index(bg.Extra, []byte("BC\x02\x00"))
-	if i+4 >= len(bg.Extra) {
+	if i+5 >= len(bg.Extra) {
 		return -1, gzip.ErrHeader
 	}
-	return int(bg.Extra[i+4] | bg.Extra[i+5]<<8), nil
+	return (int(bg.Extra[i+4]) | int(bg.Extra[i+5])<<8) + 1, nil
 }
 
 type Writer struct {
@@ -90,7 +106,8 @@ type Writer struct {
 	err     error
 	written bool
 	closed  bool
-	buf     [MaxBlockSize]byte
+	block   [BlockSize]byte
+	buf     *bytes.Buffer
 }
 
 func NewWriter(w io.Writer) *Writer {
@@ -101,6 +118,7 @@ func NewWriterLevel(w io.Writer, level int) *Writer {
 	return &Writer{
 		w:     w,
 		level: level,
+		buf:   &bytes.Buffer{},
 	}
 }
 
@@ -112,28 +130,59 @@ func (bg *Writer) Flush() error {
 	if bg.err != nil {
 		return bg.err
 	}
+	if bg.closed {
+		return nil
+	}
 	if bg.written && bg.next == 0 {
 		return nil
 	}
 	bg.written = true
+	return bg.writeBlock()
+}
+
+func (bg *Writer) writeBlock() error {
 	var gz *egzip.Writer
-	gz, bg.err = egzip.NewWriterLevel(bg.w, bg.level)
+	gz, bg.err = egzip.NewWriterLevel(bg.buf, bg.level)
 	if bg.err != nil {
 		return bg.err
 	}
 	gz.Header = gzip.Header{
 		Comment: bg.Comment,
-		Extra:   append([]byte{'B', 'C', 0x2, 0x0, byte(bg.next), byte(bg.next >> 8)}, bg.Extra...),
+		Extra:   append([]byte("BC\x02\x00\x00\x00"), bg.Extra...),
 		ModTime: bg.ModTime,
 		Name:    bg.Name,
 		OS:      bg.OS,
 	}
-	_, bg.err = gz.Write(bg.buf[:bg.next])
+
+	_, bg.err = gz.Write(bg.block[:bg.next])
+	if bg.err != nil {
+		return bg.err
+	}
+	bg.err = gz.Close()
 	if bg.err != nil {
 		return bg.err
 	}
 	bg.next = 0
-	return gz.Close()
+
+	b := bg.buf.Bytes()
+	i := bytes.Index(b, []byte("BC\x02\x00"))
+	if i < 0 {
+		return gzip.ErrHeader
+	}
+	size := len(b) - 1
+	if size >= MaxBlockSize {
+		bg.err = errors.New("bgzf: block overflow")
+		return bg.err
+	}
+	b[i+4], b[i+5] = byte(size), byte(size>>8)
+
+	_, bg.err = io.Copy(bg.w, bg.buf)
+	if bg.err != nil {
+		return bg.err
+	}
+	bg.buf.Reset()
+
+	return nil
 }
 
 func (bg *Writer) Close() error {
@@ -144,7 +193,7 @@ func (bg *Writer) Close() error {
 		return nil
 	}
 	bg.closed = true
-	return bg.Flush()
+	return bg.writeBlock()
 }
 
 func (bg *Writer) Write(p []byte) (int, error) {
@@ -152,18 +201,27 @@ func (bg *Writer) Write(p []byte) (int, error) {
 		return 0, bg.err
 	}
 	if bg.closed {
-		return len(p), nil
+		return 0, ErrClosed
 	}
 
 	bg.written = false
 	var n int
 	for len(p) > 0 {
-		c := copy(bg.buf[bg.next:], p)
+		if bg.next+uint(len(p)) > BlockSize {
+			bg.err = bg.Flush()
+			if bg.err != nil {
+				return 0, bg.err
+			}
+		}
+		c := copy(bg.block[bg.next:], p)
 		n += c
 		p = p[c:]
 		bg.next += uint(c)
-		if bg.next == MaxBlockSize {
-			return n, bg.Flush()
+		if bg.next == BlockSize {
+			bg.err = bg.Flush()
+			if bg.err != nil {
+				return n, bg.err
+			}
 		}
 	}
 

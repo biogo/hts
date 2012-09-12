@@ -17,7 +17,6 @@ package bam
 
 import (
 	"code.google.com/p/biogo.bam/bgzf"
-	"fmt"
 	"io"
 )
 
@@ -44,19 +43,13 @@ func NewWriter(w io.Writer, h *Header, level int) (*Writer, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = bw.w.Flush()
 
-	return bw, nil
+	return bw, err
 }
 
 func (bw *Writer) Write(r *Record) error {
-	l := r.marshal(&bw.rec)
-	if l+bw.w.Next() > bgzf.MaxBlockSize { // This could be more intellgent.
-		err := bw.w.Flush()
-		fmt.Println("ERROR:", err)
-		if err != nil {
-			return err
-		}
-	}
+	_ = r.marshal(&bw.rec)
 	bw.rec.writeTo(bw.w)
 	return nil
 }
@@ -64,7 +57,6 @@ func (bw *Writer) Write(r *Record) error {
 func (bw *Writer) Close() error {
 	if bw.w.Next() != 0 {
 		err := bw.w.Flush()
-		fmt.Println("ERROR:", err)
 		if err != nil {
 			return err
 		}

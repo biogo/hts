@@ -301,7 +301,7 @@ func TestDecompressor(t *testing.T) {
 			for {
 				bl, err := io.Copy(b, gzip)
 				n += bl
-				if err == ErrNewBlock {
+				if err == NewBlock {
 					continue
 				}
 				if err != tt.err {
