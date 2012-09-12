@@ -283,25 +283,36 @@ var gunzipTests = []gunzipTest{
 
 func TestDecompressor(t *testing.T) {
 	b := new(bytes.Buffer)
-	for _, tt := range gunzipTests {
-		in := bytes.NewBuffer(tt.gzip)
-		gzip, err := NewReader(in, &gzip.Header{})
-		if err != nil {
-			t.Errorf("%s: NewReader: %s", tt.name, err)
-			continue
-		}
-		defer gzip.Close()
-		if tt.name != gzip.Name {
-			t.Errorf("%s: got name %s", tt.name, gzip.Name)
-		}
-		b.Reset()
-		n, err := io.Copy(b, gzip)
-		if err != tt.err {
-			t.Errorf("%s: io.Copy: %v want %v", tt.name, err, tt.err)
-		}
-		s := b.String()
-		if s != tt.raw {
-			t.Errorf("%s: got %d-byte %q want %d-byte %q", tt.name, n, s, len(tt.raw), tt.raw)
+	for _, lim := range []bool{true, false} {
+		for _, tt := range gunzipTests {
+			in := bytes.NewBuffer(tt.gzip)
+			gzip, err := NewReader(in, &gzip.Header{})
+			if err != nil {
+				t.Errorf("%s: NewReader: %s", tt.name, err)
+				continue
+			}
+			gzip.BlockLimited = lim
+			defer gzip.Close()
+			if tt.name != gzip.Name {
+				t.Errorf("%s: got name %s", tt.name, gzip.Name)
+			}
+			b.Reset()
+			var n int64
+			for {
+				bl, err := io.Copy(b, gzip)
+				n += bl
+				if err == ErrNewBlock {
+					continue
+				}
+				if err != tt.err {
+					t.Errorf("%s: io.Copy: %v want %v", tt.name, err, tt.err)
+				}
+				break
+			}
+			s := b.String()
+			if s != tt.raw {
+				t.Errorf("%s: got %d-byte %q want %d-byte %q", tt.name, n, s, len(tt.raw), tt.raw)
+			}
 		}
 	}
 }

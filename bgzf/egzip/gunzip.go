@@ -31,7 +31,10 @@ const (
 	flagComment = 1 << 4
 )
 
-var ErrNotASeeker = errors.New("egzip: not a seeker")
+var (
+	ErrNotASeeker = errors.New("egzip: not a seeker")
+	ErrNewBlock   = errors.New("egzip: new block")
+)
 
 func makeReader(r io.Reader) flate.Reader {
 	if rr, ok := r.(flate.Reader); ok {
@@ -55,6 +58,7 @@ func makeReader(r io.Reader) flate.Reader {
 // returned by Read as tentative until they receive the io.EOF
 // marking the end of the data.
 type Reader struct {
+	BlockLimited bool // Stop reading at the end of a member and return ErrNewBlock.
 	*gzip.Header
 	r            flate.Reader
 	s            io.Seeker
@@ -75,7 +79,7 @@ func NewReader(r io.Reader, h *gzip.Header) (*Reader, error) {
 	z.r = makeReader(r)
 	z.digest = crc32.NewIEEE()
 	z.s, _ = r.(io.Seeker)
-	if err := z.readHeader(true); err != nil {
+	if err := z.readHeader(); err != nil {
 		return nil, err
 	}
 	return z, nil
@@ -123,7 +127,7 @@ func (z *Reader) read2() (uint32, error) {
 	return uint32(z.buf[0]) | uint32(z.buf[1])<<8, nil
 }
 
-func (z *Reader) readHeader(save bool) error {
+func (z *Reader) readHeader() error {
 	_, err := io.ReadFull(z.r, z.buf[0:10])
 	if err != nil {
 		return err
@@ -132,11 +136,9 @@ func (z *Reader) readHeader(save bool) error {
 		return gzip.ErrHeader
 	}
 	z.flg = z.buf[3]
-	if save {
-		z.ModTime = time.Unix(int64(get4(z.buf[4:8])), 0)
-		// z.buf[8] is xfl, ignored
-		z.OS = z.buf[9]
-	}
+	z.ModTime = time.Unix(int64(get4(z.buf[4:8])), 0)
+	// z.buf[8] is xfl, ignored
+	z.OS = z.buf[9]
 	z.digest.Reset()
 	z.digest.Write(z.buf[0:10])
 
@@ -149,9 +151,7 @@ func (z *Reader) readHeader(save bool) error {
 		if _, err = io.ReadFull(z.r, data); err != nil {
 			return err
 		}
-		if save {
-			z.Extra = data
-		}
+		z.Extra = data
 	}
 
 	var s string
@@ -159,18 +159,14 @@ func (z *Reader) readHeader(save bool) error {
 		if s, err = z.readString(); err != nil {
 			return err
 		}
-		if save {
-			z.Name = s
-		}
+		z.Name = s
 	}
 
 	if z.flg&flagComment != 0 {
 		if s, err = z.readString(); err != nil {
 			return err
 		}
-		if save {
-			z.Comment = s
-		}
+		z.Comment = s
 	}
 
 	if z.flg&flagHdrCrc != 0 {
@@ -201,7 +197,7 @@ func (z *Reader) Seek(offset int64, whence int) error {
 	}
 	z.r.(*bufio.Reader).Reset()
 
-	err := z.readHeader(true)
+	err := z.readHeader()
 	if err != nil {
 		return err
 	}
@@ -241,15 +237,19 @@ func (z *Reader) Read(p []byte) (n int, err error) {
 	}
 
 	// File is ok; is there another?
-	if err = z.readHeader(false); err != nil {
+	if err = z.readHeader(); err != nil {
 		z.err = err
 		return
 	}
 
-	// Yes. Reset but do not read from it.
+	// Yes. Reset and read from it if not block limited.
 	z.digest.Reset()
 	z.size = 0
-	return
+	if z.BlockLimited {
+		err = ErrNewBlock
+		return
+	}
+	return z.Read(p)
 }
 
 // Close closes the Reader. It does not close the underlying io.Reader.

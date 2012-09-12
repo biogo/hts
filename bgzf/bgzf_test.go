@@ -32,7 +32,7 @@ func TestEmpty(t *testing.T) {
 		t.Fatalf("Writer.Close: %v", err)
 	}
 
-	r, err := NewReader(buf)
+	r, err := NewReader(buf, false)
 	if err != nil {
 		t.Fatalf("NewReader: %v", err)
 	}
@@ -65,7 +65,7 @@ func TestRoundTrip(t *testing.T) {
 		t.Fatalf("Writer.Close: %v", err)
 	}
 
-	r, err := NewReader(buf)
+	r, err := NewReader(buf, false)
 	if err != nil {
 		t.Fatalf("NewReader: %v", err)
 	}
@@ -125,7 +125,7 @@ func TestRoundTripMulti(t *testing.T) {
 		bl, n int
 		err   error
 	)
-	r, err := NewReader(buf)
+	r, err := NewReader(buf, true)
 	if err != nil {
 		t.Fatalf("NewReader: %v", err)
 	}
@@ -141,6 +141,7 @@ func TestRoundTripMulti(t *testing.T) {
 	if r.Name != "name" {
 		t.Fatalf("name is %q, want %q", r.Name, "name")
 	}
+
 	bl, err = r.CurrBlockSize()
 	if err != nil || bl != 8 {
 		t.Fatalf("CurrBlockSize() is %d, want %d", bl, 8)
@@ -153,6 +154,25 @@ func TestRoundTripMulti(t *testing.T) {
 	if string(b[:n]) != "payload1" {
 		t.Fatalf("payload is %q, want %q", string(b[:n]), "payload1")
 	}
+
+	n, err = r.Read(b)
+	if err != nil && err != ErrNewBlock {
+		t.Fatalf("Read: %v", err)
+	}
+
+	bl, err = r.CurrBlockSize()
+	if err != nil || bl != 10 {
+		t.Fatalf("CurrBlockSize() is %d, want %d", bl, 10)
+	}
+	b = make([]byte, bl+1)
+	n, err = r.Read(b)
+	if err != nil {
+		t.Fatalf("Read: %v", err)
+	}
+	if string(b[:n]) != "payloadTwo" {
+		t.Fatalf("payload is %q, want %q", string(b[:n]), "payloadTwo")
+	}
+
 	if r.Seek(Offset{o, 0}, 1) == nil {
 		t.Fatal("expected seek failure")
 	}
@@ -200,7 +220,7 @@ func TestRoundTripMultiSeek(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Reopen temp file: %v", err)
 	}
-	r, err := NewReader(f)
+	r, err := NewReader(f, false)
 	if err != nil {
 		t.Fatalf("NewReader: %v", err)
 	}

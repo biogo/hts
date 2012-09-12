@@ -25,15 +25,18 @@ import (
 
 const MaxBlockSize = 0x10000
 
+var ErrNewBlock = egzip.ErrNewBlock
+
 type Reader struct {
 	gzip.Header
 	gz  *egzip.Reader
 	err error
 }
 
-func NewReader(r io.Reader) (*Reader, error) {
+func NewReader(r io.Reader, limited bool) (*Reader, error) {
 	bg := &Reader{}
 	gz, err := egzip.NewReader(r, &bg.Header)
+	gz.BlockLimited = limited
 	if err != nil {
 		return nil, err
 	}
