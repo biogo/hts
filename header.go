@@ -119,10 +119,13 @@ func (bh *Header) String() string {
 	for i, r := range bh.refs {
 		refs[i] = r.String()
 	}
-	return fmt.Sprintf("@HD\tVN:%s\tSO:%s\n%v\n",
-		bh.version,
-		bh.sortOrder,
-		strings.Trim(strings.Join(refs, "\n"), "[]"))
+	if bh.version != "" {
+		return fmt.Sprintf("@HD\tVN:%s\tSO:%s\n%v\n",
+			bh.version,
+			bh.sortOrder,
+			strings.Trim(strings.Join(refs, "\n"), "[]"))
+	}
+	return strings.Trim(strings.Join(refs, "\n"), "[]")
 }
 
 func (bh *Header) formatHeader() ([]byte, error) {
