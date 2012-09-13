@@ -116,9 +116,10 @@ func NewWriter(w io.Writer) *Writer {
 
 func NewWriterLevel(w io.Writer, level int) *Writer {
 	return &Writer{
-		w:     w,
-		level: level,
-		buf:   &bytes.Buffer{},
+		Header: gzip.Header{OS: 0xff},
+		w:      w,
+		level:  level,
+		buf:    &bytes.Buffer{},
 	}
 }
 
