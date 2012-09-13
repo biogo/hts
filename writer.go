@@ -17,6 +17,7 @@ package bam
 
 import (
 	"code.google.com/p/biogo.bam/bgzf"
+	"compress/gzip"
 	"io"
 )
 
@@ -27,6 +28,10 @@ type Writer struct {
 	rec bamRecord
 }
 
+func NewWriter(w io.Writer, h *Header) (*Writer, error) {
+	return NewWriterLevel(w, h, gzip.DefaultCompression)
+}
+
 func makeWriter(w io.Writer, level int) *bgzf.Writer {
 	if bw, ok := w.(*bgzf.Writer); ok {
 		return bw
@@ -34,7 +39,7 @@ func makeWriter(w io.Writer, level int) *bgzf.Writer {
 	return bgzf.NewWriterLevel(w, level)
 }
 
-func NewWriter(w io.Writer, h *Header, level int) (*Writer, error) {
+func NewWriterLevel(w io.Writer, h *Header, level int) (*Writer, error) {
 	bw := &Writer{
 		w:  w,
 		bg: makeWriter(w, level),
@@ -61,7 +66,7 @@ func (bw *Writer) Close() error {
 	if err != nil {
 		return err
 	}
-	_, err = bw.w.Write([]byte{ // Magic BAM block‽
+	_, err = bw.w.Write([]byte{ // Magic BAM block‽ This is required to keep samtools happy.
 		0x1f, 0x8b, 0x08, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0x06, 0x00, 0x42, 0x43, 0x02, 0x00,
 		0x1b, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	})
