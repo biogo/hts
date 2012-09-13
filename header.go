@@ -85,11 +85,42 @@ var (
 
 var bamMagic = [4]byte{'B', 'A', 'M', 0x1}
 
+type SortOrder int
+
+const (
+	UnknownOrder SortOrder = iota
+	Unsorted
+	QueryName
+	Coordinate
+)
+
+var (
+	sortOrder = []string{
+		UnknownOrder: "unknown",
+		Unsorted:     "unsorted",
+		QueryName:    "queryname",
+		Coordinate:   "coordinate",
+	}
+	sortOrderMap = map[string]SortOrder{
+		"unknown":    UnknownOrder,
+		"unsorted":   Unsorted,
+		"queryname":  QueryName,
+		"coordinate": Coordinate,
+	}
+)
+
+func (so SortOrder) String() string {
+	if so < Unsorted || so > Coordinate {
+		return sortOrder[UnknownOrder]
+	}
+	return sortOrder[so]
+}
+
 type set map[string]int32
 
 type Header struct {
-	version    string
-	sortOrder  string
+	Version    string
+	SortOrder  SortOrder
 	refs       []*Reference
 	rgs        []*ReadGroup
 	progs      []*Program
@@ -119,10 +150,10 @@ func (bh *Header) String() string {
 	for i, r := range bh.refs {
 		refs[i] = r.String()
 	}
-	if bh.version != "" {
+	if bh.Version != "" {
 		return fmt.Sprintf("@HD\tVN:%s\tSO:%s\n%v\n",
-			bh.version,
-			bh.sortOrder,
+			bh.Version,
+			bh.SortOrder,
 			strings.Trim(strings.Join(refs, "\n"), "[]"))
 	}
 	return strings.Trim(strings.Join(refs, "\n"), "[]")
@@ -130,6 +161,81 @@ func (bh *Header) String() string {
 
 func (bh *Header) formatHeader() ([]byte, error) {
 	return nil, nil
+}
+
+func (fh *Header) read(r io.Reader) error {
+	var (
+		lText, nRef int32
+		err         error
+	)
+	var magic [4]byte
+	err = binary.Read(r, Endian, &magic)
+	if err != nil {
+		return err
+	}
+	if magic != bamMagic {
+		return errors.New("bam: magic number mismatch")
+	}
+	err = binary.Read(r, Endian, &lText)
+	if err != nil {
+		return err
+	}
+	text := make([]byte, lText)
+	n, err := r.Read(text)
+	if err != nil {
+		return err
+	}
+	if n != int(lText) {
+		return errors.New("bam: truncated header")
+	}
+	err = fh.parseHeader(text)
+	if err != nil {
+		return err
+	}
+	err = binary.Read(r, Endian, &nRef)
+	if err != nil {
+		return err
+	}
+	refs, err := readRefRecords(r, nRef)
+	if err != nil {
+		return err
+	}
+	for _, r := range refs {
+		err = fh.AddReference(r)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func readRefRecords(r io.Reader, n int32) ([]*Reference, error) {
+	rr := make([]*Reference, n)
+	var (
+		lName int32
+		err   error
+	)
+	for i := range rr {
+		rr[i] = &Reference{id: int32(i)}
+		err = binary.Read(r, Endian, &lName)
+		if err != nil {
+			return nil, err
+		}
+		name := make([]byte, lName)
+		n, err := r.Read(name)
+		if err != nil {
+			return nil, err
+		}
+		if n != int(lName) || name[n-1] != 0 {
+			return nil, errors.New("bam: truncated reference name")
+		}
+		rr[i].name = string(name[:n-1])
+		err = binary.Read(r, Endian, &rr[i].lRef)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return rr, nil
 }
 
 func (bh *Header) parseHeader(text []byte) error {
@@ -183,21 +289,21 @@ func headerLine(l []byte, bh *Header) error {
 		fs := string(f[3:])
 		switch {
 		case t == versionTag:
-			if bh.version != "" {
+			if bh.Version != "" {
 				return badHeader
 			}
-			bh.version = fs
+			bh.Version = fs
 		case t == sortOrderTag:
-			if bh.sortOrder != "" {
+			if bh.SortOrder != UnknownOrder {
 				return badHeader
 			}
-			bh.sortOrder = fs
+			bh.SortOrder = sortOrderMap[fs]
 		default:
 			return badHeader
 		}
 	}
 
-	if bh.version == "" {
+	if bh.Version == "" {
 		return badHeader
 	}
 
@@ -447,8 +553,8 @@ func commentLine(l []byte, bh *Header) error {
 
 func (bh *Header) Copy() *Header {
 	c := &Header{
-		version:    bh.version,
-		sortOrder:  bh.sortOrder,
+		Version:    bh.Version,
+		SortOrder:  bh.SortOrder,
 		comments:   append([]string(nil), bh.comments...),
 		refs:       make([]*Reference, len(bh.refs)),
 		rgs:        make([]*ReadGroup, len(bh.rgs)),
@@ -542,81 +648,6 @@ func (bh *Header) AddProgram(r *ReadGroup) error {
 	r.id = int32(len(bh.rgs))
 	bh.rgs = append(bh.rgs, r)
 	return nil
-}
-
-func (fh *Header) read(r io.Reader) error {
-	var (
-		lText, nRef int32
-		err         error
-	)
-	var magic [4]byte
-	err = binary.Read(r, Endian, &magic)
-	if err != nil {
-		return err
-	}
-	if magic != bamMagic {
-		return errors.New("bam: magic number mismatch")
-	}
-	err = binary.Read(r, Endian, &lText)
-	if err != nil {
-		return err
-	}
-	text := make([]byte, lText)
-	n, err := r.Read(text)
-	if err != nil {
-		return err
-	}
-	if n != int(lText) {
-		return errors.New("bam: truncated header")
-	}
-	err = fh.parseHeader(text)
-	if err != nil {
-		return err
-	}
-	err = binary.Read(r, Endian, &nRef)
-	if err != nil {
-		return err
-	}
-	refs, err := readRefRecords(r, nRef)
-	if err != nil {
-		return err
-	}
-	for _, r := range refs {
-		err = fh.AddReference(r)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func readRefRecords(r io.Reader, n int32) ([]*Reference, error) {
-	rr := make([]*Reference, n)
-	var (
-		lName int32
-		err   error
-	)
-	for i := range rr {
-		rr[i] = &Reference{id: int32(i)}
-		err = binary.Read(r, Endian, &lName)
-		if err != nil {
-			return nil, err
-		}
-		name := make([]byte, lName)
-		n, err := r.Read(name)
-		if err != nil {
-			return nil, err
-		}
-		if n != int(lName) || name[n-1] != 0 {
-			return nil, errors.New("bam: truncated reference name")
-		}
-		rr[i].name = string(name[:n-1])
-		err = binary.Read(r, Endian, &rr[i].lRef)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return rr, nil
 }
 
 func (fh *Header) writeTo(w io.Writer) (err error) {
