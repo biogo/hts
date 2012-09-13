@@ -21,7 +21,8 @@ import (
 )
 
 type Writer struct {
-	w   *bgzf.Writer
+	w   io.Writer
+	bg  *bgzf.Writer
 	h   *Header
 	rec bamRecord
 }
@@ -35,35 +36,37 @@ func makeWriter(w io.Writer, level int) *bgzf.Writer {
 
 func NewWriter(w io.Writer, h *Header, level int) (*Writer, error) {
 	bw := &Writer{
-		w: makeWriter(w, level),
-		h: h,
+		w:  w,
+		bg: makeWriter(w, level),
+		h:  h,
 	}
 
-	err := h.writeTo(bw.w)
+	err := h.writeTo(bw.bg)
 	if err != nil {
 		return nil, err
 	}
-	err = bw.w.Flush()
+	err = bw.bg.Flush()
 
 	return bw, err
 }
 
 func (bw *Writer) Write(r *Record) error {
 	_ = r.marshal(&bw.rec)
-	bw.rec.writeTo(bw.w)
+	bw.rec.writeTo(bw.bg)
 	return nil
 }
 
 func (bw *Writer) Close() error {
-	if bw.w.Next() != 0 {
-		err := bw.w.Flush()
-		if err != nil {
-			return err
-		}
-	}
-	_, err := bw.w.Write(nil)
+	err := bw.bg.Close()
 	if err != nil {
 		return err
 	}
-	return bw.w.Close()
+	_, err = bw.w.Write([]byte{ // Magic BAM block‽
+		0x1f, 0x8b, 0x08, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0x06, 0x00, 0x42, 0x43, 0x02, 0x00,
+		0x1b, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	})
+	if err != nil {
+		return err
+	}
+	return err
 }
