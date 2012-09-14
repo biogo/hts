@@ -29,9 +29,20 @@ const (
 	MaxBlockSize = 0x10000 // Maximum size of output block.
 )
 
+func compressBound(srcLen int) int {
+	return srcLen + srcLen>>12 + srcLen>>14 + srcLen>>25 + 13
+}
+
+func init() {
+	if compressBound(BlockSize) > MaxBlockSize {
+		panic("bam: BlockSize too large")
+	}
+}
+
 var (
-	NewBlock  = egzip.NewBlock
-	ErrClosed = errors.New("bgzf: write to closed writer")
+	NewBlock         = egzip.NewBlock
+	ErrClosed        = errors.New("bgzf: write to closed writer")
+	ErrBlockOverflow = errors.New("bgzf: block overflow")
 )
 
 type Reader struct {
@@ -172,7 +183,7 @@ func (bg *Writer) writeBlock() error {
 	}
 	size := len(b) - 1
 	if size >= MaxBlockSize {
-		bg.err = errors.New("bgzf: block overflow")
+		bg.err = ErrBlockOverflow
 		return bg.err
 	}
 	b[i+4], b[i+5] = byte(size), byte(size>>8)
