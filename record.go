@@ -25,18 +25,18 @@ import (
 )
 
 type Record struct {
-	name    string
-	ref     *Reference
-	pos     int
-	mapQ    byte
-	cigar   []CigarOp
-	flag    Flags
-	mateRef *Reference
-	matePos int
-	tLen    int
-	seq     nybbleSeq
-	qual    []byte
-	auxTags []Aux
+	Name    string
+	Ref     *Reference
+	Pos     int
+	MapQ    byte
+	Cigar   []CigarOp
+	Flags   Flags
+	MateRef *Reference
+	MatePos int
+	TempLen int
+	Seq     NybbleSeq
+	Qual    []byte
+	AuxTags []Aux
 }
 
 func NewRecord(name string, ref, mRef *Reference, p, mPos, tLen int, mapQ byte, co []CigarOp, seq, qual []byte, aux []Aux) (*Record, error) {
@@ -57,99 +57,64 @@ func NewRecord(name string, ref, mRef *Reference, p, mPos, tLen int, mapQ byte, 
 		}
 	}
 	r := &Record{
-		name:    name,
-		ref:     ref,
-		pos:     p,
-		mapQ:    mapQ,
-		cigar:   co,
-		mateRef: mRef,
-		matePos: mPos,
-		tLen:    tLen,
-		seq:     contract(seq),
-		qual:    qual,
-		auxTags: aux,
+		Name:    name,
+		Ref:     ref,
+		Pos:     p,
+		MapQ:    mapQ,
+		Cigar:   co,
+		MateRef: mRef,
+		MatePos: mPos,
+		TempLen: tLen,
+		Seq:     NewNybbleSeq(seq),
+		Qual:    qual,
+		AuxTags: aux,
 	}
 	return r, nil
 }
 
 func (r *Record) Reference() *Reference {
-	return r.ref
-}
-
-// Name returns the name of the alignment query.
-func (r *Record) Name() string {
-	return r.name
-}
-
-// Seq returns a byte slice containing the sequence of the alignment query.
-func (r *Record) Seq() []byte {
-	return r.seq.expand(len(r.qual))
-}
-
-// Quality returns an int8 slice containing the Phred quality scores of the alignment query.
-func (r *Record) Quality() []byte {
-	return r.qual
-}
-
-// SetSeq sets the sequence of the alignment query to the byte slice s.
-func (r *Record) SetSeq(s []byte) {
-	r.seq = contract(s)
-}
-
-// SetQuality sets the sequence of the alignment query to the int8 slice q.
-func (r *Record) SetQuality(q []byte) {
-	r.qual = q
-}
-
-// Cigar returns a slice of CigarOps describing the alignment.
-func (r *Record) Cigar() []CigarOp {
-	return r.cigar
+	return r.Ref
 }
 
 // Tag returns an Aux tag whose tag ID matches the first two bytes of tag and true.
 // If no tag matches, nil and false are returned.
 func (r *Record) Tag(tag []byte) (v Aux, ok bool) {
-	for i := range r.auxTags {
-		if bytes.Compare(r.auxTags[i][:2], tag) == 0 {
-			return r.auxTags[i], true
+	for i := range r.AuxTags {
+		if bytes.Compare(r.AuxTags[i][:2], tag) == 0 {
+			return r.AuxTags[i], true
 		}
 	}
 	return
 }
 
-// Tags returns all Aux tags for the aligment.
-func (r *Record) Tags() []Aux {
-	return r.auxTags
-}
-
 // Start returns the lower-coordinate end of the alignment.
 func (r *Record) Start() int {
-	return r.pos
+	return r.Pos
 }
 
 // Bin returns the BAM index bin of the record.
 func (r *Record) Bin() int {
-	return int(reg2bin(r.pos, r.End()))
+	return int(reg2bin(r.Pos, r.End()))
 }
 
-// Len returns the length of the alignment template.
+// Len returns the length of the alignment.
 func (r *Record) Len() int {
-	return r.tLen
+	return r.End() - r.Start()
 }
 
 // End returns the higher-coordinate end of the alignment.
 // This is the start plus the sum of CigarMatch lengths.
 func (r *Record) End() int {
-	end := r.pos
-	for i, co := range r.cigar {
+	end := r.Pos
+	for i, co := range r.Cigar {
 		if t := co.Type(); t == CigarBack {
-			if i == len(r.cigar)-1 {
+			if i == len(r.Cigar)-1 {
 				break
 			}
 			var j, forw, delta int
 			back := co.Len()
 			for j = i - 1; j >= 0; j-- {
-				x := r.cigar[j]
+				x := r.Cigar[j]
 				tx, lx := x.Type(), x.Len()
 				if consume[tx].query {
 					if forw+lx >= back {
@@ -166,7 +131,7 @@ func (r *Record) End() int {
 				}
 			}
 			if j < 0 {
-				end = r.pos
+				end = r.Pos
 			} else {
 				end -= delta
 			}
@@ -177,60 +142,35 @@ func (r *Record) End() int {
 	return end
 }
 
-// Score returns the quality of the alignment.
-func (r *Record) Score() byte {
-	return r.mapQ
-}
-
-// Flags returns the SAM flags for the alignment record.
-func (r *Record) Flags() Flags {
-	return r.flag
-}
-
-// SetFlags sets the SAM flags for the alignment record.
-func (r *Record) SetFlags(fl Flags) {
-	r.flag = fl
-}
-
 // Strand returns an int8 indicating the strand of the alignment. A positive return indicates
 // alignment in the forward orientation, a negative returns indicates alignemnt in the reverse
 // orientation.
 func (r *Record) Strand() int8 {
-	if r.flag&Reverse == Reverse {
+	if r.Flags&Reverse == Reverse {
 		return -1
 	}
 	return 1
-}
-
-// NextRefID returns the reference ID of the next segment/mate.
-func (r *Record) MateReference() *Reference {
-	return r.mateRef
-}
-
-// NextStart returns the start position of the next segment/mate.
-func (r *Record) MateStart() int {
-	return r.matePos
 }
 
 // String returns a string representation of the Record.
 func (r *Record) String() string {
 	end := r.End()
 	return fmt.Sprintf("%s %v %v %d %s:%d..%d (%d) %d %s:%d %d %s %v %v",
-		r.name,
-		r.flag,
-		r.cigar,
-		r.mapQ,
-		r.ref.Name(),
-		r.pos,
+		r.Name,
+		r.Flags,
+		r.Cigar,
+		r.MapQ,
+		r.Ref.Name(),
+		r.Pos,
 		end,
-		int(reg2bin(r.pos, end)),
-		end-r.pos,
-		r.mateRef.Name(),
-		r.matePos,
-		r.tLen,
-		r.seq.expand(len(r.qual)),
-		r.qual,
-		r.auxTags,
+		int(reg2bin(r.Pos, end)),
+		end-r.Pos,
+		r.MateRef.Name(),
+		r.MatePos,
+		r.TempLen,
+		r.Seq.Expand(),
+		r.Qual,
+		r.AuxTags,
 	)
 }
 
@@ -243,7 +183,7 @@ type bamRecordFixed struct {
 	MapQ      uint8
 	Bin       uint16
 	NCigar    uint16
-	Flag      Flags
+	Flags     Flags
 	LSeq      int32
 	NextRefID int32
 	NextPos   int32
@@ -254,7 +194,7 @@ type bamRecord struct {
 	bamRecordFixed
 	readName []byte
 	cigar    []CigarOp
-	seq      []nybblePair
+	seq      []NybblePair
 	qual     []byte
 	auxTags  []byte
 }
@@ -267,18 +207,18 @@ var (
 func (br *bamRecord) unmarshal(h *Header) *Record {
 	fixed := br.bamRecordFixed
 	return &Record{
-		name:    string(br.readName[:len(br.readName)-1]), // The BAM spec indicates name is null terminated.
-		ref:     h.Refs()[fixed.RefID],
-		pos:     int(fixed.Pos),
-		mapQ:    fixed.MapQ,
-		cigar:   br.cigar,
-		flag:    fixed.Flag,
-		seq:     br.seq,
-		qual:    br.qual,
-		tLen:    int(fixed.TLen),
-		mateRef: h.Refs()[fixed.NextRefID],
-		matePos: int(fixed.NextPos),
-		auxTags: parseAux(br.auxTags),
+		Name:    string(br.readName[:len(br.readName)-1]), // The BAM spec indicates name is null terminated.
+		Ref:     h.Refs()[fixed.RefID],
+		Pos:     int(fixed.Pos),
+		MapQ:    fixed.MapQ,
+		Cigar:   br.cigar,
+		Flags:   fixed.Flags,
+		Seq:     NybbleSeq{Length: int(br.LSeq), Seq: br.seq},
+		Qual:    br.qual,
+		TempLen: int(fixed.TLen),
+		MateRef: h.Refs()[fixed.NextRefID],
+		MatePos: int(fixed.NextPos),
+		AuxTags: parseAux(br.auxTags),
 	}
 
 }
@@ -312,7 +252,7 @@ func (br *bamRecord) readFrom(r io.Reader) error {
 	if nf != int((h.LSeq+1)>>1) {
 		return errors.New("bam: truncated sequence")
 	}
-	br.seq = *(*[]nybblePair)(unsafe.Pointer(&seq))
+	br.seq = *(*[]NybblePair)(unsafe.Pointer(&seq))
 	n -= nf
 
 	br.qual = make([]byte, h.LSeq)
@@ -351,32 +291,32 @@ func readCigarOps(r io.Reader, n uint16) (co []CigarOp, nf int, err error) {
 }
 
 func (r *Record) marshal(br *bamRecord) int {
-	tags := buildAux(r.auxTags)
+	tags := buildAux(r.AuxTags)
 	recLen := bamFixedRemainder +
-		len(r.name) + 1 + // Null terminated.
-		len(r.cigar)<<2 + // CigarOps are 4 bytes.
-		len(r.seq) +
-		len(r.qual) +
+		len(r.Name) + 1 + // Null terminated.
+		len(r.Cigar)<<2 + // CigarOps are 4 bytes.
+		len(r.Seq.Seq) +
+		len(r.Qual) +
 		len(tags)
 	*br = bamRecord{
 		bamRecordFixed: bamRecordFixed{
 			BlockSize: int32(recLen),
-			RefID:     r.ref.id,
-			Pos:       int32(r.pos),
-			NLen:      byte(len(r.name) + 1),
-			MapQ:      r.mapQ,
-			Bin:       reg2bin(r.pos, r.End()), //r.bin,
-			NCigar:    uint16(len(r.cigar)),
-			Flag:      r.flag,
-			LSeq:      int32(len(r.qual)),
-			NextRefID: int32(r.mateRef.id),
-			NextPos:   int32(r.matePos),
-			TLen:      int32(r.tLen),
+			RefID:     r.Ref.id,
+			Pos:       int32(r.Pos),
+			NLen:      byte(len(r.Name) + 1),
+			MapQ:      r.MapQ,
+			Bin:       reg2bin(r.Pos, r.End()), //r.bin,
+			NCigar:    uint16(len(r.Cigar)),
+			Flags:     r.Flags,
+			LSeq:      int32(len(r.Qual)),
+			NextRefID: int32(r.MateRef.id),
+			NextPos:   int32(r.MatePos),
+			TLen:      int32(r.TempLen),
 		},
-		readName: append([]byte(r.name), 0),
-		cigar:    r.cigar,
-		seq:      r.seq,
-		qual:     r.qual,
+		readName: append([]byte(r.Name), 0),
+		cigar:    r.Cigar,
+		seq:      r.Seq.Seq,
+		qual:     r.Qual,
 		auxTags:  tags,
 	}
 	return recLen
@@ -423,13 +363,16 @@ func writeCigarOps(w io.Writer, co []CigarOp) (err error) {
 	return
 }
 
-type nybblePair byte
+type NybblePair byte
 
-type nybbleSeq []nybblePair
+type NybbleSeq struct {
+	Length int
+	Seq    []NybblePair
+}
 
 var (
 	n16TableRev = [16]byte{'=', 'A', 'C', 'M', 'G', 'R', 'S', 'V', 'T', 'W', 'Y', 'H', 'K', 'D', 'B', 'N'}
-	n16Table    = [256]nybblePair{
+	n16Table    = [256]NybblePair{
 		0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf,
 		0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf,
 		0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf,
@@ -449,22 +392,16 @@ var (
 	}
 )
 
-func (ns nybbleSeq) expand(l int) []byte {
-	s := make([]byte, l)
-	for i := range s {
-		if i&1 == 0 {
-			s[i] = n16TableRev[ns[i>>1]>>4]
-		} else {
-			s[i] = n16TableRev[ns[i>>1]&0xf]
-		}
+func NewNybbleSeq(s []byte) NybbleSeq {
+	return NybbleSeq{
+		Length: len(s),
+		Seq:    contract(s),
 	}
-
-	return s
 }
 
-func contract(s []byte) nybbleSeq {
-	ns := make(nybbleSeq, (len(s)+1)>>1)
-	var np nybblePair
+func contract(s []byte) []NybblePair {
+	ns := make([]NybblePair, (len(s)+1)>>1)
+	var np NybblePair
 	for i, b := range s {
 		if i&1 == 0 {
 			np = n16Table[b] << 4
@@ -473,4 +410,17 @@ func contract(s []byte) nybbleSeq {
 		}
 	}
 	return ns
+}
+
+func (ns NybbleSeq) Expand() []byte {
+	s := make([]byte, ns.Length)
+	for i := range s {
+		if i&1 == 0 {
+			s[i] = n16TableRev[ns.Seq[i>>1]>>4]
+		} else {
+			s[i] = n16TableRev[ns.Seq[i>>1]&0xf]
+		}
+	}
+
+	return s
 }
