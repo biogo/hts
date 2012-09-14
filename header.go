@@ -68,10 +68,10 @@ type set map[string]int32
 type Header struct {
 	Version    string
 	SortOrder  SortOrder
+	Comments   []string
 	refs       []*Reference
 	rgs        []*ReadGroup
 	progs      []*Program
-	comments   []string
 	seenRefs   set
 	seenGroups set
 	seenProgs  set
@@ -110,7 +110,7 @@ func (bh *Header) Copy() *Header {
 	c := &Header{
 		Version:    bh.Version,
 		SortOrder:  bh.SortOrder,
-		comments:   append([]string(nil), bh.comments...),
+		Comments:   append([]string(nil), bh.Comments...),
 		refs:       make([]*Reference, len(bh.refs)),
 		rgs:        make([]*ReadGroup, len(bh.rgs)),
 		progs:      make([]*Program, len(bh.progs)),

@@ -457,7 +457,7 @@ func commentLine(l []byte, bh *Header) error {
 	if len(fields) < 2 {
 		return badHeader
 	}
-	bh.comments = append(bh.comments, string(fields[1]))
+	bh.Comments = append(bh.Comments, string(fields[1]))
 	return nil
 }
 
