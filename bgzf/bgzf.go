@@ -29,8 +29,15 @@ const (
 	MaxBlockSize = 0x10000 // Maximum size of output block.
 )
 
+const (
+	bgzfExtra = "BC\x02\x00\x00\x00"
+	minFrame  = 20 + len(bgzfExtra) // Minimum bgzf header+footer length.
+)
+
+var bgzfExtraPrefix = []byte(bgzfExtra[:4])
+
 func compressBound(srcLen int) int {
-	return srcLen + srcLen>>12 + srcLen>>14 + srcLen>>25 + 13
+	return srcLen + srcLen>>12 + srcLen>>14 + srcLen>>25 + 13 + minFrame
 }
 
 func init() {
@@ -102,7 +109,7 @@ func (bg *Reader) CurrBlockSize() (int, error) {
 	if bg.err != nil {
 		return -1, bg.err
 	}
-	i := bytes.Index(bg.Extra, []byte("BC\x02\x00"))
+	i := bytes.Index(bg.Extra, bgzfExtraPrefix)
 	if i+5 >= len(bg.Extra) {
 		return -1, gzip.ErrHeader
 	}
@@ -160,7 +167,7 @@ func (bg *Writer) writeBlock() error {
 	}
 	gz.Header = gzip.Header{
 		Comment: bg.Comment,
-		Extra:   append([]byte("BC\x02\x00\x00\x00"), bg.Extra...),
+		Extra:   append([]byte(bgzfExtra), bg.Extra...),
 		ModTime: bg.ModTime,
 		Name:    bg.Name,
 		OS:      bg.OS,
@@ -177,7 +184,7 @@ func (bg *Writer) writeBlock() error {
 	bg.next = 0
 
 	b := bg.buf.Bytes()
-	i := bytes.Index(b, []byte("BC\x02\x00"))
+	i := bytes.Index(b, bgzfExtraPrefix)
 	if i < 0 {
 		return gzip.ErrHeader
 	}
