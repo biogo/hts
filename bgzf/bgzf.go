@@ -32,6 +32,9 @@ const (
 const (
 	bgzfExtra = "BC\x02\x00\x00\x00"
 	minFrame  = 20 + len(bgzfExtra) // Minimum bgzf header+footer length.
+
+	// Magic EOF block.
+	magicBlock = "\x1f\x8b\x08\x04\x00\x00\x00\x00\x00\xff\x06\x00\x42\x43\x02\x00\x1b\x00\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00"
 )
 
 var bgzfExtraPrefix = []byte(bgzfExtra[:4])
@@ -211,8 +214,15 @@ func (bg *Writer) Close() error {
 	if bg.closed {
 		return nil
 	}
-	bg.closed = true
-	return bg.writeBlock()
+	bg.err = bg.writeBlock()
+	if bg.err != nil {
+		return bg.err
+	}
+	_, bg.err = bg.w.Write([]byte(magicBlock))
+	if bg.err == nil {
+		bg.closed = true
+	}
+	return bg.err
 }
 
 func (bg *Writer) Write(p []byte) (int, error) {

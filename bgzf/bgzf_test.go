@@ -79,14 +79,14 @@ func TestRoundTrip(t *testing.T) {
 	if r.Comment != "comment" {
 		t.Fatalf("comment is %q, want %q", r.Comment, "comment")
 	}
-	if bl, err := r.CurrBlockSize(); err != nil || bl != wbl {
+	if bl, err := r.CurrBlockSize(); err != nil || bl != len(magicBlock) {
 		t.Fatalf("CurrBlockSize() is %d, want %d", bl, wbl)
 	}
 	blEnc := string([]byte{byte(wbl - 1), byte((wbl - 1) >> 8)})
-	if string(r.Extra) != "BC\x02\x00"+blEnc+"extra" {
+	if string(r.Extra) != magicBlock[12:18] {
 		t.Fatalf("extra is %q, want %q", r.Extra, "BC\x02\x00"+blEnc+"extra")
 	}
-	if r.ModTime.Unix() != 1e8 {
+	if r.ModTime.Unix() != 0 {
 		t.Fatalf("mtime is %d, want %d", r.ModTime.Unix(), uint32(1e8))
 	}
 	if r.Name != "name" {
@@ -122,7 +122,7 @@ func TestRoundTripMulti(t *testing.T) {
 	if err := w.Close(); err != nil {
 		t.Fatalf("Writer.Close: %v", err)
 	}
-	wbl[1] = buf.Len() - wbl[0]
+	wbl[1] = buf.Len() - wbl[0] - len(magicBlock)
 
 	var (
 		b     []byte
@@ -166,7 +166,7 @@ func TestRoundTripMulti(t *testing.T) {
 	}
 	b = make([]byte, bl+1)
 	n, err = r.Read(b)
-	if err != nil {
+	if err != nil && err != NewBlock {
 		t.Fatalf("Read: %v", err)
 	}
 	if string(b[:n]) != "payloadTwo" {
@@ -212,7 +212,7 @@ func TestRoundTripMultiSeek(t *testing.T) {
 	if err := w.Close(); err != nil {
 		t.Fatalf("Writer.Close: %v", err)
 	}
-	wbl[1] = int(cw.bytes - offset)
+	wbl[1] = int(cw.bytes-offset) - len(magicBlock)
 
 	var (
 		b     []byte
@@ -267,11 +267,11 @@ func TestRoundTripMultiSeek(t *testing.T) {
 	}
 	bl, err = r.CurrBlockSize()
 	if err != nil || bl != wbl[1] {
-		t.Fatalf("CurrBlockSize() is %d, want %d", bl, len("payloadTwo"))
+		t.Fatalf("CurrBlockSize() is %d, want %d", bl, wbl[1])
 	}
 	b = make([]byte, bl+1)
 	n, err = r.Read(b)
-	if err != nil {
+	if err != nil && err != NewBlock {
 		t.Fatalf("Read: %v", err)
 	}
 	if string(b[:n]) != "payloadTwo" {

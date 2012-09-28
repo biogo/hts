@@ -22,7 +22,6 @@ import (
 )
 
 type Writer struct {
-	w   io.Writer
 	bg  *bgzf.Writer
 	h   *Header
 	rec bamRecord
@@ -41,7 +40,6 @@ func makeWriter(w io.Writer, level int) *bgzf.Writer {
 
 func NewWriterLevel(w io.Writer, h *Header, level int) (*Writer, error) {
 	bw := &Writer{
-		w:  w,
 		bg: makeWriter(w, level),
 		h:  h,
 	}
@@ -62,16 +60,5 @@ func (bw *Writer) Write(r *Record) error {
 }
 
 func (bw *Writer) Close() error {
-	err := bw.bg.Close()
-	if err != nil {
-		return err
-	}
-	_, err = bw.w.Write([]byte{ // Magic BAM block‽ This is required to keep samtools happy.
-		0x1f, 0x8b, 0x08, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0x06, 0x00, 0x42, 0x43, 0x02, 0x00,
-		0x1b, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	})
-	if err != nil {
-		return err
-	}
-	return err
+	return bw.bg.Close()
 }
