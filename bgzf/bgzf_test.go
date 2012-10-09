@@ -48,6 +48,33 @@ func TestEmpty(t *testing.T) {
 	}
 }
 
+// TestEOF tests CheckEOF can find the EOF magic block.
+func TestEOF(t *testing.T) {
+	f, err := ioutil.TempFile(os.TempDir(), "bgzf_EOF_test_")
+	if err != nil {
+		t.Fatalf("Create temp file: %v", err)
+	}
+	fname := f.Name()
+
+	if err := NewWriter(f).Close(); err != nil {
+		t.Fatalf("Writer.Close: %v", err)
+	}
+
+	f, err = os.Open(fname)
+	if err != nil {
+		t.Fatalf("Open temp file: %v", err)
+	}
+	ok, err := CheckEOF(f)
+	if err != nil {
+		t.Fatalf("CheckEOF: %v", err)
+	}
+	if !ok {
+		t.Fatal("Expected EOF: not found.")
+	}
+
+	os.Remove(fname)
+}
+
 // TestRoundTrip tests that bgzipping and then bgunzipping is the identity
 // function.
 func TestRoundTrip(t *testing.T) {

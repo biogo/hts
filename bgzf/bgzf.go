@@ -22,6 +22,7 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
+	"os"
 )
 
 const (
@@ -53,12 +54,32 @@ var (
 	NewBlock         = egzip.NewBlock
 	ErrClosed        = errors.New("bgzf: write to closed writer")
 	ErrBlockOverflow = errors.New("bgzf: block overflow")
+	ErrWrongFileType = errors.New("bgzf: file is a directory")
 )
 
 type Reader struct {
 	gzip.Header
 	gz  *egzip.Reader
 	err error
+}
+
+func CheckEOF(f *os.File) (bool, error) {
+	fi, err := f.Stat()
+	if err != nil || fi.IsDir() {
+		return false, ErrWrongFileType
+	}
+
+	b := make([]byte, len(magicBlock))
+	_, err = f.ReadAt(b, fi.Size()-int64(len(magicBlock)))
+	if err != nil {
+		return false, err
+	}
+	for i := range b {
+		if b[i] != magicBlock[i] {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 func NewReader(r io.Reader, limited bool) (*Reader, error) {
