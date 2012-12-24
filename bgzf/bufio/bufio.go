@@ -1,8 +1,10 @@
 // Copyright 2009 The Go Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+// license that can be found in the Go LICENSE file.
 
-// Changes ©2012 Dan Kortschak <dan.kortschak@adelaide.edu.au>
+// Changes copyright ©2012 The bíogo.bam Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
 
 // Package bufio implements buffered I/O.  It wraps an io.Reader or io.Writer
 // object, creating another object (Reader or Writer) that also implements

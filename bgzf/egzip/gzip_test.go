@@ -1,8 +1,11 @@
 // Copyright 2010 The Go Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
+// license that can be found in the Go LICENSE file.
+
+// Changes copyright ©2012 The bíogo.bam Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Changes ©2012 Dan Kortschak <dan.kortschak@adelaide.edu.au>
 package egzip
 
 import (
