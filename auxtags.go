@@ -103,7 +103,7 @@ type Tag [2]byte
 // String returns a string representation of a Tag.
 func (t Tag) String() string { return string(t[:]) }
 
-// Tag returns the string representation of the tag ID.
+// Tag returns the Tag representation of the Aux tag ID.
 func (a Aux) Tag() Tag { var t Tag; copy(t[:], a[:2]); return t }
 
 // Type returns a byte corresponding to the type of the auxilliary tag.
