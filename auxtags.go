@@ -118,7 +118,7 @@ func (a Aux) Value() (v interface{}) {
 	case 'c':
 		return int8(a[3])
 	case 'C':
-		return uint(a[3])
+		return uint8(a[3])
 	case 's':
 		s := int16(0)
 		err := binary.Read(bytes.NewBuffer([]byte(a[4:6])), Endian, &s)
