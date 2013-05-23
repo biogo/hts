@@ -8,17 +8,18 @@ package bam
 type Flags uint16
 
 const (
-	Paired       Flags = 1 << iota // The read is paired in sequencing, no matter whether it is mapped in a pair.
-	ProperPair                     // The read is mapped in a proper pair.
-	Unmapped                       // The read itself is unmapped; conflictive with ProperPair.
-	MateUnmapped                   // The mate is unmapped.
-	Reverse                        // The read is mapped to the reverse strand.
-	MateReverse                    // The mate is mapped to the reverse strand.
-	Read1                          // This is read1.
-	Read2                          // This is read2.
-	Secondary                      // Not primary alignment.
-	QCFail                         // QC failure.
-	Duplicate                      // Optical or PCR duplicate.
+	Paired        Flags = 1 << iota // The read is paired in sequencing, no matter whether it is mapped in a pair.
+	ProperPair                      // The read is mapped in a proper pair.
+	Unmapped                        // The read itself is unmapped; conflictive with ProperPair.
+	MateUnmapped                    // The mate is unmapped.
+	Reverse                         // The read is mapped to the reverse strand.
+	MateReverse                     // The mate is mapped to the reverse strand.
+	Read1                           // This is read1.
+	Read2                           // This is read2.
+	Secondary                       // Not primary alignment.
+	QCFail                          // QC failure.
+	Duplicate                       // Optical or PCR duplicate.
+	Supplementary                   // Supplementary alignment, indicates alignment is part of a chimeric alignment.
 )
 
 // String representation of BAM alignment flags:
@@ -33,6 +34,7 @@ const (
 //  0x100 - s - Secondary
 //  0x200 - f - QCFail
 //  0x400 - d - Duplicate
+//  0x800 - S - Supplementary
 //
 // Note that flag bits are represented high order to the right.
 func (f Flags) String() string {
@@ -42,7 +44,7 @@ func (f Flags) String() string {
 		f &^= pairedMask
 	}
 
-	const flags = "pPuUrR12sfd"
+	const flags = "pPuUrR12sfdS"
 
 	b := make([]byte, len(flags))
 	for i, c := range flags {
