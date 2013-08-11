@@ -38,8 +38,13 @@ var (
 	NewBlock      = errors.New("egzip: new block")
 )
 
-func makeReader(r io.Reader) flate.Reader {
-	if rr, ok := r.(flate.Reader); ok {
+type reader interface {
+	flate.Reader
+	Reset(io.Reader)
+}
+
+func makeReader(r io.Reader) reader {
+	if rr, ok := r.(reader); ok {
 		return rr
 	}
 	return bufio.NewReader(r)
@@ -62,8 +67,8 @@ func makeReader(r io.Reader) flate.Reader {
 type Reader struct {
 	BlockLimited bool // Stop reading at the end of a member and return NewBlock.
 	*gzip.Header
-	r            flate.Reader
-	s            io.Seeker
+	r            reader
+	s            io.ReadSeeker
 	decompressor io.ReadCloser
 	digest       hash.Hash32
 	size         uint32
@@ -80,7 +85,7 @@ func NewReader(r io.Reader, h *gzip.Header) (*Reader, error) {
 	z.Header = h
 	z.r = makeReader(r)
 	z.digest = crc32.NewIEEE()
-	z.s, _ = r.(io.Seeker)
+	z.s, _ = r.(io.ReadSeeker)
 	if err := z.readHeader(); err != nil {
 		return nil, err
 	}
@@ -197,7 +202,7 @@ func (z *Reader) Seek(offset int64, whence int) error {
 	if z.err != nil {
 		return z.err
 	}
-	z.r.(*bufio.Reader).Reset()
+	z.r.Reset(z.s)
 
 	err := z.readHeader()
 	if err != nil {

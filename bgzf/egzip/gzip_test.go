@@ -9,7 +9,8 @@
 package egzip
 
 import (
-	"bufio"
+	"code.google.com/p/biogo.bam/bgzf/bufio"
+
 	"bytes"
 	"compress/gzip"
 	"io/ioutil"

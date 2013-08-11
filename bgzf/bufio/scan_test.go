@@ -6,6 +6,7 @@ package bufio_test
 
 import (
 	. "code.google.com/p/biogo.bam/bgzf/bufio"
+
 	"bytes"
 	"errors"
 	"io"
