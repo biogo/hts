@@ -133,6 +133,7 @@ type Writer struct {
 	gzip.Header
 	level   int
 	w       io.Writer
+	gz      *egzip.Writer
 	next    uint
 	err     error
 	written bool
@@ -173,12 +174,15 @@ func (bg *Writer) Flush() error {
 }
 
 func (bg *Writer) writeBlock() error {
-	var gz *egzip.Writer
-	gz, bg.err = egzip.NewWriterLevel(bg.buf, bg.level)
-	if bg.err != nil {
-		return bg.err
+	if bg.gz == nil {
+		bg.gz, bg.err = egzip.NewWriterLevel(bg.buf, bg.level)
+		if bg.err != nil {
+			return bg.err
+		}
+	} else {
+		bg.gz.Reset(bg.buf)
 	}
-	gz.Header = gzip.Header{
+	bg.gz.Header = gzip.Header{
 		Comment: bg.Comment,
 		Extra:   append([]byte(bgzfExtra), bg.Extra...),
 		ModTime: bg.ModTime,
@@ -186,11 +190,11 @@ func (bg *Writer) writeBlock() error {
 		OS:      bg.OS,
 	}
 
-	_, bg.err = gz.Write(bg.block[:bg.next])
+	_, bg.err = bg.gz.Write(bg.block[:bg.next])
 	if bg.err != nil {
 		return bg.err
 	}
-	bg.err = gz.Close()
+	bg.err = bg.gz.Close()
 	if bg.err != nil {
 		return bg.err
 	}
