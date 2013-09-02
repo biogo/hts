@@ -215,6 +215,9 @@ func (br *bamRecord) unmarshal(h *Header) *Record {
 func (br *bamRecord) readFrom(r io.Reader) error {
 	h := &br.bamRecordFixed
 	err := binary.Read(r, Endian, h)
+	if err != nil {
+		return err
+	}
 	n := int(br.BlockSize) - bamFixedRemainder
 
 	br.readName = make([]byte, h.NLen)
