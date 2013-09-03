@@ -105,7 +105,7 @@ func (r *Reference) String() string {
 	return buf.String()
 }
 
-func (r *Reference) Copy() *Reference {
+func (r *Reference) Clone() *Reference {
 	if r == nil {
 		return nil
 	}

@@ -59,7 +59,7 @@ func (p *Program) Version() string {
 	}
 	return p.version
 }
-func (p *Program) Copy() *Program {
+func (p *Program) Clone() *Program {
 	if p == nil {
 		return nil
 	}

@@ -61,7 +61,7 @@ func (r *ReadGroup) Name() string {
 	return r.name
 }
 
-func (r *ReadGroup) Copy() *ReadGroup {
+func (r *ReadGroup) Clone() *ReadGroup {
 	if r == nil {
 		return nil
 	}
