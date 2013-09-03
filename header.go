@@ -195,14 +195,14 @@ func (bh *Header) AddReadGroup(r *ReadGroup) error {
 	return nil
 }
 
-func (bh *Header) AddProgram(r *ReadGroup) error {
-	if _, ok := bh.seenProgs[r.name]; ok {
+func (bh *Header) AddProgram(p *Program) error {
+	if _, ok := bh.seenProgs[p.name]; ok {
 		return dupProgram
 	}
-	if r.id >= 0 {
+	if p.id >= 0 {
 		return usedProgram
 	}
-	r.id = int32(len(bh.rgs))
-	bh.rgs = append(bh.rgs, r)
+	p.id = int32(len(bh.rgs))
+	bh.progs = append(bh.progs, p)
 	return nil
 }
