@@ -71,3 +71,56 @@ func (s *S) TestRead(c *check.C) {
 		}
 	}
 }
+
+func (s *S) TestRoundTrip(c *check.C) {
+	for _, t := range []struct {
+		in     []byte
+		header *Header
+		lines  int
+	}{
+		{
+			in:     bamHG00096_1000,
+			header: headerHG00096_1000,
+			lines:  1000,
+		},
+	} {
+		br, err := NewReader(bytes.NewBuffer(t.in), false)
+		c.Assert(err, check.Equals, nil)
+
+		var buf bytes.Buffer
+		bw, err := NewWriter(&buf, br.Header().Copy())
+		for {
+			r, err := br.Read()
+			if err != nil {
+				c.Assert(err, check.Equals, io.EOF)
+				break
+			}
+			bw.Write(r)
+		}
+		c.Assert(bw.Close(), check.Equals, nil)
+
+		br, err = NewReader(bytes.NewBuffer(t.in), false)
+		c.Assert(err, check.Equals, nil)
+		brr, err := NewReader(&buf, false)
+		c.Assert(err, check.Equals, nil)
+		c.Check(brr.Header().String(), check.Equals, br.Header().String())
+		// c.Check(brr.Header(), check.DeepEquals, br.Header())
+		if !reflect.DeepEqual(brr.Header(), br.Header()) {
+			c.Check(brr.Header().Refs(), check.DeepEquals, br.Header().Refs())
+			// c.Check(brr.Header().RGs(), check.DeepEquals, br.Header().RGs())
+			// c.Check(brr.Header().Progs(), check.DeepEquals, br.Header().Progs())
+		}
+		for {
+			r, err := br.Read()
+			if err != nil {
+				c.Assert(err, check.Equals, io.EOF)
+			}
+			rr, err := brr.Read()
+			if err != nil {
+				c.Assert(err, check.Equals, io.EOF)
+				break
+			}
+			c.Check(rr, check.DeepEquals, r)
+		}
+	}
+}
