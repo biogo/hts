@@ -72,13 +72,14 @@ func (s *S) TestRead(c *check.C) {
 			bf.Write(t.in)
 			bf.Close()
 		}
-		if c.Failed() && *bam != "" {
-			bf, err := os.Create(*bam)
-			c.Assert(err, check.Equals, nil)
-			bf.Write(t.in)
-			bf.Close()
-			c.FailNow()
-		}
+	}
+}
+
+func (s *S) TestCloneHeader(c *check.C) {
+	for _, h := range []*Header{
+		headerHG00096_1000,
+	} {
+		c.Check(h, check.DeepEquals, h.Clone())
 	}
 }
 
