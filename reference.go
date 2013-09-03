@@ -5,6 +5,7 @@
 package bam
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"net/url"
@@ -87,20 +88,21 @@ func (r *Reference) Len() int {
 }
 
 func (r *Reference) String() string {
-	s := fmt.Sprintf("@SQ\tSN:%s\tLN:%d", r.name, r.lRef)
+	var buf bytes.Buffer
+	fmt.Fprintf(&buf, "@SQ\tSN:%s\tLN:%d", r.name, r.lRef)
 	if r.md5 != nil {
-		s += fmt.Sprintln("\tM5:%x", *r.md5)
+		fmt.Fprintf(&buf, "\tM5:%x", *r.md5)
 	}
 	if r.assemID != "" {
-		s += fmt.Sprintln("\tAS:%s", r.assemID)
+		fmt.Fprintf(&buf, "\tAS:%s", r.assemID)
 	}
 	if r.species != "" {
-		s += fmt.Sprintln("\tSP:%s", r.species)
+		fmt.Fprintf(&buf, "\tSP:%s", r.species)
 	}
 	if r.uri != nil {
-		s += fmt.Sprintln("\tUR:%s", r.uri)
+		fmt.Fprintf(&buf, "\tUR:%s", r.uri)
 	}
-	return s
+	return buf.String()
 }
 
 func (r *Reference) Copy() *Reference {
