@@ -6,6 +6,7 @@ package bam
 
 import (
 	"bytes"
+	"code.google.com/p/biogo.bam/bgzf/egzip"
 	"flag"
 	"fmt"
 	"io"
@@ -29,16 +30,24 @@ var _ = check.Suite(&S{})
 func (s *S) TestRead(c *check.C) {
 	for i, t := range []struct {
 		in     []byte
+		limit  bool
 		header *Header
 		lines  int
 	}{
 		{
 			in:     bamHG00096_1000,
+			limit:  false,
+			header: headerHG00096_1000,
+			lines:  1000,
+		},
+		{
+			in:     bamHG00096_1000,
+			limit:  true,
 			header: headerHG00096_1000,
 			lines:  1000,
 		},
 	} {
-		br, err := NewReader(bytes.NewBuffer(t.in), false)
+		br, err := NewReader(bytes.NewBuffer(t.in), t.limit)
 		c.Assert(err, check.Equals, nil)
 		c.Check(br.Header(), check.DeepEquals, t.header)
 		if !reflect.DeepEqual(br.Header(), t.header) {
@@ -51,6 +60,9 @@ func (s *S) TestRead(c *check.C) {
 		for {
 			_, err := br.Read()
 			if err != nil {
+				if err == egzip.NewBlock {
+					continue
+				}
 				c.Assert(err, check.Equals, io.EOF)
 				break
 			}
@@ -123,6 +135,22 @@ func (s *S) TestRoundTrip(c *check.C) {
 				break
 			}
 			c.Check(rr, check.DeepEquals, r)
+		}
+	}
+}
+
+func BenchmarkRoundTrip(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		br, _ := NewReader(bytes.NewBuffer(bamHG00096_1000), false)
+
+		var buf bytes.Buffer
+		bw, _ := NewWriter(&buf, br.Header().Clone())
+		for {
+			r, err := br.Read()
+			if err != nil {
+				break
+			}
+			bw.Write(r)
 		}
 	}
 }
