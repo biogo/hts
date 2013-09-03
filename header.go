@@ -154,10 +154,23 @@ func (bh *Header) Progs() []*Program {
 
 func (bh *Header) AddReference(r *Reference) error {
 	if dupID, dup := bh.seenRefs[r.name]; dup {
-		if er := bh.refs[dupID]; *er == *r {
+		er := bh.refs[dupID]
+		if *er == *r {
 			return nil
-		} else if tr := (Reference{id: er.id, name: er.name, lRef: er.lRef}); *er != tr {
+		} else if tr := (Reference{id: er.id, name: er.name, lRef: er.lRef}); *r != tr {
 			return dupReference
+		}
+		if r.md5 == nil {
+			r.md5 = er.md5
+		}
+		if r.assemID == "" {
+			r.assemID = er.assemID
+		}
+		if r.species == "" {
+			r.species = er.species
+		}
+		if r.uri == nil {
+			r.uri = er.uri
 		}
 		bh.refs[dupID] = r
 		return nil
