@@ -109,14 +109,20 @@ func (bh *Header) Copy() *Header {
 	}
 
 	for i, r := range bh.refs {
+		if r == nil {
+			continue
+		}
+		c.refs[i] = new(Reference)
 		*c.refs[i] = *r
 	}
 	for i, r := range bh.rgs {
+		c.rgs[i] = new(ReadGroup)
 		*c.rgs[i] = *r
 		c.rgs[i].flowOrder = append([]byte(nil), r.flowOrder...)
 		c.rgs[i].keySeq = append([]byte(nil), r.keySeq...)
 	}
 	for i, p := range bh.progs {
+		c.progs[i] = new(Program)
 		*c.progs[i] = *p
 	}
 	for k, v := range bh.seenRefs {

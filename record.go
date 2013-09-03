@@ -299,7 +299,7 @@ func (r *Record) marshal(br *bamRecord) int {
 	*br = bamRecord{
 		bamRecordFixed: bamRecordFixed{
 			BlockSize: int32(recLen),
-			RefID:     r.Ref.id,
+			RefID:     int32(r.Ref.ID()),
 			Pos:       int32(r.Pos),
 			NLen:      byte(len(r.Name) + 1),
 			MapQ:      r.MapQ,
@@ -307,7 +307,7 @@ func (r *Record) marshal(br *bamRecord) int {
 			NCigar:    uint16(len(r.Cigar)),
 			Flags:     r.Flags,
 			LSeq:      int32(len(r.Qual)),
-			NextRefID: int32(r.MateRef.id),
+			NextRefID: int32(r.MateRef.ID()),
 			NextPos:   int32(r.MatePos),
 			TLen:      int32(r.TempLen),
 		},
