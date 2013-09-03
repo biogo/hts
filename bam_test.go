@@ -104,11 +104,11 @@ func (s *S) TestRoundTrip(c *check.C) {
 		brr, err := NewReader(&buf, false)
 		c.Assert(err, check.Equals, nil)
 		c.Check(brr.Header().String(), check.Equals, br.Header().String())
-		// c.Check(brr.Header(), check.DeepEquals, br.Header())
+		c.Check(brr.Header(), check.DeepEquals, br.Header())
 		if !reflect.DeepEqual(brr.Header(), br.Header()) {
 			c.Check(brr.Header().Refs(), check.DeepEquals, br.Header().Refs())
-			// c.Check(brr.Header().RGs(), check.DeepEquals, br.Header().RGs())
-			// c.Check(brr.Header().Progs(), check.DeepEquals, br.Header().Progs())
+			c.Check(brr.Header().RGs(), check.DeepEquals, br.Header().RGs())
+			c.Check(brr.Header().Progs(), check.DeepEquals, br.Header().Progs())
 		}
 		for {
 			r, err := br.Read()

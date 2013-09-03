@@ -5,9 +5,9 @@
 package bam
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
-	"strings"
 )
 
 var (
@@ -81,19 +81,7 @@ func NewHeader(text []byte, r []*Reference) (*Header, error) {
 	return bh, nil
 }
 
-func (bh *Header) String() string {
-	var refs = make([]string, len(bh.refs))
-	for i, r := range bh.refs {
-		refs[i] = r.String()
-	}
-	if bh.Version != "" {
-		return fmt.Sprintf("@HD\tVN:%s\tSO:%s\n%v\n",
-			bh.Version,
-			bh.SortOrder,
-			strings.Trim(strings.Join(refs, "\n"), "[]"))
-	}
-	return strings.Trim(strings.Join(refs, "\n"), "[]")
-}
+func (bh *Header) String() string { return string(bh.Bytes()) }
 
 func (bh *Header) Clone() *Header {
 	c := &Header{
@@ -139,7 +127,23 @@ func (bh *Header) Clone() *Header {
 }
 
 func (bh *Header) Bytes() []byte {
-	return []byte(bh.String())
+	var buf bytes.Buffer
+	if bh.Version != "" {
+		fmt.Fprintf(&buf, "@HD\tVN:%s\tSO:%s\n", bh.Version, bh.SortOrder)
+	}
+	for _, r := range bh.refs {
+		fmt.Fprintf(&buf, "%s\n", r)
+	}
+	for _, rg := range bh.rgs {
+		fmt.Fprintf(&buf, "%s\n", rg)
+	}
+	for _, p := range bh.progs {
+		fmt.Fprintf(&buf, "%s\n", p)
+	}
+	for _, co := range bh.Comments {
+		fmt.Fprintf(&buf, "@CO\t%s\n", co)
+	}
+	return buf.Bytes()
 }
 
 func (bh *Header) Len() int {

@@ -5,7 +5,9 @@
 package bam
 
 import (
+	"bytes"
 	"errors"
+	"fmt"
 	"time"
 )
 
@@ -68,4 +70,43 @@ func (r *ReadGroup) Copy() *ReadGroup {
 	cr.flowOrder = append([]byte(nil), r.flowOrder...)
 	cr.keySeq = append([]byte(nil), r.keySeq...)
 	return &cr
+}
+
+func (r *ReadGroup) String() string {
+	var buf bytes.Buffer
+	fmt.Fprintf(&buf, "@RG\tID:%s", r.name)
+	if r.center != "" {
+		fmt.Fprintf(&buf, "\tCN:%s", r.center)
+	}
+	if r.description != "" {
+		fmt.Fprintf(&buf, "\tDS:%s", r.description)
+	}
+	if (r.date != time.Time{}) {
+		fmt.Fprintf(&buf, "\tDT:%s", r.date.Format(iso8601TimeDate))
+	}
+	if r.flowOrder != nil {
+		fmt.Fprintf(&buf, "\tFO:%s", r.flowOrder)
+	}
+	if r.keySeq != nil {
+		fmt.Fprintf(&buf, "\tKS:%s", r.keySeq)
+	}
+	if r.library != "" {
+		fmt.Fprintf(&buf, "\tLB:%s", r.library)
+	}
+	if r.program != "" {
+		fmt.Fprintf(&buf, "\tPG:%s", r.program)
+	}
+	if r.insertSize != 0 {
+		fmt.Fprintf(&buf, "\tPI:%d", r.insertSize)
+	}
+	if r.platform != "" {
+		fmt.Fprintf(&buf, "\tPL:%s", r.platform)
+	}
+	if r.platformUnit != "" {
+		fmt.Fprintf(&buf, "\tPU:%s", r.platformUnit)
+	}
+	if r.sample != "" {
+		fmt.Fprintf(&buf, "\tSM:%s", r.sample)
+	}
+	return buf.String()
 }

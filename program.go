@@ -4,6 +4,11 @@
 
 package bam
 
+import (
+	"bytes"
+	"fmt"
+)
+
 type Program struct {
 	id       int32
 	uid      string
@@ -61,4 +66,22 @@ func (p *Program) Copy() *Program {
 	cp := *p
 	cp.id = -1
 	return &cp
+}
+
+func (p *Program) String() string {
+	var buf bytes.Buffer
+	fmt.Fprintf(&buf, "@PG\tID:%s", p.uid)
+	if p.name != "" {
+		fmt.Fprintf(&buf, "\tPN:%s", p.name)
+	}
+	if p.command != "" {
+		fmt.Fprintf(&buf, "\tCL:%s", p.command)
+	}
+	if p.previous != "" {
+		fmt.Fprintf(&buf, "\tPP:%s", p.previous)
+	}
+	if p.version != "" {
+		fmt.Fprintf(&buf, "\tVN:%s", p.version)
+	}
+	return buf.String()
 }
