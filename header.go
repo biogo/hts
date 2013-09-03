@@ -183,15 +183,15 @@ func (bh *Header) AddReference(r *Reference) error {
 	return nil
 }
 
-func (bh *Header) AddReadGroup(r *ReadGroup) error {
-	if _, ok := bh.seenGroups[r.name]; ok {
+func (bh *Header) AddReadGroup(rg *ReadGroup) error {
+	if _, ok := bh.seenGroups[rg.name]; ok {
 		return dupReadGroup
 	}
-	if r.id >= 0 {
+	if rg.id >= 0 {
 		return usedReadGroup
 	}
-	r.id = int32(len(bh.rgs))
-	bh.rgs = append(bh.rgs, r)
+	rg.id = int32(len(bh.rgs))
+	bh.rgs = append(bh.rgs, rg)
 	return nil
 }
 
