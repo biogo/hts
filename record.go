@@ -195,9 +195,16 @@ var (
 
 func (br *bamRecord) unmarshal(h *Header) *Record {
 	fixed := br.bamRecordFixed
+	var ref, mateRef *Reference
+	if fixed.RefID != -1 {
+		ref = h.Refs()[fixed.RefID]
+	}
+	if fixed.NextRefID != -1 {
+		mateRef = h.Refs()[fixed.NextRefID]
+	}
 	return &Record{
 		Name:    string(br.readName[:len(br.readName)-1]), // The BAM spec indicates name is null terminated.
-		Ref:     h.Refs()[fixed.RefID],
+		Ref:     ref,
 		Pos:     int(fixed.Pos),
 		MapQ:    fixed.MapQ,
 		Cigar:   br.cigar,
@@ -205,11 +212,10 @@ func (br *bamRecord) unmarshal(h *Header) *Record {
 		Seq:     NybbleSeq{Length: int(br.LSeq), Seq: br.seq},
 		Qual:    br.qual,
 		TempLen: int(fixed.TLen),
-		MateRef: h.Refs()[fixed.NextRefID],
+		MateRef: mateRef,
 		MatePos: int(fixed.NextPos),
 		AuxTags: parseAux(br.auxTags),
 	}
-
 }
 
 func (br *bamRecord) readFrom(r io.Reader) error {
