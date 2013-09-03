@@ -95,7 +95,7 @@ func (bh *Header) String() string {
 	return strings.Trim(strings.Join(refs, "\n"), "[]")
 }
 
-func (bh *Header) Copy() *Header {
+func (bh *Header) Clone() *Header {
 	c := &Header{
 		Version:    bh.Version,
 		SortOrder:  bh.SortOrder,

@@ -88,7 +88,7 @@ func (s *S) TestRoundTrip(c *check.C) {
 		c.Assert(err, check.Equals, nil)
 
 		var buf bytes.Buffer
-		bw, err := NewWriter(&buf, br.Header().Copy())
+		bw, err := NewWriter(&buf, br.Header().Clone())
 		for {
 			r, err := br.Read()
 			if err != nil {
