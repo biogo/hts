@@ -15,8 +15,8 @@ type Reader struct {
 	rec bamRecord
 }
 
-func NewReader(r io.Reader, limited bool) (*Reader, error) {
-	bg, err := bgzf.NewReader(r, limited)
+func NewReader(r io.Reader) (*Reader, error) {
+	bg, err := bgzf.NewReader(r, false)
 	if err != nil {
 		return nil, err
 	}
