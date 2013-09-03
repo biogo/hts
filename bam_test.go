@@ -16,9 +16,18 @@ import (
 )
 
 var (
-	bam    = flag.String("bam", "", "output first failing bam data to this file for inspection")
-	allbam = flag.String("allbam", "", "output all bam data to this file base for inspection")
+	bam    = flag.Bool("bam", false, "output failing bam data for inspection")
+	allbam = flag.Bool("allbam", false, "output all bam data for inspection")
 )
+
+type failure bool
+
+func (f failure) String() string {
+	if f {
+		return "fail"
+	}
+	return "ok"
+}
 
 func Test(t *testing.T) { check.TestingT(t) }
 
@@ -57,8 +66,8 @@ func (s *S) TestRead(c *check.C) {
 			lines++
 		}
 		c.Check(lines, check.Equals, t.lines)
-		if *allbam != "" {
-			bf, err := os.Create(fmt.Sprintf("%s-%d.bam", *allbam, i))
+		if ok := reflect.DeepEqual(br.Header(), t.header) && lines == t.lines; *bam && !ok || *allbam {
+			bf, err := os.Create(fmt.Sprintf("read-%d-%s.svg", i, failure(!ok)))
 			c.Assert(err, check.Equals, nil)
 			bf.Write(t.in)
 			bf.Close()
@@ -74,7 +83,7 @@ func (s *S) TestRead(c *check.C) {
 }
 
 func (s *S) TestRoundTrip(c *check.C) {
-	for _, t := range []struct {
+	for i, t := range []struct {
 		in     []byte
 		header *Header
 		lines  int
@@ -112,6 +121,7 @@ func (s *S) TestRoundTrip(c *check.C) {
 			c.Check(brr.Header().Progs(), check.DeepEquals, br.Header().Progs())
 			c.Check(brr.Header().Comments, check.DeepEquals, br.Header().Comments)
 		}
+		allOK := true
 		for {
 			r, err := br.Read()
 			if err != nil {
@@ -123,6 +133,15 @@ func (s *S) TestRoundTrip(c *check.C) {
 				break
 			}
 			c.Check(rr, check.DeepEquals, r)
+			if !reflect.DeepEqual(rr, r) {
+				allOK = false
+			}
+		}
+		if ok := reflect.DeepEqual(br.Header(), brr.Header()) && allOK; *bam && !ok || *allbam {
+			bf, err := os.Create(fmt.Sprintf("roundtrip-%d-%s.svg", i, failure(!ok)))
+			c.Assert(err, check.Equals, nil)
+			bf.Write(t.in)
+			bf.Close()
 		}
 	}
 }
