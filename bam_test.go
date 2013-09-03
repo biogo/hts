@@ -45,6 +45,7 @@ func (s *S) TestRead(c *check.C) {
 			c.Check(br.Header().Refs(), check.DeepEquals, t.header.Refs())
 			c.Check(br.Header().RGs(), check.DeepEquals, t.header.RGs())
 			c.Check(br.Header().Progs(), check.DeepEquals, t.header.Progs())
+			c.Check(br.Header().Comments, check.DeepEquals, t.header.Comments)
 		}
 		var lines int
 		for {
@@ -109,6 +110,7 @@ func (s *S) TestRoundTrip(c *check.C) {
 			c.Check(brr.Header().Refs(), check.DeepEquals, br.Header().Refs())
 			c.Check(brr.Header().RGs(), check.DeepEquals, br.Header().RGs())
 			c.Check(brr.Header().Progs(), check.DeepEquals, br.Header().Progs())
+			c.Check(brr.Header().Comments, check.DeepEquals, br.Header().Comments)
 		}
 		for {
 			r, err := br.Read()
