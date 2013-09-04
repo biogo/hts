@@ -9,6 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	check "launchpad.net/gocheck"
 	"os"
 	"reflect"
@@ -147,12 +148,35 @@ func (s *S) TestRoundTrip(c *check.C) {
 	}
 }
 
-func BenchmarkRoundTrip(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		br, _ := NewReader(bytes.NewBuffer(bamHG00096_1000))
+var file = flag.String("bench.file", "", "file to read for benchmarking")
 
-		var buf bytes.Buffer
-		bw, _ := NewWriter(&buf, br.Header().Clone())
+// The is to be compared to `time samtools view -b $file > /dev/null'.
+func BenchmarkRoundtrip(b *testing.B) {
+	if *file == "" {
+		b.Skip("no file specified")
+	}
+
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		f, err := os.Open(*file)
+		if err != nil {
+			b.Logf("Open failed: %v", err)
+			b.Fail()
+			return
+		}
+		b.StartTimer()
+		br, err := NewReader(f)
+		if err != nil {
+			b.Logf("NewReader failed: %v", err)
+			b.Fail()
+			return
+		}
+		bw, err := NewWriter(ioutil.Discard, br.Header().Clone())
+		if err != nil {
+			b.Logf("NewWriter failed: %v", err)
+			b.Fail()
+			return
+		}
 		for {
 			r, err := br.Read()
 			if err != nil {
@@ -160,5 +184,36 @@ func BenchmarkRoundTrip(b *testing.B) {
 			}
 			bw.Write(r)
 		}
+		f.Close()
+	}
+}
+
+func BenchmarkReadFile(b *testing.B) {
+	if *file == "" {
+		b.Skip("no file specified")
+	}
+
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		f, err := os.Open(*file)
+		if err != nil {
+			b.Logf("Open failed: %v", err)
+			b.Fail()
+			return
+		}
+		b.StartTimer()
+		br, err := NewReader(f)
+		if err != nil {
+			b.Logf("NewReader failed: %v", err)
+			b.Fail()
+			return
+		}
+		for {
+			_, err := br.Read()
+			if err != nil {
+				break
+			}
+		}
+		f.Close()
 	}
 }
