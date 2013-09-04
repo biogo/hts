@@ -68,7 +68,7 @@ func (r *Reference) Species() string {
 	}
 	return r.species
 }
-func (r *Reference) Md5() []byte {
+func (r *Reference) MD5() []byte {
 	if r == nil || r.md5 == nil {
 		return nil
 	}
