@@ -68,7 +68,7 @@ func (s *S) TestRead(c *check.C) {
 		}
 		c.Check(lines, check.Equals, t.lines)
 		if ok := reflect.DeepEqual(br.Header(), t.header) && lines == t.lines; *bam && !ok || *allbam {
-			bf, err := os.Create(fmt.Sprintf("read-%d-%s.svg", i, failure(!ok)))
+			bf, err := os.Create(fmt.Sprintf("read-%d-%s.bam", i, failure(!ok)))
 			c.Assert(err, check.Equals, nil)
 			bf.Write(t.in)
 			bf.Close()
@@ -140,7 +140,7 @@ func (s *S) TestRoundTrip(c *check.C) {
 			}
 		}
 		if ok := reflect.DeepEqual(br.Header(), brr.Header()) && allOK; *bam && !ok || *allbam {
-			bf, err := os.Create(fmt.Sprintf("roundtrip-%d-%s.svg", i, failure(!ok)))
+			bf, err := os.Create(fmt.Sprintf("roundtrip-%d-%s.bam", i, failure(!ok)))
 			c.Assert(err, check.Equals, nil)
 			bf.Write(t.in)
 			bf.Close()
