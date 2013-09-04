@@ -139,7 +139,7 @@ type Writer struct {
 	written bool
 	closed  bool
 	block   [BlockSize]byte
-	buf     *bytes.Buffer
+	buf     bytes.Buffer
 }
 
 func NewWriter(w io.Writer) *Writer {
@@ -151,7 +151,6 @@ func NewWriterLevel(w io.Writer, level int) *Writer {
 		Header: gzip.Header{OS: 0xff},
 		w:      w,
 		level:  level,
-		buf:    &bytes.Buffer{},
 	}
 }
 
@@ -175,12 +174,12 @@ func (bg *Writer) Flush() error {
 
 func (bg *Writer) writeBlock() error {
 	if bg.gz == nil {
-		bg.gz, bg.err = egzip.NewWriterLevel(bg.buf, bg.level)
+		bg.gz, bg.err = egzip.NewWriterLevel(&bg.buf, bg.level)
 		if bg.err != nil {
 			return bg.err
 		}
 	} else {
-		bg.gz.Reset(bg.buf)
+		bg.gz.Reset(&bg.buf)
 	}
 	bg.gz.Header = gzip.Header{
 		Comment: bg.Comment,
@@ -212,7 +211,7 @@ func (bg *Writer) writeBlock() error {
 	}
 	b[i+4], b[i+5] = byte(size), byte(size>>8)
 
-	_, bg.err = io.Copy(bg.w, bg.buf)
+	_, bg.err = io.Copy(bg.w, &bg.buf)
 	if bg.err != nil {
 		return bg.err
 	}
