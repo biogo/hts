@@ -74,10 +74,10 @@ func CheckEOF(f *os.File) (bool, error) {
 func NewReader(r io.Reader, limited bool) (*Reader, error) {
 	bg := &Reader{}
 	gz, err := egzip.NewReader(r, &bg.Header)
-	gz.BlockLimited = limited
 	if err != nil {
 		return nil, err
 	}
+	gz.BlockLimited = limited
 	bg.gz = gz
 	return bg, nil
 }
