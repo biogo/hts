@@ -284,7 +284,7 @@ func (bg *Writer) Next() (int, error) {
 	if bg.closed {
 		return 0, ErrClosed
 	}
-	if err := bg.errState(); err != nil {
+	if err := bg.Err(); err != nil {
 		return 0, err
 	}
 
@@ -298,14 +298,14 @@ func (bg *Writer) Write(b []byte) (int, error) {
 	if bg.closed {
 		return 0, ErrClosed
 	}
-	err := bg.errState()
+	err := bg.Err()
 	if err != nil {
 		return 0, err
 	}
 
 	wk := <-bg.active
 	var n int
-	for ; len(b) > 0 && err == nil; err = bg.errState() {
+	for ; len(b) > 0 && err == nil; err = bg.Err() {
 		var _n int
 		if wk.next == 0 || wk.next+len(b) <= len(wk.block) {
 			_n = copy(wk.block[wk.next:], b)
@@ -314,8 +314,8 @@ func (bg *Writer) Write(b []byte) (int, error) {
 		}
 
 		if wk.next == len(wk.block) || _n == 0 {
-			bg.queue <- wk
 			n += wk.buf.Len()
+			bg.queue <- wk
 			bg.qwg.Add(1)
 			go wk.writeBlock()
 			wk = <-bg.active
@@ -323,14 +323,14 @@ func (bg *Writer) Write(b []byte) (int, error) {
 	}
 	bg.active <- wk
 
-	return n, bg.errState()
+	return n, bg.Err()
 }
 
 func (bg *Writer) Flush() error {
 	if bg.closed {
 		return ErrClosed
 	}
-	if err := bg.errState(); err != nil {
+	if err := bg.Err(); err != nil {
 		return err
 	}
 
@@ -344,18 +344,18 @@ func (bg *Writer) Flush() error {
 	bg.qwg.Add(1)
 	go wk.writeBlock()
 
-	return bg.errState()
+	return bg.Err()
 }
 
 func (bg *Writer) Wait() error {
-	if err := bg.errState(); err != nil {
+	if err := bg.Err(); err != nil {
 		return err
 	}
 	bg.qwg.Wait()
-	return bg.errState()
+	return bg.Err()
 }
 
-func (bg *Writer) errState() error {
+func (bg *Writer) Err() error {
 	bg.m.Lock()
 	defer bg.m.Unlock()
 	return bg.err

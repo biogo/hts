@@ -187,7 +187,10 @@ func BenchmarkRoundtrip(b *testing.B) {
 			if err != nil {
 				break
 			}
-			bw.Write(r)
+			err = bw.Write(r)
+			if err != nil {
+				b.Fatalf("Write failed: %v", err)
+			}
 		}
 		f.Close()
 	}
