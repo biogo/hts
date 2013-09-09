@@ -198,9 +198,6 @@ func NewWriterLevel(w io.Writer, level, wc int) *Writer {
 }
 
 func writeOK(bg *Writer, wk *worker) bool {
-	if wk == nil {
-		return true
-	}
 	defer func() { bg.waiting <- wk }()
 
 	if wk.err != nil {
