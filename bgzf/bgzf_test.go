@@ -10,6 +10,7 @@ package bgzf
 
 import (
 	"bytes"
+	"flag"
 	"io"
 	"io/ioutil"
 	"os"
@@ -309,4 +310,17 @@ func TestRoundTripMultiSeek(t *testing.T) {
 		t.Fatalf("payload is %q, want %q", string(b[:n]), "payloadTwo")
 	}
 	os.Remove(fname)
+}
+
+// This is here to allow benchmark comparison between the sequential and concurrent implementations.
+var _ = flag.Int("conc", 1, "sets the level of concurrency for compression (ignored)")
+
+func BenchmarkWrite(b *testing.B) {
+	bg := NewWriter(ioutil.Discard)
+	block := bytes.Repeat([]byte("repeated"), 50)
+	for i := 0; i < b.N; i++ {
+		for j := 0; j < 1000000; j++ {
+			bg.Write(block)
+		}
+	}
 }
