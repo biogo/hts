@@ -16,20 +16,20 @@ type Writer struct {
 	rec bamRecord
 }
 
-func NewWriter(w io.Writer, h *Header) (*Writer, error) {
-	return NewWriterLevel(w, h, gzip.DefaultCompression)
+func NewWriter(w io.Writer, h *Header, wc int) (*Writer, error) {
+	return NewWriterLevel(w, h, gzip.DefaultCompression, wc)
 }
 
-func makeWriter(w io.Writer, level int) *bgzf.Writer {
+func makeWriter(w io.Writer, level, wc int) *bgzf.Writer {
 	if bw, ok := w.(*bgzf.Writer); ok {
 		return bw
 	}
-	return bgzf.NewWriterLevel(w, level)
+	return bgzf.NewWriterLevel(w, level, wc)
 }
 
-func NewWriterLevel(w io.Writer, h *Header, level int) (*Writer, error) {
+func NewWriterLevel(w io.Writer, h *Header, level, wc int) (*Writer, error) {
 	bw := &Writer{
-		bg: makeWriter(w, level),
+		bg: makeWriter(w, level, wc),
 		h:  h,
 	}
 

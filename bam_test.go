@@ -88,11 +88,13 @@ func (s *S) TestRoundTrip(c *check.C) {
 	for i, t := range []struct {
 		in     []byte
 		header *Header
+		conc   int
 		lines  int
 	}{
 		{
 			in:     bamHG00096_1000,
 			header: headerHG00096_1000,
+			conc:   2,
 			lines:  1000,
 		},
 	} {
@@ -100,7 +102,7 @@ func (s *S) TestRoundTrip(c *check.C) {
 		c.Assert(err, check.Equals, nil)
 
 		var buf bytes.Buffer
-		bw, err := NewWriter(&buf, br.Header().Clone())
+		bw, err := NewWriter(&buf, br.Header().Clone(), t.conc)
 		for {
 			r, err := br.Read()
 			if err != nil {
@@ -148,7 +150,10 @@ func (s *S) TestRoundTrip(c *check.C) {
 	}
 }
 
-var file = flag.String("bench.file", "", "file to read for benchmarking")
+var (
+	file = flag.String("bench.file", "", "file to read for benchmarking")
+	conc = flag.Int("conc", 1, "sets the level of concurrency for compression")
+)
 
 // The is to be compared to `time samtools view -b $file > /dev/null'.
 func BenchmarkRoundtrip(b *testing.B) {
@@ -171,7 +176,7 @@ func BenchmarkRoundtrip(b *testing.B) {
 			b.Fail()
 			return
 		}
-		bw, err := NewWriter(ioutil.Discard, br.Header().Clone())
+		bw, err := NewWriter(ioutil.Discard, br.Header().Clone(), *conc)
 		if err != nil {
 			b.Logf("NewWriter failed: %v", err)
 			b.Fail()

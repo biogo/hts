@@ -18,6 +18,8 @@ import (
 	"time"
 )
 
+var conc = flag.Int("conc", 1, "sets the level of concurrency for compression")
+
 type countWriter struct {
 	bytes int64
 	w     io.Writer
@@ -33,7 +35,7 @@ func (cw *countWriter) Write(p []byte) (n int, err error) {
 func TestEmpty(t *testing.T) {
 	buf := new(bytes.Buffer)
 
-	if err := NewWriter(buf).Close(); err != nil {
+	if err := NewWriter(buf, *conc).Close(); err != nil {
 		t.Fatalf("Writer.Close: %v", err)
 	}
 
@@ -61,7 +63,7 @@ func TestEOF(t *testing.T) {
 	}
 	fname := f.Name()
 
-	if err := NewWriter(f).Close(); err != nil {
+	if err := NewWriter(f, *conc).Close(); err != nil {
 		t.Fatalf("Writer.Close: %v", err)
 	}
 
@@ -85,7 +87,7 @@ func TestEOF(t *testing.T) {
 func TestRoundTrip(t *testing.T) {
 	buf := new(bytes.Buffer)
 
-	w := NewWriter(buf)
+	w := NewWriter(buf, *conc)
 	w.Comment = "comment"
 	w.Extra = []byte("extra")
 	w.ModTime = time.Unix(1e8, 0)
@@ -135,7 +137,7 @@ func TestRoundTripMulti(t *testing.T) {
 	var wbl [2]int
 	buf := new(bytes.Buffer)
 
-	w := NewWriter(buf)
+	w := NewWriter(buf, *conc)
 	w.Comment = "comment"
 	w.Extra = []byte("extra")
 	w.ModTime = time.Unix(1e8, 0)
@@ -145,6 +147,9 @@ func TestRoundTripMulti(t *testing.T) {
 	}
 	if err := w.Flush(); err != nil {
 		t.Fatalf("Flush: %v", err)
+	}
+	if err := w.Wait(); err != nil {
+		t.Fatalf("Wait: %v", err)
 	}
 	wbl[0] = buf.Len()
 	o := int64(buf.Len())
@@ -225,7 +230,7 @@ func TestRoundTripMultiSeek(t *testing.T) {
 
 	var wbl [2]int
 	cw := &countWriter{w: f}
-	w := NewWriter(cw)
+	w := NewWriter(cw, *conc)
 	w.Comment = "comment"
 	w.Extra = []byte("extra")
 	w.ModTime = time.Unix(1e8, 0)
@@ -235,6 +240,9 @@ func TestRoundTripMultiSeek(t *testing.T) {
 	}
 	if err := w.Flush(); err != nil {
 		t.Fatalf("Flush: %v", err)
+	}
+	if err := w.Wait(); err != nil {
+		t.Fatalf("Wait: %v", err)
 	}
 	offset := cw.bytes
 	wbl[0] = int(offset)
@@ -312,11 +320,8 @@ func TestRoundTripMultiSeek(t *testing.T) {
 	os.Remove(fname)
 }
 
-// This is here to allow benchmark comparison between the sequential and concurrent implementations.
-var _ = flag.Int("conc", 1, "sets the level of concurrency for compression (ignored)")
-
 func BenchmarkWrite(b *testing.B) {
-	bg := NewWriter(ioutil.Discard)
+	bg := NewWriter(ioutil.Discard, *conc)
 	block := bytes.Repeat([]byte("repeated"), 50)
 	for i := 0; i < b.N; i++ {
 		for j := 0; j < 1000000; j++ {

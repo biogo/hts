@@ -5,13 +5,15 @@
 package bgzf
 
 import (
-	"bytes"
 	"code.google.com/p/biogo.bam/bgzf/egzip"
+
+	"bytes"
 	"compress/gzip"
 	"errors"
 	"io"
 	"io/ioutil"
 	"os"
+	"sync"
 )
 
 const (
@@ -41,7 +43,7 @@ func init() {
 
 var (
 	NewBlock         = egzip.NewBlock
-	ErrClosed        = errors.New("bgzf: write to closed writer")
+	ErrClosed        = errors.New("bgzf: use of closed writer")
 	ErrBlockOverflow = errors.New("bgzf: block overflow")
 	ErrWrongFileType = errors.New("bgzf: file is a directory")
 )
@@ -131,141 +133,257 @@ func (bg *Reader) CurrBlockSize() (int, error) {
 
 type Writer struct {
 	gzip.Header
-	level   int
-	w       io.Writer
-	gz      *egzip.Writer
-	next    uint
-	err     error
-	written bool
-	closed  bool
-	block   [BlockSize]byte
-	buf     bytes.Buffer
+	w io.Writer
+
+	queue chan *worker
+	qwg   sync.WaitGroup
+
+	pool
+
+	wg sync.WaitGroup
+
+	closed bool
+
+	m   sync.Mutex
+	err error
 }
 
-func NewWriter(w io.Writer) *Writer {
-	return NewWriterLevel(w, gzip.DefaultCompression)
+type pool struct {
+	active  chan *worker
+	waiting chan *worker
 }
 
-func NewWriterLevel(w io.Writer, level int) *Writer {
-	return &Writer{
-		Header: gzip.Header{OS: 0xff},
-		w:      w,
-		level:  level,
+func NewWriter(w io.Writer, wc int) *Writer {
+	return NewWriterLevel(w, gzip.DefaultCompression, wc)
+}
+
+func NewWriterLevel(w io.Writer, level, wc int) *Writer {
+	if wc < 2 {
+		wc = 2
 	}
+	bg := &Writer{
+		w: w,
+		pool: pool{
+			active:  make(chan *worker, 1),
+			waiting: make(chan *worker, wc),
+		},
+		queue: make(chan *worker, wc),
+	}
+
+	wp := make([]worker, wc)
+	for i := range wp {
+		wp[i].Header = &bg.Header
+		wp[i].level = level
+		wp[i].pool = bg.pool
+		wp[i].flush = make(chan *worker, 1)
+		wp[i].qwg = &bg.qwg
+		bg.waiting <- &wp[i]
+	}
+	bg.active <- <-bg.waiting
+
+	bg.wg.Add(1)
+	go func() {
+		defer bg.wg.Done()
+		for qw := range bg.queue {
+			if !writeOK(bg, <-qw.flush) {
+				break
+			}
+		}
+		if bg.err == nil {
+			writeOK(bg, <-bg.active)
+		}
+	}()
+
+	return bg
 }
 
-func (bg *Writer) Next() int {
-	return int(bg.next)
+func writeOK(bg *Writer, wk *worker) bool {
+	if wk == nil {
+		return true
+	}
+	defer func() { bg.waiting <- wk }()
+
+	if wk.err != nil {
+		bg.setErr(wk.err)
+		return false
+	}
+	if wk.buf.Len() == 0 {
+		return true
+	}
+
+	_, err := io.Copy(bg.w, &wk.buf)
+	bg.qwg.Done()
+	if err != nil {
+		bg.setErr(err)
+		return false
+	}
+	wk.next = 0
+
+	return true
 }
 
-func (bg *Writer) Flush() error {
-	if bg.err != nil {
-		return bg.err
-	}
-	if bg.closed {
-		return nil
-	}
-	if bg.written && bg.next == 0 {
-		return nil
-	}
-	bg.written = true
-	return bg.writeBlock()
+type worker struct {
+	*gzip.Header
+	gz    *egzip.Writer
+	level int
+
+	next  int
+	block [BlockSize]byte
+	buf   bytes.Buffer
+
+	flush chan *worker
+	qwg   *sync.WaitGroup
+
+	pool
+
+	err error
 }
 
-func (bg *Writer) writeBlock() error {
-	if bg.gz == nil {
-		bg.gz, bg.err = egzip.NewWriterLevel(&bg.buf, bg.level)
-		if bg.err != nil {
-			return bg.err
+func (wk *worker) writeBlock() {
+	wk.active <- <-wk.waiting
+	defer func() { wk.flush <- wk }()
+
+	if wk.gz == nil {
+		wk.gz, wk.err = egzip.NewWriterLevel(&wk.buf, wk.level)
+		if wk.err != nil {
+			return
 		}
 	} else {
-		bg.gz.Reset(&bg.buf)
+		wk.gz.Reset(&wk.buf)
 	}
-	bg.gz.Header = gzip.Header{
-		Comment: bg.Comment,
-		Extra:   append([]byte(bgzfExtra), bg.Extra...),
-		ModTime: bg.ModTime,
-		Name:    bg.Name,
-		OS:      bg.OS,
+	wk.gz.Header = gzip.Header{
+		Comment: wk.Comment,
+		Extra:   append([]byte(bgzfExtra), wk.Extra...),
+		ModTime: wk.ModTime,
+		Name:    wk.Name,
+		OS:      wk.OS,
 	}
 
-	_, bg.err = bg.gz.Write(bg.block[:bg.next])
-	if bg.err != nil {
-		return bg.err
+	_, wk.err = wk.gz.Write(wk.block[:wk.next])
+	if wk.err != nil {
+		return
 	}
-	bg.err = bg.gz.Close()
-	if bg.err != nil {
-		return bg.err
+	wk.err = wk.gz.Close()
+	if wk.err != nil {
+		return
 	}
-	bg.next = 0
+	wk.next = 0
 
-	b := bg.buf.Bytes()
+	b := wk.buf.Bytes()
 	i := bytes.Index(b, bgzfExtraPrefix)
 	if i < 0 {
-		return gzip.ErrHeader
+		wk.err = gzip.ErrHeader
+		return
 	}
 	size := len(b) - 1
 	if size >= MaxBlockSize {
-		bg.err = ErrBlockOverflow
-		return bg.err
+		wk.err = ErrBlockOverflow
+		return
 	}
 	b[i+4], b[i+5] = byte(size), byte(size>>8)
-
-	_, bg.err = io.Copy(bg.w, &bg.buf)
-	if bg.err != nil {
-		return bg.err
-	}
-	bg.buf.Reset()
-
-	return nil
 }
 
-func (bg *Writer) Close() error {
-	if bg.err != nil {
-		return bg.err
-	}
-	if bg.closed {
-		return nil
-	}
-	bg.err = bg.writeBlock()
-	if bg.err != nil {
-		return bg.err
-	}
-	_, bg.err = bg.w.Write([]byte(magicBlock))
-	if bg.err == nil {
-		bg.closed = true
-	}
-	return bg.err
-}
-
-func (bg *Writer) Write(p []byte) (int, error) {
-	if bg.err != nil {
-		return 0, bg.err
-	}
+func (bg *Writer) Next() (int, error) {
 	if bg.closed {
 		return 0, ErrClosed
 	}
-
-	bg.written = false
-	var n int
-	for len(p) > 0 {
-		if bg.next+uint(len(p)) > BlockSize {
-			bg.err = bg.Flush()
-			if bg.err != nil {
-				return 0, bg.err
-			}
-		}
-		c := copy(bg.block[bg.next:], p)
-		n += c
-		p = p[c:]
-		bg.next += uint(c)
-		if bg.next == BlockSize {
-			bg.err = bg.Flush()
-			if bg.err != nil {
-				return n, bg.err
-			}
-		}
+	if err := bg.errState(); err != nil {
+		return 0, err
 	}
 
-	return n, bg.err
+	wk := <-bg.active
+	bg.active <- wk
+
+	return wk.next, nil
+}
+
+func (bg *Writer) Write(b []byte) (int, error) {
+	if bg.closed {
+		return 0, ErrClosed
+	}
+	err := bg.errState()
+	if err != nil {
+		return 0, err
+	}
+
+	wk := <-bg.active
+	var n int
+	for ; len(b) > 0 && err == nil; err = bg.errState() {
+		var _n int
+		if wk.next == 0 || wk.next+len(b) <= len(wk.block) {
+			_n = copy(wk.block[wk.next:], b)
+			b = b[_n:]
+			wk.next += _n
+		}
+
+		if wk.next == len(wk.block) || _n == 0 {
+			bg.queue <- wk
+			n += wk.buf.Len()
+			bg.qwg.Add(1)
+			go wk.writeBlock()
+			wk = <-bg.active
+		}
+	}
+	bg.active <- wk
+
+	return n, bg.errState()
+}
+
+func (bg *Writer) Flush() error {
+	if bg.closed {
+		return ErrClosed
+	}
+	if err := bg.errState(); err != nil {
+		return err
+	}
+
+	wk := <-bg.active
+	if wk.next == 0 {
+		bg.active <- wk
+		return nil
+	}
+
+	bg.queue <- wk
+	bg.qwg.Add(1)
+	go wk.writeBlock()
+
+	return bg.errState()
+}
+
+func (bg *Writer) Wait() error {
+	if err := bg.errState(); err != nil {
+		return err
+	}
+	bg.qwg.Wait()
+	return bg.errState()
+}
+
+func (bg *Writer) errState() error {
+	bg.m.Lock()
+	defer bg.m.Unlock()
+	return bg.err
+}
+
+func (bg *Writer) setErr(err error) {
+	bg.m.Lock()
+	defer bg.m.Unlock()
+	if bg.err == nil {
+		bg.err = err
+	}
+}
+
+func (bg *Writer) Close() error {
+	if !bg.closed {
+		wk := <-bg.active
+		bg.queue <- wk
+		bg.qwg.Add(1)
+		wk.writeBlock()
+		bg.closed = true
+		close(bg.queue)
+		bg.wg.Wait()
+		if bg.err == nil {
+			_, bg.err = bg.w.Write([]byte(magicBlock))
+		}
+	}
+	return bg.err
 }
