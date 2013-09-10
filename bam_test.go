@@ -155,44 +155,53 @@ var (
 	conc = flag.Int("conc", 1, "sets the level of concurrency for compression")
 )
 
-// The is to be compared to `time samtools view -b $file > /dev/null'.
-func BenchmarkRoundtrip(b *testing.B) {
+func BenchmarkRead(b *testing.B) {
 	if *file == "" {
 		b.Skip("no file specified")
 	}
+	b.StopTimer()
+	f, err := os.Open(*file)
+	if err != nil {
+		b.Fatalf("Open failed: %v", err)
+	}
+	br, err := NewReader(f)
+	if err != nil {
+		b.Fatalf("NewReader failed: %v", err)
+	}
+	b.StartTimer()
 
 	for i := 0; i < b.N; i++ {
-		b.StopTimer()
-		f, err := os.Open(*file)
-		if err != nil {
-			b.Logf("Open failed: %v", err)
-			b.Fail()
-			return
-		}
-		b.StartTimer()
-		br, err := NewReader(f)
-		if err != nil {
-			b.Logf("NewReader failed: %v", err)
-			b.Fail()
-			return
-		}
-		bw, err := NewWriter(ioutil.Discard, br.Header().Clone(), *conc)
-		if err != nil {
-			b.Logf("NewWriter failed: %v", err)
-			b.Fail()
-			return
-		}
 		for {
-			r, err := br.Read()
+			_, err := br.Read()
 			if err != nil {
 				break
 			}
-			err = bw.Write(r)
-			if err != nil {
-				b.Fatalf("Write failed: %v", err)
-			}
 		}
-		f.Close()
+	}
+	f.Close()
+}
+
+func BenchmarkWrite(b *testing.B) {
+	b.StopTimer()
+	br, err := NewReader(bytes.NewReader(bamHG00096_1000))
+	if err != nil {
+		b.Fatalf("NewReader failed: %v", err)
+	}
+	r, err := br.Read()
+	if err != nil {
+		b.Fatalf("Read failed: %v", err)
+	}
+	bw, err := NewWriter(ioutil.Discard, br.Header().Clone(), *conc)
+	if err != nil {
+		b.Fatalf("NewWriter failed: %v", err)
+	}
+	b.StartTimer()
+
+	for i := 0; i < b.N; i++ {
+		err = bw.Write(r)
+		if err != nil {
+			b.Fatalf("Write failed: %v", err)
+		}
 	}
 }
 
@@ -202,24 +211,51 @@ func BenchmarkReadFile(b *testing.B) {
 	}
 
 	for i := 0; i < b.N; i++ {
-		b.StopTimer()
 		f, err := os.Open(*file)
 		if err != nil {
-			b.Logf("Open failed: %v", err)
-			b.Fail()
-			return
+			b.Fatalf("Open failed: %v", err)
 		}
-		b.StartTimer()
 		br, err := NewReader(f)
 		if err != nil {
-			b.Logf("NewReader failed: %v", err)
-			b.Fail()
-			return
+			b.Fatalf("NewReader failed: %v", err)
 		}
 		for {
 			_, err := br.Read()
 			if err != nil {
 				break
+			}
+		}
+		f.Close()
+	}
+}
+
+// The is to comparable to `time samtools view -b $file > /dev/null'.
+func BenchmarkRoundtripFile(b *testing.B) {
+	if *file == "" {
+		b.Skip("no file specified")
+	}
+
+	for i := 0; i < b.N; i++ {
+		f, err := os.Open(*file)
+		if err != nil {
+			b.Fatalf("Open failed: %v", err)
+		}
+		br, err := NewReader(f)
+		if err != nil {
+			b.Fatalf("NewReader failed: %v", err)
+		}
+		bw, err := NewWriter(ioutil.Discard, br.Header().Clone(), *conc)
+		if err != nil {
+			b.Fatalf("NewWriter failed: %v", err)
+		}
+		for {
+			r, err := br.Read()
+			if err != nil {
+				break
+			}
+			err = bw.Write(r)
+			if err != nil {
+				b.Fatalf("Write failed: %v", err)
 			}
 		}
 		f.Close()
