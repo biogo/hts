@@ -45,7 +45,7 @@ func NewWriterLevel(w io.Writer, h *Header, level, wc int) (*Writer, error) {
 func (bw *Writer) Write(r *Record) error {
 	_ = r.marshal(&bw.rec)
 	bw.rec.writeTo(bw.bg)
-	return bw.bg.Err()
+	return bw.bg.Error()
 }
 
 func (bw *Writer) Close() error {
