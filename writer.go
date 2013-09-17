@@ -92,21 +92,23 @@ func (bw *Writer) Write(r *Record) error {
 
 	bw.buf.Reset()
 	wb := errWriter{w: &bw.buf}
+	bin := binaryWriter{w: &wb}
 
-	binary.Write(&wb, Endian, bamRecordFixed{
-		BlockSize: int32(recLen),
-		RefID:     int32(r.Ref.ID()),
-		Pos:       int32(r.Pos),
-		NLen:      byte(len(r.Name) + 1),
-		MapQ:      r.MapQ,
-		Bin:       reg2bin(r.Pos, r.End()), //r.bin,
-		NCigar:    uint16(len(r.Cigar)),
-		Flags:     r.Flags,
-		LSeq:      int32(len(r.Qual)),
-		NextRefID: int32(r.MateRef.ID()),
-		NextPos:   int32(r.MatePos),
-		TLen:      int32(r.TempLen),
-	})
+	// Write record header data.
+	bin.writeInt32(int32(recLen))
+	bin.writeInt32(int32(r.Ref.ID()))
+	bin.writeInt32(int32(r.Pos))
+	bin.writeUint8(byte(len(r.Name) + 1))
+	bin.writeUint8(r.MapQ)
+	bin.writeUint16(reg2bin(r.Pos, r.End())) //r.bin
+	bin.writeUint16(uint16(len(r.Cigar)))
+	bin.writeUint16(uint16(r.Flags))
+	bin.writeInt32(int32(len(r.Qual)))
+	bin.writeInt32(int32(r.MateRef.ID()))
+	bin.writeInt32(int32(r.MatePos))
+	bin.writeInt32(int32(r.TempLen))
+
+	// Write variable length data.
 	wb.Write(append([]byte(r.Name), 0))
 	writeCigarOps(&wb, r.Cigar)
 	wb.Write(*(*[]byte)(unsafe.Pointer(&r.Seq.Seq)))
@@ -151,4 +153,24 @@ func (w *errWriter) Write(p []byte) (int, error) {
 	var n int
 	n, w.err = w.w.Write(p)
 	return n, w.err
+}
+
+type binaryWriter struct {
+	w   *errWriter
+	buf [4]byte
+}
+
+func (w *binaryWriter) writeUint8(v uint8) {
+	w.buf[0] = v
+	w.w.Write(w.buf[:1])
+}
+
+func (w *binaryWriter) writeUint16(v uint16) {
+	Endian.PutUint16(w.buf[:2], v)
+	w.w.Write(w.buf[:2])
+}
+
+func (w *binaryWriter) writeInt32(v int32) {
+	Endian.PutUint32(w.buf[:4], uint32(v))
+	w.w.Write(w.buf[:4])
 }
