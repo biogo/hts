@@ -62,7 +62,7 @@ func (bh *Header) formatHeader() ([]byte, error) {
 	return nil, nil
 }
 
-func (fh *Header) read(r io.Reader) error {
+func (bh *Header) read(r io.Reader) error {
 	var (
 		lText, nRef int32
 		err         error
@@ -87,7 +87,7 @@ func (fh *Header) read(r io.Reader) error {
 	if n != int(lText) {
 		return errors.New("bam: truncated header")
 	}
-	err = fh.parseHeader(text)
+	err = bh.parseHeader(text)
 	if err != nil {
 		return err
 	}
@@ -100,7 +100,7 @@ func (fh *Header) read(r io.Reader) error {
 		return err
 	}
 	for _, r := range refs {
-		err = fh.AddReference(r)
+		err = bh.AddReference(r)
 		if err != nil {
 			return err
 		}
