@@ -77,8 +77,8 @@ func (bw *Writer) writeHeader(h *Header) error {
 		return wb.err
 	}
 
-	bw.bg.Write(bw.buf.Bytes())
-	return bw.bg.Error()
+	_, err := bw.bg.Write(bw.buf.Bytes())
+	return err
 }
 
 func (bw *Writer) Write(r *Record) error {
@@ -116,8 +116,8 @@ func (bw *Writer) Write(r *Record) error {
 		return wb.err
 	}
 
-	bw.bg.Write(bw.buf.Bytes())
-	return bw.bg.Error()
+	_, err := bw.bg.Write(bw.buf.Bytes())
+	return err
 }
 
 func writeCigarOps(w io.Writer, co []CigarOp) {
