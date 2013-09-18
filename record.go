@@ -1,4 +1,4 @@
-// Copyright ©2012 The bíogo.bam Authors. All rights reserved.
+// Copyright ©2012-2013 The bíogo.bam Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -6,10 +6,8 @@ package bam
 
 import (
 	"bytes"
-	"encoding/binary"
 	"errors"
 	"fmt"
-	"io"
 	"unsafe"
 )
 
@@ -163,132 +161,11 @@ func (r *Record) String() string {
 	)
 }
 
-// BAM record types
-type bamRecordFixed struct {
-	BlockSize int32
-	RefID     int32
-	Pos       int32
-	NLen      uint8
-	MapQ      uint8
-	Bin       uint16
-	NCigar    uint16
-	Flags     Flags
-	LSeq      int32
-	NextRefID int32
-	NextPos   int32
-	TLen      int32
-}
-
-type bamRecord struct {
-	bamRecordFixed
-	readName []byte
-	cigar    []CigarOp
-	seq      []NybblePair
-	qual     []byte
-	auxTags  []byte
-}
-
-var (
-	lenFieldSize      = binary.Size(bamRecordFixed{}.BlockSize)
-	bamFixedRemainder = binary.Size(bamRecordFixed{}) - lenFieldSize
-)
-
-func (br *bamRecord) unmarshal(h *Header) *Record {
-	fixed := br.bamRecordFixed
-	var ref, mateRef *Reference
-	if fixed.RefID != -1 {
-		ref = h.Refs()[fixed.RefID]
-	}
-	if fixed.NextRefID != -1 {
-		mateRef = h.Refs()[fixed.NextRefID]
-	}
-	return &Record{
-		Name:    string(br.readName[:len(br.readName)-1]), // The BAM spec indicates name is null terminated.
-		Ref:     ref,
-		Pos:     int(fixed.Pos),
-		MapQ:    fixed.MapQ,
-		Cigar:   br.cigar,
-		Flags:   fixed.Flags,
-		Seq:     NybbleSeq{Length: int(br.LSeq), Seq: br.seq},
-		Qual:    br.qual,
-		TempLen: int(fixed.TLen),
-		MateRef: mateRef,
-		MatePos: int(fixed.NextPos),
-		AuxTags: parseAux(br.auxTags),
-	}
-}
-
-func (br *bamRecord) readFrom(r io.Reader) error {
-	h := &br.bamRecordFixed
-	err := binary.Read(r, Endian, h)
-	if err != nil {
-		return err
-	}
-	n := int(br.BlockSize) - bamFixedRemainder
-
-	br.readName = make([]byte, h.NLen)
-	nf, err := r.Read(br.readName)
-	if err != nil {
-		return err
-	}
-	if nf != int(h.NLen) {
-		return errors.New("bam: truncated record name")
-	}
-	n -= nf
-
-	br.cigar, nf, err = readCigarOps(r, h.NCigar)
-	if err != nil {
-		return err
-	}
-	n -= nf
-
-	seq := make([]byte, h.LSeq>>1)
-	nf, err = r.Read(seq)
-	if err != nil {
-		return err
-	}
-	if nf != int((h.LSeq+1)>>1) {
-		return errors.New("bam: truncated sequence")
-	}
-	br.seq = *(*[]NybblePair)(unsafe.Pointer(&seq))
-	n -= nf
-
-	br.qual = make([]byte, h.LSeq)
-	nf, err = r.Read(br.qual)
-	if err != nil {
-		return err
-	}
-	if nf != int(h.LSeq) {
-		return errors.New("bam: truncated quality")
-	}
-	n -= nf
-
-	br.auxTags = make([]byte, n)
-	nf, err = r.Read(br.auxTags)
-	if err != nil {
-		return err
-	}
-	if n != nf {
-		return errors.New("bam: truncated auxilliary data")
-	}
-
-	return nil
-}
-
-func readCigarOps(r io.Reader, n uint16) (co []CigarOp, nf int, err error) {
-	co = make([]CigarOp, n)
-	size := binary.Size(CigarOp(0))
-	for i := range co {
-		err = binary.Read(r, Endian, &co[i])
-		if err != nil {
-			return nil, nf, err
-		}
-		nf += size
-	}
-	return
-}
-
 type NybblePair byte
+
+type nybblePairs []NybblePair
+
+func (np nybblePairs) Bytes() []byte { return *(*[]byte)(unsafe.Pointer(&np)) }
 
 type NybbleSeq struct {
 	Length int

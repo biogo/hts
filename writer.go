@@ -11,7 +11,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
-	"unsafe"
 )
 
 type Writer struct {
@@ -110,8 +109,8 @@ func (bw *Writer) Write(r *Record) error {
 
 	// Write variable length data.
 	wb.Write(append([]byte(r.Name), 0))
-	writeCigarOps(&wb, r.Cigar)
-	wb.Write(*(*[]byte)(unsafe.Pointer(&r.Seq.Seq)))
+	writeCigarOps(&bin, r.Cigar)
+	wb.Write(nybblePairs(r.Seq.Seq).Bytes())
 	wb.Write(r.Qual)
 	wb.Write(tags)
 	if wb.err != nil {
@@ -122,15 +121,10 @@ func (bw *Writer) Write(r *Record) error {
 	return err
 }
 
-func writeCigarOps(w io.Writer, co []CigarOp) {
-	var (
-		back [4]byte
-		buf  = back[:]
-	)
+func writeCigarOps(bin *binaryWriter, co []CigarOp) {
 	for _, o := range co {
-		Endian.PutUint32(buf, uint32(o))
-		_, err := w.Write(buf)
-		if err != nil {
+		bin.writeUint32(uint32(o))
+		if bin.w.err != nil {
 			return
 		}
 	}
@@ -172,5 +166,10 @@ func (w *binaryWriter) writeUint16(v uint16) {
 
 func (w *binaryWriter) writeInt32(v int32) {
 	Endian.PutUint32(w.buf[:4], uint32(v))
+	w.w.Write(w.buf[:4])
+}
+
+func (w *binaryWriter) writeUint32(v uint32) {
+	Endian.PutUint32(w.buf[:4], v)
 	w.w.Write(w.buf[:4])
 }
