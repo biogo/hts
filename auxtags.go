@@ -9,6 +9,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"math"
 	"unsafe"
 )
 
