@@ -120,10 +120,17 @@ func (br *Reader) Read() (*Record, error) {
 		return nil, r.err
 	}
 
+	refs := int32(len(br.h.Refs()))
 	if refID != -1 {
+		if refID < -1 || refID >= refs {
+			return nil, errors.New("bam: reference id out of range")
+		}
 		rec.Ref = br.h.Refs()[refID]
 	}
 	if nextRefID != -1 {
+		if nextRefID < -1 || nextRefID >= refs {
+			return nil, errors.New("bam: mate reference id out of range")
+		}
 		rec.MateRef = br.h.Refs()[nextRefID]
 	}
 
