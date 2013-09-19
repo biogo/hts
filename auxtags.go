@@ -114,7 +114,7 @@ func (a Aux) Tag() Tag { var t Tag; copy(t[:], a[:2]); return t }
 func (a Aux) Type() byte { return a[2] }
 
 // Value returns v containing the value of the auxilliary tag.
-func (a Aux) Value() (v interface{}) {
+func (a Aux) Value() interface{} {
 	switch t := a.Type(); t {
 	case 'A':
 		return a[3]
@@ -190,5 +190,4 @@ func (a Aux) Value() (v interface{}) {
 	default:
 		panic(fmt.Sprintf("bam: unknown type %q", t))
 	}
-	return
 }
