@@ -31,7 +31,7 @@ func NewRecord(name string, ref, mRef *Reference, p, mPos, tLen int, mapQ byte, 
 		return nil, errors.New("bam: value out of range")
 	}
 	if len(qual) != len(seq) {
-
+		return nil, errors.New("bam: sequence/quality length mismatch")
 	}
 	if ref != nil {
 		if ref.id < 0 {
