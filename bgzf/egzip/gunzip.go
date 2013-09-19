@@ -12,7 +12,7 @@
 package egzip
 
 import (
-	"code.google.com/p/biogo.bam/bgzf/bufio"
+	"bufio"
 	"compress/flate"
 	"compress/gzip"
 	"errors"

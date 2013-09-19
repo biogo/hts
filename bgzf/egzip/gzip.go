@@ -5,7 +5,7 @@
 package egzip
 
 import (
-	"code.google.com/p/biogo.bam/bgzf/egzip/flate"
+	"compress/flate"
 	"compress/gzip"
 	"errors"
 	"fmt"
