@@ -94,6 +94,9 @@ func buildAux(aa []Aux) (aux []byte) {
 
 // String returns the string representation of an Aux type.
 func (a Aux) String() string {
+	if a.Type() == 'A' {
+		return fmt.Sprintf("%s:%c:%c", []byte(a[:2]), auxTypes[a.Type()], a.Value())
+	}
 	return fmt.Sprintf("%s:%c:%v", []byte(a[:2]), auxTypes[a.Type()], a.Value())
 }
 
