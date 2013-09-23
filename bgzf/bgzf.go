@@ -135,7 +135,7 @@ type Writer struct {
 	gzip.Header
 	w io.Writer
 
-	queue chan *worker
+	queue chan *compressor
 	qwg   sync.WaitGroup
 
 	pool
@@ -149,8 +149,8 @@ type Writer struct {
 }
 
 type pool struct {
-	active  chan *worker
-	waiting chan *worker
+	active  chan *compressor
+	waiting chan *compressor
 }
 
 func NewWriter(w io.Writer, wc int) *Writer {
@@ -164,20 +164,20 @@ func NewWriterLevel(w io.Writer, level, wc int) *Writer {
 	bg := &Writer{
 		w: w,
 		pool: pool{
-			active:  make(chan *worker, 1),
-			waiting: make(chan *worker, wc),
+			active:  make(chan *compressor, 1),
+			waiting: make(chan *compressor, wc),
 		},
-		queue: make(chan *worker, wc),
+		queue: make(chan *compressor, wc),
 	}
 
-	wp := make([]worker, wc)
-	for i := range wp {
-		wp[i].Header = &bg.Header
-		wp[i].level = level
-		wp[i].pool = bg.pool
-		wp[i].flush = make(chan *worker, 1)
-		wp[i].qwg = &bg.qwg
-		bg.waiting <- &wp[i]
+	c := make([]compressor, wc)
+	for i := range c {
+		c[i].Header = &bg.Header
+		c[i].level = level
+		c[i].pool = bg.pool
+		c[i].flush = make(chan *compressor, 1)
+		c[i].qwg = &bg.qwg
+		bg.waiting <- &c[i]
 	}
 	bg.active <- <-bg.waiting
 
@@ -197,29 +197,29 @@ func NewWriterLevel(w io.Writer, level, wc int) *Writer {
 	return bg
 }
 
-func writeOK(bg *Writer, wk *worker) bool {
-	defer func() { bg.waiting <- wk }()
+func writeOK(bg *Writer, c *compressor) bool {
+	defer func() { bg.waiting <- c }()
 
-	if wk.err != nil {
-		bg.setErr(wk.err)
+	if c.err != nil {
+		bg.setErr(c.err)
 		return false
 	}
-	if wk.buf.Len() == 0 {
+	if c.buf.Len() == 0 {
 		return true
 	}
 
-	_, err := io.Copy(bg.w, &wk.buf)
+	_, err := io.Copy(bg.w, &c.buf)
 	bg.qwg.Done()
 	if err != nil {
 		bg.setErr(err)
 		return false
 	}
-	wk.next = 0
+	c.next = 0
 
 	return true
 }
 
-type worker struct {
+type compressor struct {
 	*gzip.Header
 	gz    *egzip.Writer
 	level int
@@ -228,7 +228,7 @@ type worker struct {
 	block [BlockSize]byte
 	buf   bytes.Buffer
 
-	flush chan *worker
+	flush chan *compressor
 	qwg   *sync.WaitGroup
 
 	pool
@@ -236,45 +236,45 @@ type worker struct {
 	err error
 }
 
-func (wk *worker) writeBlock() {
-	wk.active <- <-wk.waiting
-	defer func() { wk.flush <- wk }()
+func (c *compressor) writeBlock() {
+	c.active <- <-c.waiting
+	defer func() { c.flush <- c }()
 
-	if wk.gz == nil {
-		wk.gz, wk.err = egzip.NewWriterLevel(&wk.buf, wk.level)
-		if wk.err != nil {
+	if c.gz == nil {
+		c.gz, c.err = egzip.NewWriterLevel(&c.buf, c.level)
+		if c.err != nil {
 			return
 		}
 	} else {
-		wk.gz.Reset(&wk.buf)
+		c.gz.Reset(&c.buf)
 	}
-	wk.gz.Header = gzip.Header{
-		Comment: wk.Comment,
-		Extra:   append([]byte(bgzfExtra), wk.Extra...),
-		ModTime: wk.ModTime,
-		Name:    wk.Name,
-		OS:      wk.OS,
+	c.gz.Header = gzip.Header{
+		Comment: c.Comment,
+		Extra:   append([]byte(bgzfExtra), c.Extra...),
+		ModTime: c.ModTime,
+		Name:    c.Name,
+		OS:      c.OS,
 	}
 
-	_, wk.err = wk.gz.Write(wk.block[:wk.next])
-	if wk.err != nil {
+	_, c.err = c.gz.Write(c.block[:c.next])
+	if c.err != nil {
 		return
 	}
-	wk.err = wk.gz.Close()
-	if wk.err != nil {
+	c.err = c.gz.Close()
+	if c.err != nil {
 		return
 	}
-	wk.next = 0
+	c.next = 0
 
-	b := wk.buf.Bytes()
+	b := c.buf.Bytes()
 	i := bytes.Index(b, bgzfExtraPrefix)
 	if i < 0 {
-		wk.err = gzip.ErrHeader
+		c.err = gzip.ErrHeader
 		return
 	}
 	size := len(b) - 1
 	if size >= MaxBlockSize {
-		wk.err = ErrBlockOverflow
+		c.err = ErrBlockOverflow
 		return
 	}
 	b[i+4], b[i+5] = byte(size), byte(size>>8)
@@ -288,10 +288,10 @@ func (bg *Writer) Next() (int, error) {
 		return 0, err
 	}
 
-	wk := <-bg.active
-	bg.active <- wk
+	c := <-bg.active
+	bg.active <- c
 
-	return wk.next, nil
+	return c.next, nil
 }
 
 func (bg *Writer) Write(b []byte) (int, error) {
@@ -303,25 +303,25 @@ func (bg *Writer) Write(b []byte) (int, error) {
 		return 0, err
 	}
 
-	wk := <-bg.active
+	c := <-bg.active
 	var n int
 	for ; len(b) > 0 && err == nil; err = bg.Error() {
 		var _n int
-		if wk.next == 0 || wk.next+len(b) <= len(wk.block) {
-			_n = copy(wk.block[wk.next:], b)
+		if c.next == 0 || c.next+len(b) <= len(c.block) {
+			_n = copy(c.block[c.next:], b)
 			b = b[_n:]
-			wk.next += _n
+			c.next += _n
 		}
 
-		if wk.next == len(wk.block) || _n == 0 {
-			n += wk.buf.Len()
-			bg.queue <- wk
+		if c.next == len(c.block) || _n == 0 {
+			n += c.buf.Len()
+			bg.queue <- c
 			bg.qwg.Add(1)
-			go wk.writeBlock()
-			wk = <-bg.active
+			go c.writeBlock()
+			c = <-bg.active
 		}
 	}
-	bg.active <- wk
+	bg.active <- c
 
 	return n, bg.Error()
 }
@@ -334,15 +334,15 @@ func (bg *Writer) Flush() error {
 		return err
 	}
 
-	wk := <-bg.active
-	if wk.next == 0 {
-		bg.active <- wk
+	c := <-bg.active
+	if c.next == 0 {
+		bg.active <- c
 		return nil
 	}
 
-	bg.queue <- wk
+	bg.queue <- c
 	bg.qwg.Add(1)
-	go wk.writeBlock()
+	go c.writeBlock()
 
 	return bg.Error()
 }
@@ -371,10 +371,10 @@ func (bg *Writer) setErr(err error) {
 
 func (bg *Writer) Close() error {
 	if !bg.closed {
-		wk := <-bg.active
-		bg.queue <- wk
+		c := <-bg.active
+		bg.queue <- c
 		bg.qwg.Add(1)
-		wk.writeBlock()
+		c.writeBlock()
 		bg.closed = true
 		close(bg.queue)
 		bg.wg.Wait()
