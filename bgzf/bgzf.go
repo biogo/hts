@@ -135,10 +135,12 @@ type Writer struct {
 	gzip.Header
 	w io.Writer
 
+	active *compressor
+
 	queue chan *compressor
 	qwg   sync.WaitGroup
 
-	pool
+	waiting chan *compressor
 
 	wg sync.WaitGroup
 
@@ -146,11 +148,6 @@ type Writer struct {
 
 	m   sync.Mutex
 	err error
-}
-
-type pool struct {
-	active  chan *compressor
-	waiting chan *compressor
 }
 
 func NewWriter(w io.Writer, wc int) *Writer {
@@ -162,24 +159,21 @@ func NewWriterLevel(w io.Writer, level, wc int) *Writer {
 		wc = 2
 	}
 	bg := &Writer{
-		w: w,
-		pool: pool{
-			active:  make(chan *compressor, 1),
-			waiting: make(chan *compressor, wc),
-		},
-		queue: make(chan *compressor, wc),
+		w:       w,
+		waiting: make(chan *compressor, wc),
+		queue:   make(chan *compressor, wc),
 	}
 
 	c := make([]compressor, wc)
 	for i := range c {
 		c[i].Header = &bg.Header
 		c[i].level = level
-		c[i].pool = bg.pool
+		c[i].waiting = bg.waiting
 		c[i].flush = make(chan *compressor, 1)
 		c[i].qwg = &bg.qwg
 		bg.waiting <- &c[i]
 	}
-	bg.active <- <-bg.waiting
+	bg.active = <-bg.waiting
 
 	bg.wg.Add(1)
 	go func() {
@@ -188,9 +182,6 @@ func NewWriterLevel(w io.Writer, level, wc int) *Writer {
 			if !writeOK(bg, <-qw.flush) {
 				break
 			}
-		}
-		if bg.err == nil {
-			writeOK(bg, <-bg.active)
 		}
 	}()
 
@@ -231,13 +222,12 @@ type compressor struct {
 	flush chan *compressor
 	qwg   *sync.WaitGroup
 
-	pool
+	waiting chan *compressor
 
 	err error
 }
 
 func (c *compressor) writeBlock() {
-	c.active <- <-c.waiting
 	defer func() { c.flush <- c }()
 
 	if c.gz == nil {
@@ -288,10 +278,7 @@ func (bg *Writer) Next() (int, error) {
 		return 0, err
 	}
 
-	c := <-bg.active
-	bg.active <- c
-
-	return c.next, nil
+	return bg.active.next, nil
 }
 
 func (bg *Writer) Write(b []byte) (int, error) {
@@ -303,7 +290,7 @@ func (bg *Writer) Write(b []byte) (int, error) {
 		return 0, err
 	}
 
-	c := <-bg.active
+	c := bg.active
 	var n int
 	for ; len(b) > 0 && err == nil; err = bg.Error() {
 		var _n int
@@ -318,10 +305,10 @@ func (bg *Writer) Write(b []byte) (int, error) {
 			bg.queue <- c
 			bg.qwg.Add(1)
 			go c.writeBlock()
-			c = <-bg.active
+			c = <-bg.waiting
 		}
 	}
-	bg.active <- c
+	bg.active = c
 
 	return n, bg.Error()
 }
@@ -334,12 +321,12 @@ func (bg *Writer) Flush() error {
 		return err
 	}
 
-	c := <-bg.active
-	if c.next == 0 {
-		bg.active <- c
+	if bg.active.next == 0 {
 		return nil
 	}
 
+	var c *compressor
+	c, bg.active = bg.active, <-bg.waiting
 	bg.queue <- c
 	bg.qwg.Add(1)
 	go c.writeBlock()
@@ -371,9 +358,10 @@ func (bg *Writer) setErr(err error) {
 
 func (bg *Writer) Close() error {
 	if !bg.closed {
-		c := <-bg.active
+		c := bg.active
 		bg.queue <- c
 		bg.qwg.Add(1)
+		<-bg.waiting
 		c.writeBlock()
 		bg.closed = true
 		close(bg.queue)
