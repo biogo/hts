@@ -107,6 +107,13 @@ func TestRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewReader: %v", err)
 	}
+	if bl := r.BlockSize(); bl != wbl {
+		t.Errorf("BlockSize() is %d, want %d", bl, wbl)
+	}
+	blEnc := string([]byte{byte(wbl - 1), byte((wbl - 1) >> 8)})
+	if string(r.Extra) != "BC\x02\x00"+blEnc+"extra" {
+		t.Errorf("extra is %q, want %q", r.Extra, "BC\x02\x00"+blEnc+"extra")
+	}
 	b, err := ioutil.ReadAll(r)
 	if err != nil {
 		t.Fatalf("ReadAll: %v", err)
@@ -117,12 +124,11 @@ func TestRoundTrip(t *testing.T) {
 	if r.Comment != "comment" {
 		t.Errorf("comment is %q, want %q", r.Comment, "comment")
 	}
-	if bl := r.BlockSize(); bl != wbl {
-		t.Errorf("BlockSize() is %d, want %d", bl, wbl)
+	if bl := r.BlockSize(); bl != -1 {
+		t.Errorf("BlockSize() is %d, want %d", bl, -1)
 	}
-	blEnc := string([]byte{byte(wbl - 1), byte((wbl - 1) >> 8)})
-	if string(r.Extra) != "BC\x02\x00"+blEnc+"extra" {
-		t.Errorf("extra is %q, want %q", r.Extra, "BC\x02\x00"+blEnc+"extra")
+	if string(r.Extra) != "extra" {
+		t.Errorf("extra is %q, want %q", r.Extra, "extra")
 	}
 	if r.ModTime.Unix() != 1e8 {
 		t.Errorf("mtime is %d, want %d", r.ModTime.Unix(), uint32(1e8))
@@ -295,6 +301,12 @@ func TestRoundTripMultiSeek(t *testing.T) {
 	n, err = r.Read(b)
 	if err != io.EOF {
 		t.Errorf("Read: %v", err)
+	}
+	if bl := r.BlockSize(); bl != -1 {
+		t.Errorf("BlockSize() is %d, want %d", bl, -1)
+	}
+	if string(r.Extra) != "extra" {
+		t.Errorf("extra is %q, want %q", r.Extra, "extra")
 	}
 	if string(b[:n]) != "payload1payloadTwo" {
 		t.Errorf("payload is %q, want %q", string(b[:n]), "payload1payloadTwo")

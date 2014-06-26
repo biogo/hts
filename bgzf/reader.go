@@ -72,11 +72,24 @@ func (bg *Reader) Read(p []byte) (int, error) {
 	if bg.err != nil {
 		return 0, bg.err
 	}
-	var n int
+	var (
+		n         int
+		clearSize bool
+	)
 	for n < len(p) && bg.err == nil {
 		var _n int
 		_n, bg.err = bg.gz.Read(p[n:])
+		if _n == 0 {
+			clearSize = true
+		}
 		n += _n
+	}
+	if clearSize {
+		i := bytes.Index(bg.Extra, bgzfExtraPrefix)
+		if i <= len(bg.Extra)-6 {
+			copy(bg.Extra[i:i+6], bg.Extra[i+6:])
+			bg.Extra = bg.Extra[:len(bg.Extra)-6]
+		}
 	}
 	return n, bg.err
 }
