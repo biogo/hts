@@ -5,8 +5,6 @@
 package bgzf
 
 import (
-	"code.google.com/p/biogo.bam/bgzf/egzip"
-
 	"bytes"
 	"compress/gzip"
 	"io"
@@ -14,19 +12,31 @@ import (
 )
 
 type Reader struct {
-	gzip.Header
-	gz  *egzip.Reader
+	Header
+	rs  io.ReadSeeker
+	gz  *gzip.Reader
 	err error
 }
 
-func NewReader(r io.Reader, limited bool) (*Reader, error) {
-	bg := &Reader{}
-	gz, err := egzip.NewReader(r, &bg.Header)
+func readSeeker(r io.Reader) io.ReadSeeker {
+	rs, _ := r.(io.ReadSeeker)
+	return rs
+}
+
+func NewReader(r io.Reader) (*Reader, error) {
+	gz, err := gzip.NewReader(r)
 	if err != nil {
 		return nil, err
 	}
-	gz.BlockLimited = limited
-	bg.gz = gz
+	h := Header(gz.Header)
+	if h.BlockSize() < 0 {
+		return nil, ErrNoBlockSize
+	}
+	bg := &Reader{
+		Header: h,
+		rs:     readSeeker(r),
+		gz:     gz,
+	}
 	return bg, nil
 }
 
@@ -36,10 +46,18 @@ type Offset struct {
 }
 
 func (bg *Reader) Seek(off Offset, whence int) error {
-	bg.err = bg.gz.Seek(off.File, whence)
+	if bg.rs == nil {
+		return ErrNotASeeker
+	}
+	_, bg.err = bg.rs.Seek(off.File, whence)
 	if bg.err != nil {
 		return bg.err
 	}
+	bg.err = bg.gz.Reset(bg.rs)
+	if bg.err != nil {
+		return bg.err
+	}
+	bg.Header = Header(bg.gz.Header)
 	if off.Block > 0 {
 		_, bg.err = io.CopyN(ioutil.Discard, bg.gz, int64(off.Block))
 	}
@@ -54,25 +72,21 @@ func (bg *Reader) Read(p []byte) (int, error) {
 	if bg.err != nil {
 		return 0, bg.err
 	}
-	n, err := bg.gz.Read(p)
-	if n < len(p) && err == nil {
-		var pn int
-		pn, err = bg.Read(p[n:])
-		n += pn
+	var n int
+	for n < len(p) && bg.err == nil {
+		var _n int
+		_n, bg.err = bg.gz.Read(p[n:])
+		n += _n
 	}
-	if n > 0 && err == io.EOF {
-		err = nil
-	}
-	return n, err
+	return n, bg.err
 }
 
-func (bg *Reader) CurrBlockSize() (int, error) {
-	if bg.err != nil {
-		return -1, bg.err
+type Header gzip.Header
+
+func (h Header) BlockSize() int {
+	i := bytes.Index(h.Extra, bgzfExtraPrefix)
+	if i < 0 || i+5 >= len(h.Extra) {
+		return -1
 	}
-	i := bytes.Index(bg.Extra, bgzfExtraPrefix)
-	if i+5 >= len(bg.Extra) {
-		return -1, gzip.ErrHeader
-	}
-	return (int(bg.Extra[i+4]) | int(bg.Extra[i+5])<<8) + 1, nil
+	return (int(h.Extra[i+4]) | int(h.Extra[i+5])<<8) + 1
 }

@@ -5,8 +5,6 @@
 package bgzf
 
 import (
-	"code.google.com/p/biogo.bam/bgzf/egzip"
-
 	"errors"
 	"os"
 )
@@ -37,10 +35,11 @@ func init() {
 }
 
 var (
-	NewBlock         = egzip.NewBlock
 	ErrClosed        = errors.New("bgzf: use of closed writer")
 	ErrBlockOverflow = errors.New("bgzf: block overflow")
 	ErrWrongFileType = errors.New("bgzf: file is a directory")
+	ErrNotASeeker    = errors.New("bgzf: not a seeker")
+	ErrNoBlockSize   = errors.New("bgzf: could not determine block size")
 )
 
 func CheckEOF(f *os.File) (bool, error) {

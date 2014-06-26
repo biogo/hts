@@ -17,7 +17,7 @@ type Reader struct {
 }
 
 func NewReader(r io.Reader) (*Reader, error) {
-	bg, err := bgzf.NewReader(r, false)
+	bg, err := bgzf.NewReader(r)
 	if err != nil {
 		return nil, err
 	}

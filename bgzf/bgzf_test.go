@@ -39,7 +39,7 @@ func TestEmpty(t *testing.T) {
 		t.Fatalf("Writer.Close: %v", err)
 	}
 
-	r, err := NewReader(buf, false)
+	r, err := NewReader(buf)
 	if err != nil {
 		t.Fatalf("NewReader: %v", err)
 	}
@@ -98,8 +98,12 @@ func TestRoundTrip(t *testing.T) {
 	if err := w.Close(); err != nil {
 		t.Fatalf("Writer.Close: %v", err)
 	}
-	wbl := buf.Len()
-	r, err := NewReader(buf, false)
+	// FIXME(kortschak) The magic block is written on close,
+	// so we need to discount that until we have the capacity
+	// to see every header again.
+	wbl := buf.Len() - len(magicBlock)
+
+	r, err := NewReader(buf)
 	if err != nil {
 		t.Fatalf("NewReader: %v", err)
 	}
@@ -111,29 +115,30 @@ func TestRoundTrip(t *testing.T) {
 		t.Fatalf("payload is %q, want %q", string(b), "payload")
 	}
 	if r.Comment != "comment" {
-		t.Fatalf("comment is %q, want %q", r.Comment, "comment")
+		t.Errorf("comment is %q, want %q", r.Comment, "comment")
 	}
-	if bl, err := r.CurrBlockSize(); err != nil || bl != len(magicBlock) {
-		t.Fatalf("CurrBlockSize() is %d, want %d", bl, wbl)
+	if bl := r.BlockSize(); bl != wbl {
+		t.Errorf("BlockSize() is %d, want %d", bl, wbl)
 	}
 	blEnc := string([]byte{byte(wbl - 1), byte((wbl - 1) >> 8)})
-	if string(r.Extra) != magicBlock[12:18] {
-		t.Fatalf("extra is %q, want %q", r.Extra, "BC\x02\x00"+blEnc+"extra")
+	if string(r.Extra) != "BC\x02\x00"+blEnc+"extra" {
+		t.Errorf("extra is %q, want %q", r.Extra, "BC\x02\x00"+blEnc+"extra")
 	}
-	if r.ModTime.Unix() != 0 {
-		t.Fatalf("mtime is %d, want %d", r.ModTime.Unix(), uint32(1e8))
+	if r.ModTime.Unix() != 1e8 {
+		t.Errorf("mtime is %d, want %d", r.ModTime.Unix(), uint32(1e8))
 	}
 	if r.Name != "name" {
-		t.Fatalf("name is %q, want %q", r.Name, "name")
+		t.Errorf("name is %q, want %q", r.Name, "name")
 	}
 	if err := r.Close(); err != nil {
-		t.Fatalf("Reader.Close: %v", err)
+		t.Errorf("Reader.Close: %v", err)
 	}
 }
 
 // TestRoundTripMulti tests that bgzipping and then bgunzipping is the identity
 // function for a multiple member bgzf.
 func TestRoundTripMulti(t *testing.T) {
+	t.Skip("Blocked gzip reading is not currently supported.")
 	var wbl [2]int
 	buf := new(bytes.Buffer)
 
@@ -166,48 +171,48 @@ func TestRoundTripMulti(t *testing.T) {
 		bl, n int
 		err   error
 	)
-	r, err := NewReader(buf, true)
+	r, err := NewReader(buf)
 	if err != nil {
 		t.Fatalf("NewReader: %v", err)
 	}
 	if r.Comment != "comment" {
-		t.Fatalf("comment is %q, want %q", r.Comment, "comment")
+		t.Errorf("comment is %q, want %q", r.Comment, "comment")
 	}
 	blEnc := string([]byte{byte(wbl[0] - 1), byte((wbl[0] - 1) >> 8)})
 	if string(r.Extra) != "BC\x02\x00"+blEnc+"extra" {
-		t.Fatalf("extra is %q, want %q", r.Extra, "BC\x02\x00"+blEnc+"extra")
+		t.Errorf("extra is %q, want %q", r.Extra, "BC\x02\x00"+blEnc+"extra")
 	}
 	if r.ModTime.Unix() != 1e8 {
-		t.Fatalf("mtime is %d, want %d", r.ModTime.Unix(), uint32(1e8))
+		t.Errorf("mtime is %d, want %d", r.ModTime.Unix(), uint32(1e8))
 	}
 	if r.Name != "name" {
-		t.Fatalf("name is %q, want %q", r.Name, "name")
+		t.Errorf("name is %q, want %q", r.Name, "name")
 	}
 
-	bl, err = r.CurrBlockSize()
-	if err != nil || bl != wbl[0] {
-		t.Fatalf("CurrBlockSize() is %d, want %d", bl, wbl[0])
+	bl = r.BlockSize()
+	if bl != wbl[0] {
+		t.Errorf("BlockSize() is %d, want %d", bl, wbl[0])
 	}
 	b = make([]byte, bl+1)
 	n, err = r.Read(b)
-	if err != nil && err != NewBlock {
-		t.Fatalf("Read: %v", err)
+	if err != nil {
+		t.Errorf("Read: %v", err)
 	}
 	if string(b[:n]) != "payload1" {
-		t.Fatalf("payload is %q, want %q", string(b[:n]), "payload1")
+		t.Errorf("payload is %q, want %q", string(b[:n]), "payload1")
 	}
 
-	bl, err = r.CurrBlockSize()
-	if err != nil || bl != wbl[1] {
-		t.Fatalf("CurrBlockSize() is %d, want %d", bl, wbl[1])
+	bl = r.BlockSize()
+	if bl != wbl[1] {
+		t.Errorf("BlockSize() is %d, want %d", bl, wbl[1])
 	}
 	b = make([]byte, bl+1)
 	n, err = r.Read(b)
-	if err != nil && err != NewBlock {
-		t.Fatalf("Read: %v", err)
+	if err != nil {
+		t.Errorf("Read: %v", err)
 	}
 	if string(b[:n]) != "payloadTwo" {
-		t.Fatalf("payload is %q, want %q", string(b[:n]), "payloadTwo")
+		t.Errorf("payload is %q, want %q", string(b[:n]), "payloadTwo")
 	}
 
 	if r.Seek(Offset{o, 0}, 1) == nil {
@@ -263,59 +268,61 @@ func TestRoundTripMultiSeek(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Reopen temp file: %v", err)
 	}
-	r, err := NewReader(f, true)
+	r, err := NewReader(f)
 	if err != nil {
 		t.Fatalf("NewReader: %v", err)
 	}
 	if r.Comment != "comment" {
-		t.Fatalf("comment is %q, want %q", r.Comment, "comment")
+		t.Errorf("comment is %q, want %q", r.Comment, "comment")
 	}
 	blEnc := string([]byte{byte(wbl[0] - 1), byte((wbl[0] - 1) >> 8)})
 	if string(r.Extra) != "BC\x02\x00"+blEnc+"extra" {
-		t.Fatalf("extra is %q, want %q", r.Extra, "BC\x02\x00\x08\x00extra")
+		t.Errorf("extra is %q, want %q", r.Extra, "BC\x02\x00\x08\x00extra")
 	}
 	if r.ModTime.Unix() != 1e8 {
-		t.Fatalf("mtime is %d, want %d", r.ModTime.Unix(), uint32(1e8))
+		t.Errorf("mtime is %d, want %d", r.ModTime.Unix(), uint32(1e8))
 	}
 	if r.Name != "name" {
-		t.Fatalf("name is %q, want %q", r.Name, "name")
+		t.Errorf("name is %q, want %q", r.Name, "name")
 	}
-	bl, err = r.CurrBlockSize()
-	if err != nil || bl != wbl[0] {
-		t.Fatalf("CurrBlockSize() is %d, want %d", bl, wbl[0])
+	bl = r.BlockSize()
+	if bl != wbl[0] {
+		t.Errorf("BlockSize() is %d, want %d", bl, wbl[0])
 	}
-	b = make([]byte, bl+1)
+	// FIXME(kortschak) We cannot stop at the end of a block, so
+	// we currently accept a complete read.
+	b = make([]byte, len("payload1payloadTwo")+1)
 	n, err = r.Read(b)
-	if err != nil && err != NewBlock {
-		t.Fatalf("Read: %v", err)
+	if err != io.EOF {
+		t.Errorf("Read: %v", err)
 	}
-	if string(b[:n]) != "payload1" {
-		t.Fatalf("payload is %q, want %q", string(b[:n]), "payload1")
+	if string(b[:n]) != "payload1payloadTwo" {
+		t.Errorf("payload is %q, want %q", string(b[:n]), "payload1payloadTwo")
 	}
 	if err := r.Seek(Offset{}, 0); err != nil {
-		t.Fatalf("Seek: %v", err)
+		t.Errorf("Seek: %v", err)
 	}
 	n, err = r.Read(b)
-	if err != nil && err != NewBlock {
-		t.Fatalf("Read: %v", err)
+	if err != io.EOF {
+		t.Errorf("Read: %v", err)
 	}
-	if string(b[:n]) != "payload1" {
-		t.Fatalf("payload is %q, want %q", string(b[:n]), "payload1")
+	if string(b[:n]) != "payload1payloadTwo" {
+		t.Errorf("payload is %q, want %q", string(b[:n]), "payload1payloadTwo")
 	}
 	if err := r.Seek(Offset{File: offset}, 0); err != nil {
 		t.Fatalf("Seek: %v", err)
 	}
-	bl, err = r.CurrBlockSize()
-	if err != nil || bl != wbl[1] {
-		t.Fatalf("CurrBlockSize() is %d, want %d", bl, wbl[1])
+	bl = r.BlockSize()
+	if bl != wbl[1] {
+		t.Errorf("BlockSize() is %d, want %d", bl, wbl[1])
 	}
 	b = make([]byte, bl+1)
 	n, err = r.Read(b)
-	if err != nil && err != NewBlock {
-		t.Fatalf("Read: %v", err)
+	if err != io.EOF {
+		t.Errorf("Read: %v", err)
 	}
 	if string(b[:n]) != "payloadTwo" {
-		t.Fatalf("payload is %q, want %q", string(b[:n]), "payloadTwo")
+		t.Errorf("payload is %q, want %q", string(b[:n]), "payloadTwo")
 	}
 	os.Remove(fname)
 }
