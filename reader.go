@@ -98,7 +98,7 @@ func (br *Reader) Read() (*Record, error) {
 		return nil, r.err
 	}
 
-	seq := make(nybblePairs, lSeq>>1)
+	seq := make(nybblePairs, (lSeq+1)>>1)
 	if nf, _ := r.Read(seq.Bytes()); nf != int((lSeq+1)>>1) {
 		return nil, errors.New("bam: truncated sequence")
 	}
