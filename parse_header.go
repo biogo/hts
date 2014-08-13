@@ -27,6 +27,7 @@ var (
 	headerTag       = tag{'H', 'D'}
 	versionTag      = tag{'V', 'N'}
 	sortOrderTag    = tag{'S', 'O'}
+	groupOrderTag   = tag{'G', 'O'}
 	refDictTag      = tag{'S', 'Q'}
 	refNameTag      = tag{'S', 'N'}
 	refLengthTag    = tag{'L', 'N'}
@@ -51,9 +52,6 @@ var (
 	commandLineTag  = tag{'C', 'L'}
 	previousProgTag = tag{'P', 'P'}
 	commentTag      = tag{'C', 'O'}
-
-	// "GO" unspecified
-
 )
 
 var bamMagic = [4]byte{'B', 'A', 'M', 0x1}
@@ -193,6 +191,11 @@ func headerLine(l []byte, bh *Header) error {
 				return badHeader
 			}
 			bh.SortOrder = sortOrderMap[fs]
+		case t == groupOrderTag:
+			if bh.GroupOrder != GroupUnspecified {
+				return badHeader
+			}
+			bh.GroupOrder = groupOrderMap[fs]
 		default:
 			return badHeader
 		}

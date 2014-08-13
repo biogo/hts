@@ -31,7 +31,7 @@ const (
 )
 
 var (
-	sortOrder = []string{
+	sortOrder = [...]string{
 		UnknownOrder: "unknown",
 		Unsorted:     "unsorted",
 		QueryName:    "queryname",
@@ -52,11 +52,42 @@ func (so SortOrder) String() string {
 	return sortOrder[so]
 }
 
+type GroupOrder int
+
+const (
+	GroupUnspecified GroupOrder = iota
+	GroupNone
+	GroupQuery
+	GroupReference
+)
+
+var (
+	groupOrder = [...]string{
+		GroupUnspecified: "none",
+		GroupNone:        "none",
+		GroupQuery:       "query",
+		GroupReference:   "reference",
+	}
+	groupOrderMap = map[string]GroupOrder{
+		"none":      GroupNone,
+		"query":     GroupQuery,
+		"reference": GroupReference,
+	}
+)
+
+func (g GroupOrder) String() string {
+	if g < GroupNone || g > GroupReference {
+		return groupOrder[GroupUnspecified]
+	}
+	return groupOrder[g]
+}
+
 type set map[string]int32
 
 type Header struct {
 	Version    string
 	SortOrder  SortOrder
+	GroupOrder GroupOrder
 	Comments   []string
 	refs       []*Reference
 	rgs        []*ReadGroup
@@ -129,7 +160,11 @@ func (bh *Header) Clone() *Header {
 func (bh *Header) Bytes() []byte {
 	var buf bytes.Buffer
 	if bh.Version != "" {
-		fmt.Fprintf(&buf, "@HD\tVN:%s\tSO:%s\n", bh.Version, bh.SortOrder)
+		if bh.GroupOrder == GroupUnspecified {
+			fmt.Fprintf(&buf, "@HD\tVN:%s\tSO:%s\n", bh.Version, bh.SortOrder)
+		} else {
+			fmt.Fprintf(&buf, "@HD\tVN:%s\tSO:%s\tGO:%s\n", bh.Version, bh.SortOrder, bh.GroupOrder)
+		}
 	}
 	for _, r := range bh.refs {
 		fmt.Fprintf(&buf, "%s\n", r)
