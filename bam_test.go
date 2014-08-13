@@ -6,15 +6,15 @@ package bam
 
 import (
 	"bytes"
-	"compress/gzip"
 	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
-	check "launchpad.net/gocheck"
 	"os"
 	"reflect"
 	"testing"
+
+	check "launchpad.net/gocheck"
 )
 
 var (
@@ -261,14 +261,6 @@ func BenchmarkRoundtripFile(b *testing.B) {
 		}
 		f.Close()
 	}
-}
-
-func uncompress(cb []byte) io.Reader {
-	gz, err := gzip.NewReader(bytes.NewBuffer(cb))
-	if err != nil {
-		panic(err)
-	}
-	return gz
 }
 
 func (s *S) TestIssue3(c *check.C) {

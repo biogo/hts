@@ -58,10 +58,6 @@ var (
 
 var bamMagic = [4]byte{'B', 'A', 'M', 0x1}
 
-func (bh *Header) formatHeader() ([]byte, error) {
-	return nil, nil
-}
-
 func (bh *Header) read(r io.Reader) error {
 	var (
 		lText, nRef int32
