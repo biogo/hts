@@ -103,9 +103,9 @@ func (r *Record) End() int {
 			for j = i - 1; j >= 0; j-- {
 				x := r.Cigar[j]
 				tx, lx := x.Type(), x.Len()
-				if consume[tx].query {
+				if tx.Consumes().Query {
 					if forw+lx >= back {
-						if consume[tx].ref {
+						if tx.Consumes().Reference {
 							delta += back - forw
 						}
 						break
@@ -113,7 +113,7 @@ func (r *Record) End() int {
 						forw += lx
 					}
 				}
-				if consume[t].ref {
+				if t.Consumes().Reference {
 					delta += lx
 				}
 			}
@@ -122,7 +122,7 @@ func (r *Record) End() int {
 			} else {
 				end -= delta
 			}
-		} else if consume[t].ref {
+		} else if t.Consumes().Reference {
 			end += co.Len()
 		}
 	}

@@ -43,6 +43,9 @@ const (
 
 var cigarOps = []string{"M", "I", "D", "N", "S", "H", "P", "=", "X", "B", "?"}
 
+// Consumes returns the CIGAR operation alignment consumption characteristics for the CigarOpType.
+func (ct CigarOpType) Consumes() Consume { return consume[ct] }
+
 // String returns the string representation of a CigarOpType.
 func (ct CigarOpType) String() string {
 	if ct < 0 || ct > lastCigar {
@@ -51,21 +54,21 @@ func (ct CigarOpType) String() string {
 	return cigarOps[ct]
 }
 
-// cigarConsumer describes how cigar operations consumer alignment bases.
-type cigarConsumer struct {
-	query, ref bool
+// Consume describes how CIGAR operations consume alignment bases.
+type Consume struct {
+	Query, Reference bool
 }
 
-var consume = []cigarConsumer{
-	CigarMatch:       {query: true, ref: true},
-	CigarInsertion:   {query: true, ref: false},
-	CigarDeletion:    {query: false, ref: true},
-	CigarSkipped:     {query: false, ref: true},
-	CigarSoftClipped: {query: true, ref: false},
-	CigarHardClipped: {query: true, ref: false},
-	CigarPadded:      {query: false, ref: false},
-	CigarEqual:       {query: true, ref: true},
-	CigarMismatch:    {query: true, ref: true},
-	CigarBack:        {query: false, ref: false},
+var consume = []Consume{
+	CigarMatch:       {Query: true, Reference: true},
+	CigarInsertion:   {Query: true, Reference: false},
+	CigarDeletion:    {Query: false, Reference: true},
+	CigarSkipped:     {Query: false, Reference: true},
+	CigarSoftClipped: {Query: true, Reference: false},
+	CigarHardClipped: {Query: true, Reference: false},
+	CigarPadded:      {Query: false, Reference: false},
+	CigarEqual:       {Query: true, Reference: true},
+	CigarMismatch:    {Query: true, Reference: true},
+	CigarBack:        {Query: false, Reference: false},
 	lastCigar:        {},
 }
