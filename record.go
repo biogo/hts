@@ -130,7 +130,7 @@ func (r *Record) End() int {
 }
 
 // Strand returns an int8 indicating the strand of the alignment. A positive return indicates
-// alignment in the forward orientation, a negative returns indicates alignemnt in the reverse
+// alignment in the forward orientation, a negative returns indicates alignment in the reverse
 // orientation.
 func (r *Record) Strand() int8 {
 	if r.Flags&Reverse == Reverse {

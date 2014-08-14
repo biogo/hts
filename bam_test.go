@@ -518,7 +518,7 @@ var specExamples = struct {
 		},
 	},
 	// These coordinates are all open (and zero-based) so that
-	// a slice of the reference doesn't need ant alteration.
+	// a slice of the reference doesn't need any alteration.
 	readEnds: []int{
 		22,
 		18,
