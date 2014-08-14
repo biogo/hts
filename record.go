@@ -211,6 +211,11 @@ func contract(s []byte) []NybblePair {
 			ns[i>>1] = np | n16Table[b]
 		}
 	}
+	// We haven't written the last base if the
+	// sequence was odd length, so do that now.
+	if len(s)&1 != 0 {
+		ns[len(ns)-1] = np
+	}
 	return ns
 }
 

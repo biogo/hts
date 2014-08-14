@@ -10,6 +10,11 @@ import (
 
 type CigarOp uint32
 
+// NewCigarOp returns a CIGAR operation of the specified type with length n.
+func NewCigarOp(t CigarOpType, n int) CigarOp {
+	return CigarOp(t) | (CigarOp(n) << 4)
+}
+
 // Type returns the type of the CIGAR operation for the CigarOp.
 func (co CigarOp) Type() CigarOpType { return CigarOpType(co & 0xf) }
 
@@ -52,15 +57,15 @@ type cigarConsumer struct {
 }
 
 var consume = []cigarConsumer{
-	CigarMatch:       {true, true},
-	CigarInsertion:   {false, true},
-	CigarDeletion:    {true, false},
-	CigarSkipped:     {true, false},
-	CigarSoftClipped: {false, true},
-	CigarHardClipped: {false, false},
-	CigarPadded:      {false, false},
-	CigarEqual:       {true, true},
-	CigarMismatch:    {true, true},
-	CigarBack:        {false, false},
+	CigarMatch:       {query: true, ref: true},
+	CigarInsertion:   {query: true, ref: false},
+	CigarDeletion:    {query: false, ref: true},
+	CigarSkipped:     {query: false, ref: true},
+	CigarSoftClipped: {query: true, ref: false},
+	CigarHardClipped: {query: true, ref: false},
+	CigarPadded:      {query: false, ref: false},
+	CigarEqual:       {query: true, ref: true},
+	CigarMismatch:    {query: true, ref: true},
+	CigarBack:        {query: false, ref: false},
 	lastCigar:        {},
 }
