@@ -296,12 +296,19 @@ func referenceLine(l []byte, bh *Header) error {
 	return nil
 }
 
+// http://en.wikipedia.org/wiki/ISO_8601
+//
+// Date: 2014-08-13
+// Time: 2014-08-13T16:02:01Z
+//     : 2014-08-13T16:02:01+00:00
+//
 const (
-	iso8601Date     = "2006-01-02"
-	iso8601TimeDate = "2006-01-02T15:04Z"
+	iso8601Date      = "2006-01-02"
+	iso8601TimeDateZ = "2006-01-02T15:04:05Z"
+	iso8601TimeDateN = "2006-01-02T15:04:05-0700"
 )
 
-var iso8601 = []string{iso8601Date, iso8601TimeDate}
+var iso8601 = []string{iso8601Date, iso8601TimeDateZ, iso8601TimeDateN}
 
 func readGroupLine(l []byte, bh *Header) error {
 	fields := bytes.Split(l, []byte{'\t'})

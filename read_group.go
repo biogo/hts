@@ -82,7 +82,7 @@ func (r *ReadGroup) String() string {
 		fmt.Fprintf(&buf, "\tDS:%s", r.description)
 	}
 	if (r.date != time.Time{}) {
-		fmt.Fprintf(&buf, "\tDT:%s", r.date.Format(iso8601TimeDate))
+		fmt.Fprintf(&buf, "\tDT:%s", r.date.Format(iso8601TimeDateN))
 	}
 	if r.flowOrder != nil {
 		fmt.Fprintf(&buf, "\tFO:%s", r.flowOrder)
