@@ -26,6 +26,9 @@ func max(a, b int) int {
 
 // Overlap returns the length of the overlap between the alignment
 // of the BAM record and the interval specified.
+//
+// Note that this does not correctly handle the CigarBack operation
+// which is poorly specified.
 func Overlap(r *bam.Record, start, end int) int {
 	var overlap, o int
 	pos := r.Pos
