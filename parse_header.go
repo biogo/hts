@@ -348,7 +348,7 @@ L:
 		case t == dateTag:
 			var err error
 			for _, tf := range iso8601 {
-				rg.date, err = time.Parse(tf, fs)
+				rg.date, err = time.ParseInLocation(tf, fs, nil)
 				if err == nil {
 					continue L
 				}
