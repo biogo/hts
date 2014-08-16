@@ -8,6 +8,35 @@ import (
 	"fmt"
 )
 
+type Cigar []CigarOp
+
+// IsValid returns whether the CIGAR string is valid for a record of the given
+// sequence length. Validity is defined by the sum of query consuming operations
+// matching the given length, clipping operations only being present at the ends
+// of alignments, and that CigarBack operations only result in query-consuming
+// positions at or right of the start of the alignment.
+func (c Cigar) IsValid(length int) bool {
+	var pos int
+	for i, co := range c {
+		ct := co.Type()
+		if ct == CigarHardClipped && i != 0 && i != len(c)-1 {
+			return false
+		}
+		if ct == CigarSoftClipped && i != 0 && i != len(c)-1 {
+			if c[i-1].Type() != CigarHardClipped && c[i+1].Type() != CigarHardClipped {
+				return false
+			}
+		}
+		con := ct.Consumes()
+		if pos < 0 && con.Query != 0 {
+			return false
+		}
+		length -= co.Len() * con.Query
+		pos += co.Len() * con.Reference
+	}
+	return length == 0
+}
+
 type CigarOp uint32
 
 // NewCigarOp returns a CIGAR operation of the specified type with length n.
@@ -56,19 +85,58 @@ func (ct CigarOpType) String() string {
 
 // Consume describes how CIGAR operations consume alignment bases.
 type Consume struct {
-	Query, Reference bool
+	Query, Reference int
 }
 
+// A few years ago, Complete Genomics (CG) proposed to add a new CIGAR
+// operator 'B' for an operation of moving backward along the reference
+// genome. It is the opposite of the 'N', the reference skip. In a later
+// discussion on a separate issue, Fred expressed his preference to a
+// negative reference skip which is equivalent to a positive 'B' operation.
+// Now the SRA group from NCBI intends to archive the CG alignment in
+// the SAM format and raises this request again. I think it may be the
+// time to add this backward operation.
+//
+// The backward operation is designed to describe such an alignment:
+//
+// REF:: GCATACGATCGACTAGTCACGT
+// READ: --ATACGATCGA----------
+// READ: ---------CGACTAGTCAC--
+//
+// i.e. there is an overlap between two segments of a read, which is quite
+// frequent in CG data. We are unable to fully describe such an alignment
+// with the original CIGAR. In the current spec, we suggest using a CIGAR
+// 18M and storing the overlap information in optional tags. This is a
+// little clumsy and is not compressed well for the purpose of archiving.
+// With 'B', the new CIGAR is "10M3B11M" with no other optional tags.
+//
+// Using "B" in this case is cleaner, but the major concern is that it breaks
+// the compatibility and is also likely to complicate SNP calling and many
+// other applications. As I think now, the solution is to implement a
+// "remove_B()" routine in samtools. This routine collapses overlapping
+// sequences, recalculates base quality in the overlap and gives a CIGAR
+// without 'B'. For the example above, remove_B() gives CIGAR 18M. For SNP
+// calling, we may call remove_B() immediately after the alignment loaded
+// into memory. The downstream pileup engine does not need any changes. Other
+// SNP callers can do the same. A new option will be added to "samtools view"
+// as a way to remove 'B' operations on the command-line.
+//
+// The implementation of remove_B() may be quite complicated in the generic
+// case - we may be dealing with a multiple-sequence alignment, but it should
+// be straightforward in the simple cases such as the example above. Users may
+// not need to care too much about how remove_B() is implemented.
+//
+// http://sourceforge.net/p/samtools/mailman/message/28463294/
 var consume = []Consume{
-	CigarMatch:       {Query: true, Reference: true},
-	CigarInsertion:   {Query: true, Reference: false},
-	CigarDeletion:    {Query: false, Reference: true},
-	CigarSkipped:     {Query: false, Reference: true},
-	CigarSoftClipped: {Query: true, Reference: false},
-	CigarHardClipped: {Query: true, Reference: false},
-	CigarPadded:      {Query: false, Reference: false},
-	CigarEqual:       {Query: true, Reference: true},
-	CigarMismatch:    {Query: true, Reference: true},
-	CigarBack:        {Query: false, Reference: false},
+	CigarMatch:       {Query: 1, Reference: 1},
+	CigarInsertion:   {Query: 1, Reference: 0},
+	CigarDeletion:    {Query: 0, Reference: 1},
+	CigarSkipped:     {Query: 0, Reference: 1},
+	CigarSoftClipped: {Query: 1, Reference: 0},
+	CigarHardClipped: {Query: 0, Reference: 0},
+	CigarPadded:      {Query: 0, Reference: 0},
+	CigarEqual:       {Query: 1, Reference: 1},
+	CigarMismatch:    {Query: 1, Reference: 1},
+	CigarBack:        {Query: 0, Reference: -1}, // See notes above.
 	lastCigar:        {},
 }

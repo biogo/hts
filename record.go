@@ -16,7 +16,7 @@ type Record struct {
 	Ref     *Reference
 	Pos     int
 	MapQ    byte
-	Cigar   []CigarOp
+	Cigar   Cigar
 	Flags   Flags
 	MateRef *Reference
 	MatePos int
@@ -89,41 +89,25 @@ func (r *Record) Len() int {
 	return r.End() - r.Start()
 }
 
-// End returns the higher-coordinate end of the alignment.
-// This is the start plus the sum of CigarMatch lengths.
+func max(a, b int) int {
+	if a < b {
+		return b
+	}
+	return a
+}
+
+// End returns the highest query-consuming coordinate end of the alignment.
+// The position returned by End is not valid if r.Cigar.IsValid(r.Seq.Length)
+// is false.
 func (r *Record) End() int {
+	pos := r.Pos
 	end := r.Pos
-	for i, co := range r.Cigar {
-		if t := co.Type(); t == CigarBack {
-			if i == len(r.Cigar)-1 {
-				break
-			}
-			var j, forw, delta int
-			back := co.Len()
-			for j = i - 1; j >= 0; j-- {
-				x := r.Cigar[j]
-				tx, lx := x.Type(), x.Len()
-				if tx.Consumes().Query {
-					if forw+lx >= back {
-						if tx.Consumes().Reference {
-							delta += back - forw
-						}
-						break
-					} else {
-						forw += lx
-					}
-				}
-				if t.Consumes().Reference {
-					delta += lx
-				}
-			}
-			if j < 0 {
-				end = r.Pos
-			} else {
-				end -= delta
-			}
-		} else if t.Consumes().Reference {
-			end += co.Len()
+	var con Consume
+	for _, co := range r.Cigar {
+		con = co.Type().Consumes()
+		pos += co.Len() * con.Reference
+		if con.Query != 0 {
+			end = max(end, pos)
 		}
 	}
 	return end

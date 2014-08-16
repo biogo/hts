@@ -290,6 +290,7 @@ func (s *S) TestSpecExamples(c *check.C) {
 		}
 		c.Check(r.MatePos, check.Equals, expect.MatePos) // Zero-based here.
 		c.Check(r.Cigar, check.DeepEquals, expect.Cigar)
+		c.Check(r.Cigar.IsValid(r.Seq.Length), check.Equals, true)
 		c.Check(r.TempLen, check.Equals, expect.TempLen)
 		c.Check(r.Seq, check.DeepEquals, expect.Seq, check.Commentf("got:%q expected:%q", r.Seq.Expand(), expect.Seq.Expand()))
 		c.Check(r.Qual, check.DeepEquals, expect.Qual) // No valid qualities here.
@@ -425,7 +426,7 @@ var specExamples = struct {
 			Name: "r001",
 			Pos:  6,
 			MapQ: 30,
-			Cigar: []CigarOp{
+			Cigar: Cigar{
 				NewCigarOp(CigarMatch, 8),
 				NewCigarOp(CigarInsertion, 2),
 				NewCigarOp(CigarMatch, 4),
@@ -442,7 +443,7 @@ var specExamples = struct {
 			Name: "r002",
 			Pos:  8,
 			MapQ: 30,
-			Cigar: []CigarOp{
+			Cigar: Cigar{
 				NewCigarOp(CigarSoftClipped, 3),
 				NewCigarOp(CigarMatch, 6),
 				NewCigarOp(CigarPadded, 1),
@@ -458,7 +459,7 @@ var specExamples = struct {
 			Name: "r003",
 			Pos:  8,
 			MapQ: 30,
-			Cigar: []CigarOp{
+			Cigar: Cigar{
 				NewCigarOp(CigarSoftClipped, 5),
 				NewCigarOp(CigarMatch, 6),
 			},
@@ -474,7 +475,7 @@ var specExamples = struct {
 			Name: "r004",
 			Pos:  15,
 			MapQ: 30,
-			Cigar: []CigarOp{
+			Cigar: Cigar{
 				NewCigarOp(CigarMatch, 6),
 				NewCigarOp(CigarSkipped, 14),
 				NewCigarOp(CigarMatch, 5),
@@ -488,7 +489,7 @@ var specExamples = struct {
 			Name: "r003",
 			Pos:  28,
 			MapQ: 17,
-			Cigar: []CigarOp{
+			Cigar: Cigar{
 				NewCigarOp(CigarHardClipped, 6),
 				NewCigarOp(CigarMatch, 5),
 			},
@@ -505,7 +506,7 @@ var specExamples = struct {
 			Name: "r001",
 			Pos:  36,
 			MapQ: 30,
-			Cigar: []CigarOp{
+			Cigar: Cigar{
 				NewCigarOp(CigarMatch, 9),
 			},
 			Flags:   Paired | ProperPair | Reverse | Read2,
@@ -528,6 +529,203 @@ var specExamples = struct {
 		33,
 		45,
 	},
+}
+
+var endTests = []struct {
+	cigar Cigar
+	end   int
+}{
+	{
+		cigar: Cigar{
+			NewCigarOp(CigarMatch, 20),
+			NewCigarOp(CigarBack, 5),
+			NewCigarOp(CigarMatch, 20),
+		},
+		end: 35,
+	},
+	{
+		cigar: Cigar{
+			NewCigarOp(CigarMatch, 10),
+			NewCigarOp(CigarBack, 3),
+			NewCigarOp(CigarMatch, 11),
+		},
+		end: 18,
+	},
+	{
+		cigar: Cigar{
+			NewCigarOp(CigarHardClipped, 10),
+			NewCigarOp(CigarBack, 3),
+		},
+		end: 0,
+	},
+	{
+		cigar: Cigar{
+			NewCigarOp(CigarMatch, 3),
+			NewCigarOp(CigarHardClipped, 10),
+		},
+		end: 3,
+	},
+	{
+		cigar: Cigar{
+			NewCigarOp(CigarMatch, 3),
+			NewCigarOp(CigarSoftClipped, 10),
+			NewCigarOp(CigarHardClipped, 10),
+		},
+		end: 3,
+	},
+	{
+		cigar: Cigar{
+			NewCigarOp(CigarBack, 10),
+			NewCigarOp(CigarSkipped, 10),
+			NewCigarOp(CigarBack, 10),
+			NewCigarOp(CigarSkipped, 10),
+			NewCigarOp(CigarMatch, 3),
+		},
+		end: 3,
+	},
+	{
+		cigar: Cigar{
+			NewCigarOp(CigarBack, 10),
+			NewCigarOp(CigarSkipped, 10),
+			NewCigarOp(CigarBack, 5),
+			NewCigarOp(CigarSkipped, 10),
+			NewCigarOp(CigarMatch, 3),
+		},
+		end: 8,
+	},
+}
+
+func (s *S) TestEnd(c *check.C) {
+	for _, test := range endTests {
+		c.Check((&Record{Cigar: test.cigar}).End(), check.Equals, test.end)
+	}
+}
+
+var cigarTests = []struct {
+	cigar  Cigar
+	length int
+	valid  bool
+}{
+	{
+		cigar:  nil,
+		length: 0,
+		valid:  true,
+	},
+
+	// One thought is that if B is really intended only to provide the ability
+	// to store CG and similar data where the read "skips" back a few bases now
+	// and again vs. the reference one thing that would make this much easier
+	// on those parsing SAM/BAM would be to limit the use of the B operator so
+	// that it cannot skip backwards past the beginning of the read.
+	//
+	// So something like 20M5B20M would be valid, but 50M5000B20M would not be.
+	//
+	// http://sourceforge.net/p/samtools/mailman/message/28466477/
+	{ // 20M5B20M
+		cigar: Cigar{
+			NewCigarOp(CigarMatch, 20),
+			NewCigarOp(CigarBack, 5),
+			NewCigarOp(CigarMatch, 20),
+		},
+		length: 40,
+		valid:  true,
+	},
+	{ // 50M5000B20M
+		cigar: Cigar{
+			NewCigarOp(CigarMatch, 50),
+			NewCigarOp(CigarBack, 5000),
+			NewCigarOp(CigarMatch, 20),
+		},
+		length: 70,
+		valid:  false,
+	},
+
+	// LH's example at http://sourceforge.net/p/samtools/mailman/message/28463294/
+	{ // 10M3B11M
+		// REF:: GCATACGATCGACTAGTCACGT
+		// READ: --ATACGATCGA----------
+		// READ: ---------CGACTAGTCAC--
+		cigar: Cigar{
+			NewCigarOp(CigarMatch, 10),
+			NewCigarOp(CigarBack, 3),
+			NewCigarOp(CigarMatch, 11),
+		},
+		length: 21,
+		valid:  true,
+	},
+
+	{
+		cigar: Cigar{
+			NewCigarOp(CigarHardClipped, 10),
+			NewCigarOp(CigarBack, 3),
+			NewCigarOp(CigarMatch, 11),
+		},
+		length: 11,
+		valid:  false,
+	},
+	{
+		cigar: Cigar{
+			NewCigarOp(CigarHardClipped, 10),
+			NewCigarOp(CigarBack, 3),
+		},
+		length: 0,
+		valid:  true,
+	},
+	{
+		cigar: Cigar{
+			NewCigarOp(CigarMatch, 3),
+			NewCigarOp(CigarHardClipped, 10),
+		},
+		length: 3,
+		valid:  true,
+	},
+	{
+		cigar: Cigar{
+			NewCigarOp(CigarMatch, 3),
+			NewCigarOp(CigarHardClipped, 10),
+			NewCigarOp(CigarHardClipped, 10),
+		},
+		length: 3,
+		valid:  false,
+	},
+	{
+		cigar: Cigar{
+			NewCigarOp(CigarMatch, 3),
+			NewCigarOp(CigarHardClipped, 10),
+			NewCigarOp(CigarSoftClipped, 10),
+		},
+		length: 13,
+		valid:  false,
+	},
+	{
+		cigar: Cigar{
+			NewCigarOp(CigarMatch, 3),
+			NewCigarOp(CigarSoftClipped, 10),
+			NewCigarOp(CigarHardClipped, 10),
+		},
+		length: 13,
+		valid:  true,
+	},
+
+	// Stupid, but not reason not to be valid. We only care if the
+	// there is a base from the query being used left of the start.
+	{
+		cigar: Cigar{
+			NewCigarOp(CigarBack, 10),
+			NewCigarOp(CigarSkipped, 10),
+			NewCigarOp(CigarBack, 10),
+			NewCigarOp(CigarSkipped, 10),
+			NewCigarOp(CigarMatch, 3),
+		},
+		length: 3,
+		valid:  true,
+	},
+}
+
+func (s *S) TestCigarIsValid(c *check.C) {
+	for _, test := range cigarTests {
+		c.Check(test.cigar.IsValid(test.length), check.Equals, test.valid)
+	}
 }
 
 func (s *S) TestIssue3(c *check.C) {

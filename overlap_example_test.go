@@ -27,22 +27,22 @@ func max(a, b int) int {
 // Overlap returns the length of the overlap between the alignment
 // of the BAM record and the interval specified.
 //
-// Note that this does not correctly handle the CigarBack operation
-// which is poorly specified.
+// Note that this will count repeated matches to the same reference
+// location if CigarBack operations are used.
 func Overlap(r *bam.Record, start, end int) int {
-	var overlap, o int
+	var overlap int
 	pos := r.Pos
 	for _, co := range r.Cigar {
-		t, l := co.Type(), co.Len()
-		if t.Consumes().Query && t.Consumes().Reference {
-			o = min(pos+l, end) - max(pos, start)
+		t := co.Type()
+		con := t.Consumes()
+		lr := co.Len() * con.Reference
+		if con.Query == con.Reference {
+			o := min(pos+lr, end) - max(pos, start)
 			if o > 0 {
 				overlap += o
 			}
 		}
-		if t.Consumes().Query || t.Consumes().Reference {
-			pos += l
-		}
+		pos += lr
 	}
 
 	return overlap
