@@ -103,10 +103,9 @@ func readBins(r io.Reader, n int32) ([]Bin, error) {
 }
 
 func makeOffset(vOff uint64) bgzf.Offset {
-	const blockMask = 0xffff
 	return bgzf.Offset{
 		File:  int64(vOff >> 16),
-		Block: uint16(vOff & blockMask),
+		Block: uint16(vOff),
 	}
 }
 
