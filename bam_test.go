@@ -6,6 +6,7 @@ package bam
 
 import (
 	"bytes"
+	"code.google.com/p/biogo.bam/bgzf"
 	"flag"
 	"fmt"
 	"io"
@@ -1401,18 +1402,18 @@ func (s *S) TestReadBAI(c *check.C) {
 			{
 				Bins: []Bin{
 					{
-						Bin: 0x1249, Chunks: []chunk{
-							{chunkBeg: 0x620000, chunkEnd: 0x1910000},
+						Bin: 4681, Chunks: []Chunk{
+							{Begin: bgzf.Offset{File: 98}, End: bgzf.Offset{File: 401}},
 						},
 					},
 					{
-						Bin: 0x924a, Chunks: []chunk{
-							{chunkBeg: 0x620000, chunkEnd: 0x1910000},
-							{chunkBeg: 0x8, chunkEnd: 0x0},
+						Bin: 37450, Chunks: []Chunk{
+							{Begin: bgzf.Offset{File: 98}, End: bgzf.Offset{File: 401}},
+							{Begin: bgzf.Offset{Block: 8}, End: bgzf.Offset{}},
 						},
 					},
 				},
-				Intervals: []offset{0x620000},
+				Intervals: []bgzf.Offset{{File: 98}},
 			},
 		},
 	)

@@ -5,6 +5,8 @@
 package bam
 
 import (
+	"code.google.com/p/biogo.bam/bgzf"
+
 	"encoding/binary"
 	"errors"
 	"io"
@@ -12,25 +14,22 @@ import (
 
 var Endian = binary.LittleEndian
 
-// BAM index type
-type offset uint64
+type Index []RefIndex
 
-type chunk struct {
-	chunkBeg offset
-	chunkEnd offset
+type RefIndex struct {
+	Bins      []Bin
+	Intervals []bgzf.Offset
 }
 
 type Bin struct {
 	Bin    uint32
-	Chunks []chunk
+	Chunks []Chunk
 }
 
-type RefIndex struct {
-	Bins      []Bin
-	Intervals []offset
+type Chunk struct {
+	Begin bgzf.Offset
+	End   bgzf.Offset
 }
-
-type Index []RefIndex
 
 var baiMagic = [4]byte{'B', 'A', 'I', 0x1}
 
@@ -105,33 +104,50 @@ func readBins(r io.Reader, n int32) ([]Bin, error) {
 	return bins, nil
 }
 
-func readChunks(r io.Reader, n int32) ([]chunk, error) {
-	var chunks []chunk
-	if n != 0 {
-		chunks = make([]chunk, n)
+func makeOffset(vOff uint64) bgzf.Offset {
+	const blockMask = 0xffff
+	return bgzf.Offset{
+		File:  int64(vOff >> 16),
+		Block: uint16(vOff & blockMask),
 	}
-	var err error
+}
+
+func readChunks(r io.Reader, n int32) ([]Chunk, error) {
+	var chunks []Chunk
+	if n != 0 {
+		chunks = make([]Chunk, n)
+	}
+	var (
+		vOff uint64
+		err  error
+	)
 	for i := range chunks {
-		err = binary.Read(r, Endian, &chunks[i].chunkBeg)
+		err = binary.Read(r, Endian, &vOff)
 		if err != nil {
 			return nil, err
 		}
-		err = binary.Read(r, Endian, &chunks[i].chunkEnd)
+		chunks[i].Begin = makeOffset(vOff)
+		err = binary.Read(r, Endian, &vOff)
 		if err != nil {
 			return nil, err
 		}
+		chunks[i].End = makeOffset(vOff)
 	}
 	return chunks, nil
 }
 
-func readIntervals(r io.Reader, n int32) ([]offset, error) {
-	var offsets []offset
-	if n != 0 {
-		offsets = make([]offset, n)
+func readIntervals(r io.Reader, n int32) ([]bgzf.Offset, error) {
+	if n == 0 {
+		return nil, nil
 	}
-	err := binary.Read(r, Endian, &offsets)
-	if err != nil {
-		return nil, err
+	var vOff uint64
+	offsets := make([]bgzf.Offset, n)
+	for i := range offsets {
+		err := binary.Read(r, Endian, &vOff)
+		if err != nil {
+			return nil, err
+		}
+		offsets[i] = makeOffset(vOff)
 	}
 	return offsets, nil
 }
