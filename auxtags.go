@@ -65,7 +65,7 @@ func parseAux(aux []byte) (aa []Aux) {
 				i += j + 1
 			case 'B':
 				var length int32
-				err := binary.Read(bytes.NewBuffer([]byte(aux[i+4:i+8])), Endian, &length)
+				err := binary.Read(bytes.NewBuffer([]byte(aux[i+4:i+8])), binary.LittleEndian, &length)
 				if err != nil {
 					panic(fmt.Sprintf("bam: binary.Read failed: %v", err))
 				}
@@ -124,15 +124,15 @@ func (a Aux) Value() interface{} {
 	case 'C':
 		return uint8(a[3])
 	case 's':
-		return int16(Endian.Uint16([]byte(a[4:6])))
+		return int16(binary.LittleEndian.Uint16([]byte(a[4:6])))
 	case 'S':
-		return Endian.Uint16([]byte(a[4:6]))
+		return binary.LittleEndian.Uint16([]byte(a[4:6]))
 	case 'i':
-		return int32(Endian.Uint32([]byte(a[4:8])))
+		return int32(binary.LittleEndian.Uint32([]byte(a[4:8])))
 	case 'I':
-		return Endian.Uint32([]byte(a[4:8]))
+		return binary.LittleEndian.Uint32([]byte(a[4:8]))
 	case 'f':
-		return math.Float32frombits(Endian.Uint32([]byte(a[4:8])))
+		return math.Float32frombits(binary.LittleEndian.Uint32([]byte(a[4:8])))
 	case 'Z': // Z and H Require that parsing stops before the terminating zero.
 		return string(a[3:])
 	case 'H':
@@ -143,7 +143,7 @@ func (a Aux) Value() interface{} {
 		}
 		return h
 	case 'B':
-		length := int32(Endian.Uint32([]byte(a[4:8])))
+		length := int32(binary.LittleEndian.Uint32([]byte(a[4:8])))
 		switch t := a[3]; t {
 		case 'c':
 			c := a[4:]
@@ -152,35 +152,35 @@ func (a Aux) Value() interface{} {
 			return []uint8(a[4:])
 		case 's':
 			Bs := make([]int16, length)
-			err := binary.Read(bytes.NewBuffer([]byte(a[8:])), Endian, &Bs)
+			err := binary.Read(bytes.NewBuffer([]byte(a[8:])), binary.LittleEndian, &Bs)
 			if err != nil {
 				panic(fmt.Sprintf("bam: binary.Read failed: %v", err))
 			}
 			return Bs
 		case 'S':
 			BS := make([]uint16, length)
-			err := binary.Read(bytes.NewBuffer([]byte(a[8:])), Endian, &BS)
+			err := binary.Read(bytes.NewBuffer([]byte(a[8:])), binary.LittleEndian, &BS)
 			if err != nil {
 				panic(fmt.Sprintf("bam: binary.Read failed: %v", err))
 			}
 			return BS
 		case 'i':
 			Bi := make([]int32, length)
-			err := binary.Read(bytes.NewBuffer([]byte(a[8:])), Endian, &Bi)
+			err := binary.Read(bytes.NewBuffer([]byte(a[8:])), binary.LittleEndian, &Bi)
 			if err != nil {
 				panic(fmt.Sprintf("bam: binary.Read failed: %v", err))
 			}
 			return Bi
 		case 'I':
 			BI := make([]uint32, length)
-			err := binary.Read(bytes.NewBuffer([]byte(a[8:])), Endian, &BI)
+			err := binary.Read(bytes.NewBuffer([]byte(a[8:])), binary.LittleEndian, &BI)
 			if err != nil {
 				panic(fmt.Sprintf("bam: binary.Read failed: %v", err))
 			}
 			return BI
 		case 'f':
 			Bf := make([]float32, length)
-			err := binary.Read(bytes.NewBuffer([]byte(a[8:])), Endian, &Bf)
+			err := binary.Read(bytes.NewBuffer([]byte(a[8:])), binary.LittleEndian, &Bf)
 			if err != nil {
 				panic(fmt.Sprintf("bam: binary.Read failed: %v", err))
 			}

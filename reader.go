@@ -176,15 +176,15 @@ func (r *binaryReader) readUint8() uint8 {
 
 func (r *binaryReader) readUint16() uint16 {
 	r.r.Read(r.buf[:2])
-	return Endian.Uint16(r.buf[:2])
+	return binary.LittleEndian.Uint16(r.buf[:2])
 }
 
 func (r *binaryReader) readInt32() int32 {
 	r.r.Read(r.buf[:4])
-	return int32(Endian.Uint32(r.buf[:4]))
+	return int32(binary.LittleEndian.Uint32(r.buf[:4]))
 }
 
 func (r *binaryReader) readUint32() uint32 {
 	r.r.Read(r.buf[:4])
-	return Endian.Uint32(r.buf[:4])
+	return binary.LittleEndian.Uint32(r.buf[:4])
 }

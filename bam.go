@@ -12,8 +12,6 @@ import (
 	"io"
 )
 
-var Endian = binary.LittleEndian
-
 type Index []RefIndex
 
 type RefIndex struct {
@@ -39,14 +37,14 @@ func (b *Index) read(r io.Reader) error {
 		err  error
 	)
 	var magic [4]byte
-	err = binary.Read(r, Endian, &magic)
+	err = binary.Read(r, binary.LittleEndian, &magic)
 	if err != nil {
 		return err
 	}
 	if magic != baiMagic {
 		return errors.New("bam: magic number mismatch")
 	}
-	err = binary.Read(r, Endian, &nRef)
+	err = binary.Read(r, binary.LittleEndian, &nRef)
 	if err != nil {
 		return err
 	}
@@ -61,7 +59,7 @@ func readIndices(r io.Reader, n int32) ([]RefIndex, error) {
 	}
 	var err error
 	for i := range idx {
-		err = binary.Read(r, Endian, &n)
+		err = binary.Read(r, binary.LittleEndian, &n)
 		if err != nil {
 			return nil, err
 		}
@@ -69,7 +67,7 @@ func readIndices(r io.Reader, n int32) ([]RefIndex, error) {
 		if err != nil {
 			return nil, err
 		}
-		err = binary.Read(r, Endian, &n)
+		err = binary.Read(r, binary.LittleEndian, &n)
 		if err != nil {
 			return nil, err
 		}
@@ -88,11 +86,11 @@ func readBins(r io.Reader, n int32) ([]Bin, error) {
 	}
 	var err error
 	for i := range bins {
-		err = binary.Read(r, Endian, &bins[i].Bin)
+		err = binary.Read(r, binary.LittleEndian, &bins[i].Bin)
 		if err != nil {
 			return nil, err
 		}
-		err = binary.Read(r, Endian, &n)
+		err = binary.Read(r, binary.LittleEndian, &n)
 		if err != nil {
 			return nil, err
 		}
@@ -122,12 +120,12 @@ func readChunks(r io.Reader, n int32) ([]Chunk, error) {
 		err  error
 	)
 	for i := range chunks {
-		err = binary.Read(r, Endian, &vOff)
+		err = binary.Read(r, binary.LittleEndian, &vOff)
 		if err != nil {
 			return nil, err
 		}
 		chunks[i].Begin = makeOffset(vOff)
-		err = binary.Read(r, Endian, &vOff)
+		err = binary.Read(r, binary.LittleEndian, &vOff)
 		if err != nil {
 			return nil, err
 		}
@@ -143,7 +141,7 @@ func readIntervals(r io.Reader, n int32) ([]bgzf.Offset, error) {
 	var vOff uint64
 	offsets := make([]bgzf.Offset, n)
 	for i := range offsets {
-		err := binary.Read(r, Endian, &vOff)
+		err := binary.Read(r, binary.LittleEndian, &vOff)
 		if err != nil {
 			return nil, err
 		}

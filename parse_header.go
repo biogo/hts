@@ -62,14 +62,14 @@ func (bh *Header) read(r io.Reader) error {
 		err         error
 	)
 	var magic [4]byte
-	err = binary.Read(r, Endian, &magic)
+	err = binary.Read(r, binary.LittleEndian, &magic)
 	if err != nil {
 		return err
 	}
 	if magic != bamMagic {
 		return errors.New("bam: magic number mismatch")
 	}
-	err = binary.Read(r, Endian, &lText)
+	err = binary.Read(r, binary.LittleEndian, &lText)
 	if err != nil {
 		return err
 	}
@@ -85,7 +85,7 @@ func (bh *Header) read(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	err = binary.Read(r, Endian, &nRef)
+	err = binary.Read(r, binary.LittleEndian, &nRef)
 	if err != nil {
 		return err
 	}
@@ -110,7 +110,7 @@ func readRefRecords(r io.Reader, n int32) ([]*Reference, error) {
 	)
 	for i := range rr {
 		rr[i] = &Reference{id: int32(i)}
-		err = binary.Read(r, Endian, &lName)
+		err = binary.Read(r, binary.LittleEndian, &lName)
 		if err != nil {
 			return nil, err
 		}
@@ -123,7 +123,7 @@ func readRefRecords(r io.Reader, n int32) ([]*Reference, error) {
 			return nil, errors.New("bam: truncated reference name")
 		}
 		rr[i].name = string(name[:n-1])
-		err = binary.Read(r, Endian, &rr[i].lRef)
+		err = binary.Read(r, binary.LittleEndian, &rr[i].lRef)
 		if err != nil {
 			return nil, err
 		}

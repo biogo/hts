@@ -54,11 +54,11 @@ func (bw *Writer) writeHeader(h *Header) error {
 	// other than NewWriterLevel.
 	wb := &errWriter{w: &bw.buf}
 
-	binary.Write(wb, Endian, bamMagic)
+	binary.Write(wb, binary.LittleEndian, bamMagic)
 	text := h.Bytes()
-	binary.Write(wb, Endian, int32(len(text)))
+	binary.Write(wb, binary.LittleEndian, int32(len(text)))
 	wb.Write(text)
-	binary.Write(wb, Endian, int32(len(h.refs)))
+	binary.Write(wb, binary.LittleEndian, int32(len(h.refs)))
 
 	if !validInt32(len(h.refs)) {
 		return errors.New("bam: value out of range")
@@ -67,10 +67,10 @@ func (bw *Writer) writeHeader(h *Header) error {
 	for _, r := range h.refs {
 		name = append(name, []byte(r.name)...)
 		name = append(name, 0)
-		binary.Write(wb, Endian, int32(len(name)))
+		binary.Write(wb, binary.LittleEndian, int32(len(name)))
 		wb.Write(name)
 		name = name[:0]
-		binary.Write(wb, Endian, r.lRef)
+		binary.Write(wb, binary.LittleEndian, r.lRef)
 	}
 	if wb.err != nil {
 		return wb.err
@@ -160,16 +160,16 @@ func (w *binaryWriter) writeUint8(v uint8) {
 }
 
 func (w *binaryWriter) writeUint16(v uint16) {
-	Endian.PutUint16(w.buf[:2], v)
+	binary.LittleEndian.PutUint16(w.buf[:2], v)
 	w.w.Write(w.buf[:2])
 }
 
 func (w *binaryWriter) writeInt32(v int32) {
-	Endian.PutUint32(w.buf[:4], uint32(v))
+	binary.LittleEndian.PutUint32(w.buf[:4], uint32(v))
 	w.w.Write(w.buf[:4])
 }
 
 func (w *binaryWriter) writeUint32(v uint32) {
-	Endian.PutUint32(w.buf[:4], v)
+	binary.LittleEndian.PutUint32(w.buf[:4], v)
 	w.w.Write(w.buf[:4])
 }
