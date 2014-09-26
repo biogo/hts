@@ -6,16 +6,13 @@ package bam
 
 import (
 	"encoding/binary"
+	"errors"
+	"io"
 )
 
 var Endian = binary.LittleEndian
 
 // BAM index type
-type baiFileHeaderFixed struct {
-	magic [4]byte "BAI\x01" // Magic number for BAI files.
-	nRef  int32
-}
-
 type offset uint64
 
 type chunk struct {
@@ -23,30 +20,120 @@ type chunk struct {
 	chunkEnd offset
 }
 
-type baiBin struct {
-	bin     uint32
-	nChunks int32
-	chunks  []chunk
+type Bin struct {
+	Bin    uint32
+	Chunks []chunk
 }
 
-type baiBins struct {
-	nBins int32
-	bins  []baiBin
+type RefIndex struct {
+	Bins      []Bin
+	Intervals []offset
 }
 
-type baiIntervals struct {
-	nIntv    int32
-	iOffsets []offset
+type Index []RefIndex
+
+var baiMagic = [4]byte{'B', 'A', 'I', 0x1}
+
+func (b *Index) read(r io.Reader) error {
+	var (
+		nRef int32
+		err  error
+	)
+	var magic [4]byte
+	err = binary.Read(r, Endian, &magic)
+	if err != nil {
+		return err
+	}
+	if magic != baiMagic {
+		return errors.New("bam: magic number mismatch")
+	}
+	err = binary.Read(r, Endian, &nRef)
+	if err != nil {
+		return err
+	}
+	*b, err = readIndices(r, nRef)
+	return err
 }
 
-type baiIndex struct {
-	baiBins
-	baiIntervals
+func readIndices(r io.Reader, n int32) ([]RefIndex, error) {
+	var idx []RefIndex
+	if n != 0 {
+		idx = make([]RefIndex, n)
+	}
+	var err error
+	for i := range idx {
+		err = binary.Read(r, Endian, &n)
+		if err != nil {
+			return nil, err
+		}
+		idx[i].Bins, err = readBins(r, n)
+		if err != nil {
+			return nil, err
+		}
+		err = binary.Read(r, Endian, &n)
+		if err != nil {
+			return nil, err
+		}
+		idx[i].Intervals, err = readIntervals(r, n)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return idx, nil
 }
 
-type baiFile struct {
-	baiFileHeaderFixed
-	indices []baiIndex
+func readBins(r io.Reader, n int32) ([]Bin, error) {
+	var bins []Bin
+	if n != 0 {
+		bins = make([]Bin, n)
+	}
+	var err error
+	for i := range bins {
+		err = binary.Read(r, Endian, &bins[i].Bin)
+		if err != nil {
+			return nil, err
+		}
+		err = binary.Read(r, Endian, &n)
+		if err != nil {
+			return nil, err
+		}
+		bins[i].Chunks, err = readChunks(r, n)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return bins, nil
+}
+
+func readChunks(r io.Reader, n int32) ([]chunk, error) {
+	var chunks []chunk
+	if n != 0 {
+		chunks = make([]chunk, n)
+	}
+	var err error
+	for i := range chunks {
+		err = binary.Read(r, Endian, &chunks[i].chunkBeg)
+		if err != nil {
+			return nil, err
+		}
+		err = binary.Read(r, Endian, &chunks[i].chunkEnd)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return chunks, nil
+}
+
+func readIntervals(r io.Reader, n int32) ([]offset, error) {
+	var offsets []offset
+	if n != 0 {
+		offsets = make([]offset, n)
+	}
+	err := binary.Read(r, Endian, &offsets)
+	if err != nil {
+		return nil, err
+	}
+	return offsets, nil
 }
 
 const (
