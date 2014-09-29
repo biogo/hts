@@ -41,7 +41,7 @@ type Chunk struct {
 
 var baiMagic = [4]byte{'B', 'A', 'I', 0x1}
 
-func (b *Index) read(r io.Reader) error {
+func (b *Index) Unmarshal(r io.Reader) error {
 	var (
 		nRef int32
 		err  error
@@ -73,10 +73,10 @@ func (b *Index) read(r io.Reader) error {
 }
 
 func readIndices(r io.Reader, n int32) ([]RefIndex, error) {
-	var idx []RefIndex
-	if n != 0 {
-		idx = make([]RefIndex, n)
+	if n == 0 {
+		return nil, nil
 	}
+	idx := make([]RefIndex, n)
 	var err error
 	for i := range idx {
 		err = binary.Read(r, binary.LittleEndian, &n)
@@ -99,18 +99,16 @@ func readIndices(r io.Reader, n int32) ([]RefIndex, error) {
 	return idx, nil
 }
 
-const dummyBin = 37450
+const statsDummyBin = 0x924a
 
 func readBins(r io.Reader, n int32) ([]Bin, *IndexStats, error) {
-	var (
-		bins     []Bin
-		idxStats *IndexStats
-	)
-	if n != 0 {
-		bins = make([]Bin, n)
+	if n == 0 {
+		return nil, nil, nil
 	}
+	var idxStats *IndexStats
+	bins := make([]Bin, n)
 	var err error
-	for i := range bins {
+	for i := 0; i < len(bins); i++ {
 		err = binary.Read(r, binary.LittleEndian, &bins[i].Bin)
 		if err != nil {
 			return nil, nil, err
@@ -119,7 +117,7 @@ func readBins(r io.Reader, n int32) ([]Bin, *IndexStats, error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		if bins[i].Bin == dummyBin {
+		if bins[i].Bin == statsDummyBin {
 			if n != 2 {
 				return nil, nil, errors.New("bam: malformed dummy bin header")
 			}
@@ -128,7 +126,8 @@ func readBins(r io.Reader, n int32) ([]Bin, *IndexStats, error) {
 				return nil, nil, err
 			}
 			bins = bins[:len(bins)-1]
-			break
+			i--
+			continue
 		}
 		bins[i].Chunks, err = readChunks(r, n)
 		if err != nil {
@@ -146,14 +145,14 @@ func makeOffset(vOff uint64) bgzf.Offset {
 }
 
 func readChunks(r io.Reader, n int32) ([]Chunk, error) {
-	var chunks []Chunk
-	if n != 0 {
-		chunks = make([]Chunk, n)
+	if n == 0 {
+		return nil, nil
 	}
 	var (
 		vOff uint64
 		err  error
 	)
+	chunks := make([]Chunk, n)
 	for i := range chunks {
 		err = binary.Read(r, binary.LittleEndian, &vOff)
 		if err != nil {
