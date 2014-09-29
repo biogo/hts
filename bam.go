@@ -43,10 +43,10 @@ var baiMagic = [4]byte{'B', 'A', 'I', 0x1}
 
 func (b *Index) Unmarshal(r io.Reader) error {
 	var (
-		nRef int32
-		err  error
+		nRef  int32
+		err   error
+		magic [4]byte
 	)
-	var magic [4]byte
 	err = binary.Read(r, binary.LittleEndian, &magic)
 	if err != nil {
 		return err
@@ -76,8 +76,8 @@ func readIndices(r io.Reader, n int32) ([]RefIndex, error) {
 	if n == 0 {
 		return nil, nil
 	}
-	idx := make([]RefIndex, n)
 	var err error
+	idx := make([]RefIndex, n)
 	for i := range idx {
 		err = binary.Read(r, binary.LittleEndian, &n)
 		if err != nil {
@@ -105,9 +105,11 @@ func readBins(r io.Reader, n int32) ([]Bin, *IndexStats, error) {
 	if n == 0 {
 		return nil, nil, nil
 	}
-	var idxStats *IndexStats
+	var (
+		idxStats *IndexStats
+		err      error
+	)
 	bins := make([]Bin, n)
-	var err error
 	for i := 0; i < len(bins); i++ {
 		err = binary.Read(r, binary.LittleEndian, &bins[i].Bin)
 		if err != nil {
