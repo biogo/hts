@@ -18,6 +18,40 @@ type Index struct {
 	Unmapped   *uint64
 }
 
+var baiMagic = [4]byte{'B', 'A', 'I', 0x1}
+
+func ReadIndex(r io.Reader) (*Index, error) {
+	var (
+		idx   Index
+		nRef  int32
+		err   error
+		magic [4]byte
+	)
+	err = binary.Read(r, binary.LittleEndian, &magic)
+	if err != nil {
+		return nil, err
+	}
+	if magic != baiMagic {
+		return nil, errors.New("bam: magic number mismatch")
+	}
+	err = binary.Read(r, binary.LittleEndian, &nRef)
+	if err != nil {
+		return nil, err
+	}
+	idx.References, err = readIndices(r, nRef)
+	if err != nil {
+		return nil, err
+	}
+	var nUnmapped uint64
+	err = binary.Read(r, binary.LittleEndian, &nUnmapped)
+	if err == nil {
+		idx.Unmapped = &nUnmapped
+	} else if err != io.EOF {
+		return nil, err
+	}
+	return &idx, nil
+}
+
 func (i *Index) Chunks(rid, beg, end int) []Chunk {
 	if rid >= len(i.References) {
 		return nil
@@ -107,39 +141,6 @@ type IndexStats struct {
 type Chunk struct {
 	Begin bgzf.Offset
 	End   bgzf.Offset
-}
-
-var baiMagic = [4]byte{'B', 'A', 'I', 0x1}
-
-func (b *Index) Unmarshal(r io.Reader) error {
-	var (
-		nRef  int32
-		err   error
-		magic [4]byte
-	)
-	err = binary.Read(r, binary.LittleEndian, &magic)
-	if err != nil {
-		return err
-	}
-	if magic != baiMagic {
-		return errors.New("bam: magic number mismatch")
-	}
-	err = binary.Read(r, binary.LittleEndian, &nRef)
-	if err != nil {
-		return err
-	}
-	b.References, err = readIndices(r, nRef)
-	if err != nil {
-		return err
-	}
-	var nUnmapped uint64
-	err = binary.Read(r, binary.LittleEndian, &nUnmapped)
-	if err == nil {
-		b.Unmapped = &nUnmapped
-	} else if err == io.EOF {
-		err = nil
-	}
-	return err
 }
 
 func readIndices(r io.Reader, n int32) ([]RefIndex, error) {

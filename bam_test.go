@@ -1354,7 +1354,7 @@ var issueDate = bytes.NewReader([]byte{
 
 var baiTestData = []struct {
 	data   []byte
-	expect Index
+	expect *Index
 	err    error
 }{
 	{
@@ -1399,7 +1399,7 @@ var baiTestData = []struct {
 			0x00, 0x00, 0x62, 0x00, 0x00, 0x00, 0x00, 0x00,
 			0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		},
-		expect: Index{
+		expect: &Index{
 			References: []RefIndex{
 				{
 					Bins: []Bin{
@@ -1460,7 +1460,7 @@ var baiTestData = []struct {
 			0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
 			0x00, 0x00, 0x62, 0x00, 0x00, 0x00, 0x00, 0x00,
 		},
-		expect: Index{
+		expect: &Index{
 			References: []RefIndex{
 				{
 					Bins: []Bin{
@@ -1510,7 +1510,7 @@ var baiTestData = []struct {
 			0x00, 0x00, 0x62, 0x00, 0x00, 0x00, 0x00, 0x00,
 			0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		},
-		expect: Index{
+		expect: &Index{
 			References: []RefIndex{
 				{
 					Bins: []Bin{
@@ -1553,7 +1553,7 @@ var baiTestData = []struct {
 			0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
 			0x00, 0x00, 0x62, 0x00, 0x00, 0x00, 0x00, 0x00,
 		},
-		expect: Index{
+		expect: &Index{
 			References: []RefIndex{
 				{
 					Bins: []Bin{
@@ -1749,7 +1749,7 @@ var baiTestData = []struct {
 			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 			0xa4, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		},
-		expect: Index{
+		expect: &Index{
 			References: func() []RefIndex {
 				idx := [86]RefIndex{
 					23: {
@@ -1830,9 +1830,7 @@ func uint64ptr(i uint64) *uint64 {
 
 func (s *S) TestReadBAI(c *check.C) {
 	for _, test := range baiTestData {
-		r := bytes.NewReader(test.data)
-		var b Index
-		err := b.Unmarshal(r)
+		b, err := ReadIndex(bytes.NewReader(test.data))
 		c.Assert(err, check.Equals, test.err)
 		c.Check(b, check.DeepEquals, test.expect)
 	}
@@ -1914,8 +1912,8 @@ var chunkTests = []struct {
 func (s *S) TestConceptualBAI(c *check.C) {
 	gz, err := gzip.NewReader(bytes.NewReader(conceptualBAIdata))
 	c.Assert(err, check.Equals, nil)
-	var bai Index
-	c.Assert(bai.Unmarshal(gz), check.Equals, nil)
+	bai, err := ReadIndex(gz)
+	c.Assert(err, check.Equals, nil)
 
 	for _, test := range chunkTests {
 		c.Check(bai.Chunks(0, test.beg, test.end), check.DeepEquals, test.expect,
