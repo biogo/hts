@@ -25,7 +25,11 @@ func (i *Index) Chunks(rid, beg, end int) []Chunk {
 	ref := i.References[rid]
 
 	const tileWidth = 0x4000
-	tileOffset := vOffset(ref.Intervals[beg/tileWidth])
+	iv := beg / tileWidth
+	if iv >= len(ref.Intervals) {
+		return nil
+	}
+	tileOffset := vOffset(ref.Intervals[iv])
 
 	// Collect candidate chunks according to the scheme described in
 	// the SAM spec under section 5 Indexing BAM.

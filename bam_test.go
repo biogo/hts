@@ -1907,6 +1907,10 @@ var chunkTests = []struct {
 			{Begin: bgzf.Offset{File: 101, Block: 0}, End: bgzf.Offset{File: 215, Block: 0}},
 		},
 	},
+	{
+		beg: 80740352, end: 81788928, // 77m78m - Not in covered region.
+		expect: nil,
+	},
 }
 
 func (s *S) TestConceptualBAI(c *check.C) {
