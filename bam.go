@@ -29,7 +29,6 @@ func (i *Index) Chunks(rid, beg, end int) []Chunk {
 	if iv >= len(ref.Intervals) {
 		return nil
 	}
-	tileOffset := vOffset(ref.Intervals[iv])
 
 	// Collect candidate chunks according to the scheme described in
 	// the SAM spec under section 5 Indexing BAM.
@@ -39,8 +38,25 @@ func (i *Index) Chunks(rid, beg, end int) []Chunk {
 		c := sort.Search(len(ref.Bins), func(i int) bool { return ref.Bins[i].Bin >= b })
 		if c < len(ref.Bins) && ref.Bins[c].Bin == b {
 			for _, chunk := range ref.Bins[c].Chunks {
-				if vOffset(chunk.End) > tileOffset {
-					chunks = append(chunks, chunk)
+				// Here we check all tiles starting from the left end of the
+				// query region until we get a non-zero offset. The spec states
+				// that we only need to check tiles that contain beg. That is
+				// not correct since we may have no alignments at the left end
+				// of the query region.
+				for j, tile := range ref.Intervals[iv:] {
+					tileOffset := vOffset(tile)
+					if tileOffset == 0 {
+						continue
+					}
+					tbeg := (j + iv) * tileWidth
+					tend := tbeg + tileWidth
+					// We allow adjacent alignment since samtools behaviour here
+					// has always irritated me and it is cheap to discard these
+					// later if they are not wanted.
+					if tend >= beg && tbeg <= end && vOffset(chunk.End) > tileOffset {
+						chunks = append(chunks, chunk)
+						break
+					}
 				}
 			}
 		}

@@ -1843,9 +1843,9 @@ func (s *S) TestReadBAI(c *check.C) {
 //
 // @HD	VN:1.0	SO:coordinate
 // @SQ	SN:conceptual	LN:134217728
-// 60m66m	0	conceptual	62914561	40	6291456M	*	0	0	*	*
-// 70m76m	0	conceptual	73400321	40	4194304M	*	0	0	*	*
-// 73m75m	0	conceptual	77594625	40	2097152M	*	0	0	*	*
+// 60m66m:bin0	0	conceptual	62914561	40	6291456M	*	0	0	*	*
+// 70m76m:bin2	0	conceptual	73400321	40	4194304M	*	0	0	*	*
+// 73m75m:bin18	0	conceptual	77594625	40	2097152M	*	0	0	*	*
 //
 // This is a coordinate-translated version of the conceptual example in the
 // SAM spec using binning as actually used by BAM rather than as presented.
@@ -1878,31 +1878,29 @@ var chunkTests = []struct {
 	expect   []Chunk
 }{
 	{
-		beg: 65000, end: 71000,
-		expect: []Chunk{
-			{Begin: bgzf.Offset{File: 101, Block: 0}, End: bgzf.Offset{File: 101, Block: 47}},
-		},
+		beg: 65000, end: 71000, // Not in covered region.
+		expect: nil,
 	},
 	{
-		beg: 77594624, end: 80740352, // 73m77m - This is the equivalent to the given example.
+		beg: 77594624, end: 80740352, // 73m77m:bin18 - This is the equivalent to the given example.
 		expect: []Chunk{
 			{Begin: bgzf.Offset{File: 101, Block: 94}, End: bgzf.Offset{File: 215, Block: 0}},
 		},
 	},
 	{
-		beg: 62914561, end: 68157440, // 60m65m
+		beg: 62914561, end: 68157440, // 60m65m:bin0+bin2
 		expect: []Chunk{
 			{Begin: bgzf.Offset{File: 101, Block: 0}, End: bgzf.Offset{File: 101, Block: 94}},
 		},
 	},
 	{
-		beg: 72351744, end: 80740352, // 69m77m
+		beg: 72351744, end: 80740352, // 69m77m:bin0+bin2+18
 		expect: []Chunk{
 			{Begin: bgzf.Offset{File: 101, Block: 0}, End: bgzf.Offset{File: 215, Block: 0}},
 		},
 	},
 	{
-		beg: 61865984, end: 80740352, // 59m77m
+		beg: 61865984, end: 80740352, // 59m77m:bin0+bin2+bin18
 		expect: []Chunk{
 			{Begin: bgzf.Offset{File: 101, Block: 0}, End: bgzf.Offset{File: 215, Block: 0}},
 		},
@@ -1920,6 +1918,8 @@ func (s *S) TestConceptualBAI(c *check.C) {
 	c.Assert(bai.Unmarshal(gz), check.Equals, nil)
 
 	for _, test := range chunkTests {
-		c.Check(bai.Chunks(0, test.beg, test.end), check.DeepEquals, test.expect)
+		c.Check(bai.Chunks(0, test.beg, test.end), check.DeepEquals, test.expect,
+			check.Commentf("Unexpect result for [%d,%d).", test.beg, test.end),
+		)
 	}
 }
