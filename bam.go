@@ -10,11 +10,61 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+	"sort"
 )
 
 type Index struct {
 	References []RefIndex
 	Unmapped   *uint64
+}
+
+func (i *Index) Chunks(rid, beg, end int) []Chunk {
+	if rid > len(i.References) {
+		return nil
+	}
+	ref := i.References[rid]
+
+	const tileWidth = 0x4000
+	tileOffset := vOffset(ref.Intervals[beg/tileWidth])
+
+	// Collect candidate chunks according to the scheme described in
+	// the SAM spec under section 5 Indexing BAM.
+	var chunks []Chunk
+	for _, bin := range reg2bins(beg, end) {
+		b := uint32(bin)
+		c := sort.Search(len(ref.Bins), func(i int) bool { return ref.Bins[i].Bin >= b })
+		if c < len(ref.Bins) && ref.Bins[c].Bin == b {
+			for _, chunk := range ref.Bins[c].Chunks {
+				if vOffset(chunk.End) > tileOffset {
+					chunks = append(chunks, chunk)
+				}
+			}
+		}
+	}
+
+	// Sort and merge overlaps.
+	if !sort.IsSorted(byBeginOffset(chunks)) {
+		sort.Sort(byBeginOffset(chunks))
+	}
+	for c := 1; c < len(chunks); c++ {
+		leftChunk := &chunks[c-1]
+		rightChunk := &chunks[c]
+		leftEndOffset := vOffset(leftChunk.End)
+		if leftEndOffset >= vOffset(rightChunk.Begin) {
+			rightChunk.Begin = leftChunk.Begin
+			if leftEndOffset > vOffset(rightChunk.End) {
+				rightChunk.End = leftChunk.End
+			}
+			chunks = append(chunks[:c-1], chunks[c:]...)
+			c--
+		}
+	}
+
+	return chunks
+}
+
+func vOffset(o bgzf.Offset) int64 {
+	return o.File<<16 | int64(o.Block)
 }
 
 type RefIndex struct {
@@ -101,6 +151,12 @@ func readIndices(r io.Reader, n int32) ([]RefIndex, error) {
 
 const statsDummyBin = 0x924a
 
+type byBinNumber []Bin
+
+func (b byBinNumber) Len() int           { return len(b) }
+func (b byBinNumber) Less(i, j int) bool { return b[i].Bin < b[j].Bin }
+func (b byBinNumber) Swap(i, j int)      { b[i], b[j] = b[j], b[i] }
+
 func readBins(r io.Reader, n int32) ([]Bin, *IndexStats, error) {
 	if n == 0 {
 		return nil, nil, nil
@@ -136,6 +192,9 @@ func readBins(r io.Reader, n int32) ([]Bin, *IndexStats, error) {
 			return nil, nil, err
 		}
 	}
+	if !sort.IsSorted(byBinNumber(bins)) {
+		sort.Sort(byBinNumber(bins))
+	}
 	return bins, idxStats, nil
 }
 
@@ -145,6 +204,12 @@ func makeOffset(vOff uint64) bgzf.Offset {
 		Block: uint16(vOff),
 	}
 }
+
+type byBeginOffset []Chunk
+
+func (c byBeginOffset) Len() int           { return len(c) }
+func (c byBeginOffset) Less(i, j int) bool { return vOffset(c[i].Begin) < vOffset(c[j].Begin) }
+func (c byBeginOffset) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
 
 func readChunks(r io.Reader, n int32) ([]Chunk, error) {
 	if n == 0 {
@@ -166,6 +231,9 @@ func readChunks(r io.Reader, n int32) ([]Chunk, error) {
 			return nil, err
 		}
 		chunks[i].End = makeOffset(vOff)
+	}
+	if !sort.IsSorted(byBeginOffset(chunks)) {
+		sort.Sort(byBeginOffset(chunks))
 	}
 	return chunks, nil
 }
@@ -197,6 +265,12 @@ func readStats(r io.Reader) (*IndexStats, error) {
 	return &idxStats, nil
 }
 
+type byVirtOffset []bgzf.Offset
+
+func (o byVirtOffset) Len() int           { return len(o) }
+func (o byVirtOffset) Less(i, j int) bool { return vOffset(o[i]) < vOffset(o[j]) }
+func (o byVirtOffset) Swap(i, j int)      { o[i], o[j] = o[j], o[i] }
+
 func readIntervals(r io.Reader, n int32) ([]bgzf.Offset, error) {
 	if n == 0 {
 		return nil, nil
@@ -209,6 +283,9 @@ func readIntervals(r io.Reader, n int32) ([]bgzf.Offset, error) {
 			return nil, err
 		}
 		offsets[i] = makeOffset(vOff)
+	}
+	if !sort.IsSorted(byVirtOffset(offsets)) {
+		sort.Sort(byVirtOffset(offsets))
 	}
 	return offsets, nil
 }
