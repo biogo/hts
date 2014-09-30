@@ -19,7 +19,7 @@ type Index struct {
 }
 
 func (i *Index) Chunks(rid, beg, end int) []Chunk {
-	if rid > len(i.References) {
+	if rid >= len(i.References) {
 		return nil
 	}
 	ref := i.References[rid]
