@@ -16,6 +16,8 @@ import (
 type Index struct {
 	References []RefIndex
 	Unmapped   *uint64
+	isSorted   bool
+	lastRecord int
 }
 
 var baiMagic = [4]byte{'B', 'A', 'I', 0x1}
@@ -49,16 +51,107 @@ func ReadIndex(r io.Reader) (*Index, error) {
 	} else if err != io.EOF {
 		return nil, err
 	}
+	idx.isSorted = true
 	return &idx, nil
+}
+
+const tileWidth = 0x4000
+
+func (i *Index) Add(r *Record, c Chunk) error {
+	i.isSorted = false
+	rid := r.Reference().ID()
+	if rid < len(i.References)-1 {
+		return errors.New("bam: attempt to add record out of reference ID sort order")
+	}
+	if rid == len(i.References) {
+		i.References = append(i.References, RefIndex{})
+	} else {
+		refs := make([]RefIndex, rid+1)
+		copy(refs, i.References)
+		i.References = refs
+	}
+	ref := &i.References[rid]
+
+	// Record bin information.
+	b := uint32(r.Bin())
+	for i, bin := range ref.Bins {
+		if bin.Bin == b {
+			for j, chunk := range ref.Bins[i].Chunks {
+				if vOffset(chunk.End) > vOffset(c.Begin) {
+					ref.Bins[i].Chunks[j].End = c.End
+					goto found
+				}
+			}
+			ref.Bins[i].Chunks = append(ref.Bins[i].Chunks, c)
+			goto found
+		}
+	}
+	ref.Bins = append(ref.Bins, Bin{
+		Bin:    b,
+		Chunks: []Chunk{c},
+	})
+found:
+
+	// Record interval tile information.
+	biv := r.Start() / tileWidth
+	if r.Start() < i.lastRecord {
+		return errors.New("bam: attempt to add record out of position sort order")
+	}
+	i.lastRecord = r.Start()
+	eiv := r.End() / tileWidth
+	if eiv == len(ref.Intervals) {
+		if eiv > biv {
+			panic("unreachable")
+		}
+		ref.Intervals = append(ref.Intervals, c.Begin)
+	} else if eiv > len(ref.Intervals) {
+		intvs := make([]bgzf.Offset, eiv)
+		copy(intvs, ref.Intervals)
+		ref.Intervals = intvs
+		for iv, offset := range ref.Intervals[biv:eiv] {
+			if isZero(offset) {
+				ref.Intervals[iv+biv] = c.Begin
+			}
+		}
+	}
+
+	// Record index stats and unmapped record count.
+	if ref.Stats == nil {
+		ref.Stats = &IndexStats{
+			Chunk: c,
+		}
+	} else {
+		ref.Stats.Chunk.End = c.End
+	}
+	if i.Unmapped == nil {
+		i.Unmapped = new(uint64)
+	}
+	if r.Flags&Unmapped == Unmapped {
+		*i.Unmapped++
+		ref.Stats.Unmapped++
+	} else {
+		ref.Stats.Mapped++
+	}
+
+	return nil
 }
 
 func (i *Index) Chunks(rid, beg, end int) []Chunk {
 	if rid >= len(i.References) {
 		return nil
 	}
+	if !i.isSorted {
+		for _, ref := range i.References {
+			sort.Sort(byBinNumber(ref.Bins))
+			for _, bin := range ref.Bins {
+				sort.Sort(byBeginOffset(bin.Chunks))
+			}
+			sort.Sort(byVirtOffset(ref.Intervals))
+		}
+		i.isSorted = true
+	}
 	ref := i.References[rid]
 
-	const tileWidth = 0x4000
 	iv := beg / tileWidth
 	if iv >= len(ref.Intervals) {
 		return nil
@@ -78,8 +171,7 @@ func (i *Index) Chunks(rid, beg, end int) []Chunk {
 				// not correct since we may have no alignments at the left end
 				// of the query region.
 				for j, tile := range ref.Intervals[iv:] {
-					tileOffset := vOffset(tile)
-					if tileOffset == 0 {
+					if isZero(tile) {
 						continue
 					}
 					tbeg := (j + iv) * tileWidth
@@ -87,7 +179,7 @@ func (i *Index) Chunks(rid, beg, end int) []Chunk {
 					// We allow adjacent alignment since samtools behaviour here
 					// has always irritated me and it is cheap to discard these
 					// later if they are not wanted.
-					if tend >= beg && tbeg <= end && vOffset(chunk.End) > tileOffset {
+					if tend >= beg && tbeg <= end && vOffset(chunk.End) > vOffset(tile) {
 						chunks = append(chunks, chunk)
 						break
 					}
@@ -115,6 +207,10 @@ func (i *Index) Chunks(rid, beg, end int) []Chunk {
 	}
 
 	return chunks
+}
+
+func isZero(o bgzf.Offset) bool {
+	return o == bgzf.Offset{}
 }
 
 func vOffset(o bgzf.Offset) int64 {

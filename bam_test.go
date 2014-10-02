@@ -6,7 +6,6 @@ package bam
 
 import (
 	"bytes"
-	"code.google.com/p/biogo.bam/bgzf"
 	"compress/gzip"
 	"flag"
 	"fmt"
@@ -16,6 +15,8 @@ import (
 	"reflect"
 	"testing"
 	"time"
+
+	"code.google.com/p/biogo.bam/bgzf"
 
 	check "launchpad.net/gocheck"
 )
@@ -1418,6 +1419,7 @@ var baiTestData = []struct {
 				},
 			},
 			Unmapped: uint64ptr(1),
+			isSorted: true,
 		},
 		err: nil,
 	},
@@ -1479,6 +1481,7 @@ var baiTestData = []struct {
 				},
 			},
 			Unmapped: nil,
+			isSorted: true,
 		},
 		err: nil,
 	},
@@ -1525,6 +1528,7 @@ var baiTestData = []struct {
 				},
 			},
 			Unmapped: uint64ptr(1),
+			isSorted: true,
 		},
 		err: nil,
 	},
@@ -1568,6 +1572,7 @@ var baiTestData = []struct {
 				},
 			},
 			Unmapped: nil,
+			isSorted: true,
 		},
 		err: nil,
 	},
@@ -1819,6 +1824,7 @@ var baiTestData = []struct {
 				return idx[:]
 			}(),
 			Unmapped: uint64ptr(932),
+			isSorted: true,
 		},
 		err: nil,
 	},
@@ -1830,9 +1836,9 @@ func uint64ptr(i uint64) *uint64 {
 
 func (s *S) TestReadBAI(c *check.C) {
 	for _, test := range baiTestData {
-		b, err := ReadIndex(bytes.NewReader(test.data))
+		bai, err := ReadIndex(bytes.NewReader(test.data))
 		c.Assert(err, check.Equals, test.err)
-		c.Check(b, check.DeepEquals, test.expect)
+		c.Check(bai, check.DeepEquals, test.expect)
 	}
 }
 
@@ -1919,5 +1925,106 @@ func (s *S) TestConceptualBAI(c *check.C) {
 		c.Check(bai.Chunks(0, test.beg, test.end), check.DeepEquals, test.expect,
 			check.Commentf("Unexpected result for [%d,%d).", test.beg, test.end),
 		)
+	}
+}
+
+// @HD	VN:1.0	SO:coordinate
+// @SQ	SN:conceptual	LN:134217728
+// 60m66m:bin0	0	conceptual	62914561	40	6291456M	*	0	0	*	*
+// 70m76m:bin2	0	conceptual	73400321	40	6291456M	*	0	0	*	*
+// 73m75m:bin18	0	conceptual	76546049	40	2097152M	*	0	0	*	*
+var (
+	conceptual = func() *Reference {
+		ref, err := NewReference("conceptual", "0", "unicorns", 134217728, nil, nil)
+		if err != nil {
+			panic("Failed to initialise conceptual reference")
+		}
+		ref.id = 0 // This would be done by addition to a Header in the normal case.
+		return ref
+	}()
+	bamFile = []struct {
+		rec   *Record
+		chunk Chunk
+	}{
+		{
+			rec: &Record{
+				Name: "60m66m:bin0", // [62914560,69206016)
+				Ref:  conceptual,
+				Pos:  62914560,
+				MapQ: 40,
+				Cigar: Cigar{
+					NewCigarOp(CigarMatch, 6291456),
+				},
+			},
+			chunk: Chunk{
+				Begin: bgzf.Offset{File: 101, Block: 0},
+				End:   bgzf.Offset{File: 101, Block: 52},
+			},
+		},
+		{
+			rec: &Record{
+				Name: "70m76m:bin2", // [73400320,79691776)
+				Ref:  conceptual,
+				Pos:  73400320,
+				MapQ: 40,
+				Cigar: Cigar{
+					NewCigarOp(CigarMatch, 6291456),
+				},
+			},
+			chunk: Chunk{
+				Begin: bgzf.Offset{File: 101, Block: 52},
+				End:   bgzf.Offset{File: 101, Block: 104},
+			},
+		},
+		{
+			rec: &Record{
+				Name: "73m75m:bin18", // [76546048,78643200)
+				Ref:  conceptual,
+				Pos:  76546048,
+				MapQ: 40,
+				Cigar: Cigar{
+					NewCigarOp(CigarMatch, 2097152),
+				},
+			},
+			chunk: Chunk{
+				Begin: bgzf.Offset{File: 101, Block: 104},
+				End:   bgzf.Offset{File: 228, Block: 0},
+			},
+		},
+	}
+)
+
+func (s *S) TestAdd(c *check.C) {
+	var bai Index
+	for _, r := range bamFile {
+		c.Assert(bai.Add(r.rec, r.chunk), check.Equals, nil)
+	}
+	gz, err := gzip.NewReader(bytes.NewReader(conceptualBAIdata))
+	c.Assert(err, check.Equals, nil)
+	expect, err := ReadIndex(gz)
+	c.Check(bai.References[0].Bins, check.DeepEquals, expect.References[0].Bins)
+	c.Check(bai.References[0].Stats, check.DeepEquals, expect.References[0].Stats)
+	c.Check(bai.Unmapped, check.DeepEquals, expect.Unmapped)
+
+	// We check naively for overlap with tiles since we do not merge chunks in Add.
+	for i := range bai.References[0].Intervals {
+		got := bai.References[0].Intervals[i]
+		tbeg := i * tileWidth
+		tend := tbeg + tileWidth
+		hasOverlap := false
+		for _, r := range bamFile {
+			if tbeg < r.rec.End() && tend > r.rec.Start() {
+				c.Check(got, check.Equals, r.chunk.Begin,
+					check.Commentf("Unexpected tile offset for [%d,%d) got:%+v expect:%+v", tbeg, tend, got, r.chunk.Begin),
+				)
+				hasOverlap = true
+				break
+			}
+		}
+		if !hasOverlap {
+			c.Check(got, check.Equals, bgzf.Offset{},
+				check.Commentf("Unexpected non-zero offset for [%d,%d) got:%+v", tbeg, tend, got),
+			)
+		}
 	}
 }
