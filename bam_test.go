@@ -1917,7 +1917,7 @@ func (s *S) TestConceptualBAI(c *check.C) {
 
 	for _, test := range chunkTests {
 		c.Check(bai.Chunks(0, test.beg, test.end), check.DeepEquals, test.expect,
-			check.Commentf("Unexpect result for [%d,%d).", test.beg, test.end),
+			check.Commentf("Unexpected result for [%d,%d).", test.beg, test.end),
 		)
 	}
 }
