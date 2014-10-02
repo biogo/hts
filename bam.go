@@ -102,18 +102,22 @@ found:
 	eiv := r.End() / tileWidth
 	if eiv == len(ref.Intervals) {
 		if eiv > biv {
-			panic("unreachable")
+			panic("bam: unexpected alignment length")
 		}
 		ref.Intervals = append(ref.Intervals, c.Begin)
 	} else if eiv > len(ref.Intervals) {
 		intvs := make([]bgzf.Offset, eiv)
+		if len(ref.Intervals) > biv {
+			biv = len(ref.Intervals)
+		}
+		for iv, offset := range intvs[biv:eiv] {
+			if !isZero(offset) {
+				panic("bam: unexpected non-zero offset")
+			}
+			intvs[iv+biv] = c.Begin
+		}
 		copy(intvs, ref.Intervals)
 		ref.Intervals = intvs
-		for iv, offset := range ref.Intervals[biv:eiv] {
-			if isZero(offset) {
-				ref.Intervals[iv+biv] = c.Begin
-			}
-		}
 	}
 
 	// Record index stats and unmapped record count.
