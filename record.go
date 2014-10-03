@@ -81,6 +81,9 @@ func (r *Record) Start() int {
 
 // Bin returns the BAM index bin of the record.
 func (r *Record) Bin() int {
+	if r.Flags&Unmapped != 0 {
+		return 4680 // reg2bin(-1, 0)
+	}
 	return int(reg2bin(r.Pos, r.End()))
 }
 
