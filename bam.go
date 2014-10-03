@@ -59,6 +59,14 @@ func ReadIndex(r io.Reader) (*Index, error) {
 const tileWidth = 0x4000
 
 func (i *Index) Add(r *Record, c Chunk) error {
+	if i.Unmapped == nil {
+		i.Unmapped = new(uint64)
+	}
+	if !isPlaced(r) {
+		*i.Unmapped++
+		return nil
+	}
+
 	rid := r.Reference().ID()
 	if rid < len(i.References)-1 {
 		return errors.New("bam: attempt to add record out of reference ID sort order")
@@ -120,7 +128,7 @@ found:
 		ref.Intervals = intvs
 	}
 
-	// Record index stats and unmapped record count.
+	// Record index stats.
 	if ref.Stats == nil {
 		ref.Stats = &IndexStats{
 			Chunk: c,
@@ -128,17 +136,17 @@ found:
 	} else {
 		ref.Stats.Chunk.End = c.End
 	}
-	if i.Unmapped == nil {
-		i.Unmapped = new(uint64)
-	}
-	if r.Flags&Unmapped == Unmapped {
-		*i.Unmapped++
-		ref.Stats.Unmapped++
-	} else {
+	if r.Flags&Unmapped == 0 {
 		ref.Stats.Mapped++
+	} else {
+		ref.Stats.Unmapped++
 	}
 
 	return nil
+}
+
+func isPlaced(r *Record) bool {
+	return r.Ref != nil && r.Pos != -1
 }
 
 func (i *Index) Chunks(rid, beg, end int) []Chunk {
