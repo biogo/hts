@@ -11,6 +11,7 @@ import (
 	"unsafe"
 )
 
+// Record represents a SAM/BAM record.
 type Record struct {
 	Name    string
 	Ref     *Reference
@@ -26,6 +27,8 @@ type Record struct {
 	AuxTags []Aux
 }
 
+// NewRecord returns a Record, checking for consistency of the provided
+// attributes.
 func NewRecord(name string, ref, mRef *Reference, p, mPos, tLen int, mapQ byte, co []CigarOp, seq, qual []byte, aux []Aux) (*Record, error) {
 	if !(validPos(p) && validPos(mPos) && validTmpltLen(tLen) && validLen(len(seq)) && validLen(len(qual))) {
 		return nil, errors.New("bam: value out of range")
@@ -37,10 +40,18 @@ func NewRecord(name string, ref, mRef *Reference, p, mPos, tLen int, mapQ byte, 
 		if ref.id < 0 {
 			return nil, errors.New("bam: linking to invalid reference")
 		}
+	} else {
+		if p != -1 {
+			return nil, errors.New("bam: specified position != -1 without reference")
+		}
 	}
 	if mRef != nil {
 		if mRef.id < 0 {
 			return nil, errors.New("bam: linking to invalid mate reference")
+		}
+	} else {
+		if mPos != -1 {
+			return nil, errors.New("bam: specified mate position != -1 without mate reference")
 		}
 	}
 	r := &Record{
@@ -59,6 +70,38 @@ func NewRecord(name string, ref, mRef *Reference, p, mPos, tLen int, mapQ byte, 
 	return r, nil
 }
 
+// IsValidRecord returns whether the record satisfies the conditions that
+// it has a position of -1 and an Unmapped flag set if it does not have an
+// associated Reference; that its mate position is -1 and the MateUnmapped
+// flag is set if it has no associated mate Reference; that the CIGAR length
+// matches the sequence and quality string lengths if they are non-zero; and
+// that the Paired, ProperPair, Unmapped and MateUnmapped flags are consistent.
+func IsValidRecord(r *Record) bool {
+	if r.Ref == nil && (r.Pos != -1 || r.Flags&Unmapped == 0) {
+		return false
+	}
+	if r.Flags&Paired == 0 && (r.MateRef != nil || r.MatePos != -1 || r.Flags&MateUnmapped == 0) {
+		return false
+	}
+	if r.MateRef == nil && (r.MatePos != -1 || r.Flags&MateUnmapped == 0) {
+		return false
+	}
+	if r.Flags&(Unmapped|ProperPair) == Unmapped|ProperPair {
+		return false
+	}
+	if r.Flags&(Paired|MateUnmapped|ProperPair) == Paired|MateUnmapped|ProperPair {
+		return false
+	}
+	if len(r.Qual) != 0 && r.Seq.Length != len(r.Qual) {
+		return false
+	}
+	if cigarLen := r.Len(); cigarLen < 0 || (r.Seq.Length != 0 && r.Seq.Length != cigarLen) {
+		return false
+	}
+	return true
+}
+
+// Reference returns the records reference.
 func (r *Record) Reference() *Reference {
 	return r.Ref
 }
