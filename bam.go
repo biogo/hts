@@ -59,7 +59,6 @@ func ReadIndex(r io.Reader) (*Index, error) {
 const tileWidth = 0x4000
 
 func (i *Index) Add(r *Record, c Chunk) error {
-	i.isSorted = false
 	rid := r.Reference().ID()
 	if rid < len(i.References)-1 {
 		return errors.New("bam: attempt to add record out of reference ID sort order")
@@ -87,6 +86,7 @@ func (i *Index) Add(r *Record, c Chunk) error {
 			goto found
 		}
 	}
+	i.isSorted = false // TODO(kortschak) Consider making use of this more effectively for bin search.
 	ref.Bins = append(ref.Bins, Bin{
 		Bin:    b,
 		Chunks: []Chunk{c},
