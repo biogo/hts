@@ -71,19 +71,15 @@ func NewRecord(name string, ref, mRef *Reference, p, mPos, tLen int, mapQ byte, 
 }
 
 // IsValidRecord returns whether the record satisfies the conditions that
-// it has a position of -1 and an Unmapped flag set if it does not have an
-// associated Reference; that its mate position is -1 and the MateUnmapped
-// flag is set if it has no associated mate Reference; that the CIGAR length
+// it has the Unmapped flag set if it not placed; that the MateUnmapped
+// flag is set if it paired its mate is unplaced; that the CIGAR length
 // matches the sequence and quality string lengths if they are non-zero; and
 // that the Paired, ProperPair, Unmapped and MateUnmapped flags are consistent.
 func IsValidRecord(r *Record) bool {
-	if r.Ref == nil && (r.Pos != -1 || r.Flags&Unmapped == 0) {
+	if (r.Ref == nil || r.Pos == -1) && r.Flags&Unmapped == 0 {
 		return false
 	}
-	if r.Flags&Paired == 0 && (r.MateRef != nil || r.MatePos != -1 || r.Flags&MateUnmapped == 0) {
-		return false
-	}
-	if r.MateRef == nil && (r.MatePos != -1 || r.Flags&MateUnmapped == 0) {
+	if r.Flags&Paired != 0 && (r.MateRef == nil || r.MatePos == -1) && r.Flags&MateUnmapped == 0 {
 		return false
 	}
 	if r.Flags&(Unmapped|ProperPair) == Unmapped|ProperPair {
