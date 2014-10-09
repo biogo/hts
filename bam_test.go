@@ -2028,3 +2028,14 @@ func (s *S) TestAdd(c *check.C) {
 		}
 	}
 }
+
+func (s *S) TestIndexRoundtrip(c *check.C) {
+	for i, test := range baiTestData {
+		expect := test.expect
+		var buf bytes.Buffer
+		c.Assert(WriteIndex(&buf, expect), check.Equals, nil)
+		got, err := ReadIndex(&buf)
+		c.Assert(err, check.Equals, nil, check.Commentf("Test %d", i))
+		c.Check(got, check.DeepEquals, expect, check.Commentf("Test %d", i))
+	}
+}
