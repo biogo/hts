@@ -26,9 +26,8 @@ var baiMagic = [4]byte{'B', 'A', 'I', 0x1}
 func ReadIndex(r io.Reader) (*Index, error) {
 	var (
 		idx   Index
-		nRef  int32
-		err   error
 		magic [4]byte
+		err   error
 	)
 	err = binary.Read(r, binary.LittleEndian, &magic)
 	if err != nil {
@@ -37,11 +36,7 @@ func ReadIndex(r io.Reader) (*Index, error) {
 	if magic != baiMagic {
 		return nil, errors.New("bam: magic number mismatch")
 	}
-	err = binary.Read(r, binary.LittleEndian, &nRef)
-	if err != nil {
-		return nil, err
-	}
-	idx.References, err = readIndices(r, nRef)
+	idx.References, err = readIndices(r)
 	if err != nil {
 		return nil, err
 	}
@@ -252,26 +247,22 @@ type Chunk struct {
 	End   bgzf.Offset
 }
 
-func readIndices(r io.Reader, n int32) ([]RefIndex, error) {
+func readIndices(r io.Reader) ([]RefIndex, error) {
+	var n int32
+	err := binary.Read(r, binary.LittleEndian, &n)
+	if err != nil {
+		return nil, err
+	}
 	if n == 0 {
 		return nil, nil
 	}
-	var err error
 	idx := make([]RefIndex, n)
 	for i := range idx {
-		err = binary.Read(r, binary.LittleEndian, &n)
+		idx[i].Bins, idx[i].Stats, err = readBins(r)
 		if err != nil {
 			return nil, err
 		}
-		idx[i].Bins, idx[i].Stats, err = readBins(r, n)
-		if err != nil {
-			return nil, err
-		}
-		err = binary.Read(r, binary.LittleEndian, &n)
-		if err != nil {
-			return nil, err
-		}
-		idx[i].Intervals, err = readIntervals(r, n)
+		idx[i].Intervals, err = readIntervals(r)
 		if err != nil {
 			return nil, err
 		}
@@ -287,14 +278,16 @@ func (b byBinNumber) Len() int           { return len(b) }
 func (b byBinNumber) Less(i, j int) bool { return b[i].Bin < b[j].Bin }
 func (b byBinNumber) Swap(i, j int)      { b[i], b[j] = b[j], b[i] }
 
-func readBins(r io.Reader, n int32) ([]Bin, *IndexStats, error) {
+func readBins(r io.Reader) ([]Bin, *IndexStats, error) {
+	var n int32
+	err := binary.Read(r, binary.LittleEndian, &n)
+	if err != nil {
+		return nil, nil, err
+	}
 	if n == 0 {
 		return nil, nil, nil
 	}
-	var (
-		idxStats *IndexStats
-		err      error
-	)
+	var idxStats *IndexStats
 	bins := make([]Bin, n)
 	for i := 0; i < len(bins); i++ {
 		err = binary.Read(r, binary.LittleEndian, &bins[i].Bin)
@@ -401,7 +394,12 @@ func (o byVirtOffset) Len() int           { return len(o) }
 func (o byVirtOffset) Less(i, j int) bool { return vOffset(o[i]) < vOffset(o[j]) }
 func (o byVirtOffset) Swap(i, j int)      { o[i], o[j] = o[j], o[i] }
 
-func readIntervals(r io.Reader, n int32) ([]bgzf.Offset, error) {
+func readIntervals(r io.Reader) ([]bgzf.Offset, error) {
+	var n int32
+	err := binary.Read(r, binary.LittleEndian, &n)
+	if err != nil {
+		return nil, err
+	}
 	if n == 0 {
 		return nil, nil
 	}
