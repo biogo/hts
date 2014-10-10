@@ -231,8 +231,50 @@ func (i *Index) Chunks(rid, beg, end int) []Chunk {
 	if !sort.IsSorted(byBeginOffset(chunks)) {
 		sort.Sort(byBeginOffset(chunks))
 	}
+
+	return adjacent(chunks)
+}
+
+type Strategy func([]Chunk) []Chunk
+
+var (
+	Identity Strategy = identity
+	Adjacent Strategy = adjacent
+	Squash   Strategy = squash
+)
+
+func CompressorStrategy(near int64) Strategy {
+	const blockMask = 1<<16 - 1
+	return func(chunks []Chunk) []Chunk {
+		if len(chunks) == 0 {
+			return nil
+		}
+		for c := 1; c < len(chunks); c++ {
+			leftChunk := chunks[c-1]
+			leftChunk.End.File += near
+			rightChunk := &chunks[c]
+			leftEndOffset := vOffset(leftChunk.End)
+			if leftEndOffset&^blockMask >= vOffset(rightChunk.Begin)&^blockMask {
+				rightChunk.Begin = leftChunk.Begin
+				if leftEndOffset > vOffset(rightChunk.End) {
+					rightChunk.End = leftChunk.End
+				}
+				chunks = append(chunks[:c-1], chunks[c:]...)
+				c--
+			}
+		}
+		return chunks
+	}
+}
+
+func identity(chunks []Chunk) []Chunk { return chunks }
+
+func adjacent(chunks []Chunk) []Chunk {
+	if len(chunks) == 0 {
+		return nil
+	}
 	for c := 1; c < len(chunks); c++ {
-		leftChunk := &chunks[c-1]
+		leftChunk := chunks[c-1]
 		rightChunk := &chunks[c]
 		leftEndOffset := vOffset(leftChunk.End)
 		if leftEndOffset >= vOffset(rightChunk.Begin) {
@@ -244,6 +286,36 @@ func (i *Index) Chunks(rid, beg, end int) []Chunk {
 			c--
 		}
 	}
-
 	return chunks
+}
+
+func squash(chunks []Chunk) []Chunk {
+	if len(chunks) == 0 {
+		return nil
+	}
+	left := chunks[0].Begin
+	right := chunks[0].End
+	for _, c := range chunks[1:] {
+		if vOffset(c.End) > vOffset(right) {
+			right = c.End
+		}
+	}
+	return []Chunk{{Begin: left, End: right}}
+}
+
+func (i *Index) MergeChunks(s Strategy) {
+	if s == nil {
+		return
+	}
+	for r, ref := range i.References {
+		for b, bin := range ref.Bins {
+			if !sort.IsSorted(byBeginOffset(bin.Chunks)) {
+				sort.Sort(byBeginOffset(bin.Chunks))
+			}
+			i.References[r].Bins[b].Chunks = s(bin.Chunks)
+			if !sort.IsSorted(byBeginOffset(bin.Chunks)) {
+				sort.Sort(byBeginOffset(bin.Chunks))
+			}
+		}
+	}
 }
