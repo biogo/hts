@@ -244,19 +244,16 @@ var (
 )
 
 func CompressorStrategy(near int64) Strategy {
-	const blockMask = 1<<16 - 1
 	return func(chunks []Chunk) []Chunk {
 		if len(chunks) == 0 {
 			return nil
 		}
 		for c := 1; c < len(chunks); c++ {
 			leftChunk := chunks[c-1]
-			leftChunk.End.File += near
 			rightChunk := &chunks[c]
-			leftEndOffset := vOffset(leftChunk.End)
-			if leftEndOffset&^blockMask >= vOffset(rightChunk.Begin)&^blockMask {
+			if leftChunk.End.File+near >= rightChunk.Begin.File {
 				rightChunk.Begin = leftChunk.Begin
-				if leftEndOffset > vOffset(rightChunk.End) {
+				if vOffset(leftChunk.End) > vOffset(rightChunk.End) {
 					rightChunk.End = leftChunk.End
 				}
 				chunks = append(chunks[:c-1], chunks[c:]...)
