@@ -304,12 +304,12 @@ func (i *Index) MergeChunks(s Strategy) {
 	if s == nil {
 		return
 	}
-	for r, ref := range i.References {
+	for _, ref := range i.References {
 		for b, bin := range ref.Bins {
 			if !sort.IsSorted(byBeginOffset(bin.Chunks)) {
 				sort.Sort(byBeginOffset(bin.Chunks))
 			}
-			i.References[r].Bins[b].Chunks = s(bin.Chunks)
+			ref.Bins[b].Chunks = s(bin.Chunks)
 			if !sort.IsSorted(byBeginOffset(bin.Chunks)) {
 				sort.Sort(byBeginOffset(bin.Chunks))
 			}

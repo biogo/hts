@@ -2029,6 +2029,298 @@ func (s *S) TestAdd(c *check.C) {
 	}
 }
 
+var chunkMergeTests = []struct {
+	index func() *Index
+
+	expectAdjacent *Index
+
+	expectSquash *Index
+
+	compStrat      Strategy
+	expectCompress *Index
+}{
+	{
+		index: func() *Index {
+			return &Index{
+				References: []RefIndex{
+					{
+						Bins: []Bin{
+							{
+								Bin: 0,
+								Chunks: []Chunk{
+									{
+										Begin: bgzf.Offset{File: 1, Block: 0},
+										End:   bgzf.Offset{File: 2, Block: 0},
+									},
+									{
+										Begin: bgzf.Offset{File: 2, Block: 0},
+										End:   bgzf.Offset{File: 3, Block: 0},
+									},
+								},
+							},
+							{
+								Bin: 1,
+								Chunks: []Chunk{
+									{
+										Begin: bgzf.Offset{File: 1, Block: 0},
+										End:   bgzf.Offset{File: 2, Block: 0},
+									},
+									{
+										Begin: bgzf.Offset{File: 2, Block: 0},
+										End:   bgzf.Offset{File: 3, Block: 0},
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+		},
+		expectAdjacent: &Index{
+			References: []RefIndex{
+				{
+					Bins: []Bin{
+						{
+							Bin: 0,
+							Chunks: []Chunk{
+								{
+									Begin: bgzf.Offset{File: 1, Block: 0},
+									End:   bgzf.Offset{File: 3, Block: 0},
+								},
+							},
+						},
+						{
+							Bin: 1,
+							Chunks: []Chunk{
+								{
+									Begin: bgzf.Offset{File: 1, Block: 0},
+									End:   bgzf.Offset{File: 3, Block: 0},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		expectSquash: &Index{
+			References: []RefIndex{
+				{
+					Bins: []Bin{
+						{
+							Bin: 0,
+							Chunks: []Chunk{
+								{
+									Begin: bgzf.Offset{File: 1, Block: 0},
+									End:   bgzf.Offset{File: 3, Block: 0},
+								},
+							},
+						},
+						{
+							Bin: 1,
+							Chunks: []Chunk{
+								{
+									Begin: bgzf.Offset{File: 1, Block: 0},
+									End:   bgzf.Offset{File: 3, Block: 0},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	},
+	{
+		index: func() *Index {
+			return &Index{
+				References: []RefIndex{
+					{
+						Bins: []Bin{
+							{
+								Bin: 0,
+								Chunks: []Chunk{
+									{
+										Begin: bgzf.Offset{File: 1, Block: 0},
+										End:   bgzf.Offset{File: 2, Block: 0},
+									},
+									{
+										Begin: bgzf.Offset{File: 3, Block: 0},
+										End:   bgzf.Offset{File: 4, Block: 0},
+									},
+								},
+							},
+							{
+								Bin: 1,
+								Chunks: []Chunk{
+									{
+										Begin: bgzf.Offset{File: 1, Block: 0},
+										End:   bgzf.Offset{File: 2, Block: 0},
+									},
+									{
+										Begin: bgzf.Offset{File: 3, Block: 0},
+										End:   bgzf.Offset{File: 4, Block: 0},
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+		},
+		expectAdjacent: &Index{
+			References: []RefIndex{
+				{
+					Bins: []Bin{
+						{
+							Bin: 0,
+							Chunks: []Chunk{
+								{
+									Begin: bgzf.Offset{File: 1, Block: 0},
+									End:   bgzf.Offset{File: 2, Block: 0},
+								},
+								{
+									Begin: bgzf.Offset{File: 3, Block: 0},
+									End:   bgzf.Offset{File: 4, Block: 0},
+								},
+							},
+						},
+						{
+							Bin: 1,
+							Chunks: []Chunk{
+								{
+									Begin: bgzf.Offset{File: 1, Block: 0},
+									End:   bgzf.Offset{File: 2, Block: 0},
+								},
+								{
+									Begin: bgzf.Offset{File: 3, Block: 0},
+									End:   bgzf.Offset{File: 4, Block: 0},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		expectSquash: &Index{
+			References: []RefIndex{
+				{
+					Bins: []Bin{
+						{
+							Bin: 0,
+							Chunks: []Chunk{
+								{
+									Begin: bgzf.Offset{File: 1, Block: 0},
+									End:   bgzf.Offset{File: 4, Block: 0},
+								},
+							},
+						},
+						{
+							Bin: 1,
+							Chunks: []Chunk{
+								{
+									Begin: bgzf.Offset{File: 1, Block: 0},
+									End:   bgzf.Offset{File: 4, Block: 0},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	},
+	{
+		index: func() *Index {
+			return &Index{
+				References: []RefIndex{
+					{
+						Bins: []Bin{
+							{
+								Bin: 0,
+								Chunks: []Chunk{
+									{
+										Begin: bgzf.Offset{File: 1, Block: 0},
+										End:   bgzf.Offset{File: 2, Block: 0},
+									},
+									{
+										Begin: bgzf.Offset{File: 0xffff, Block: 0},
+										End:   bgzf.Offset{File: 0x10000, Block: 0},
+									},
+								},
+							},
+							{
+								Bin: 1,
+								Chunks: []Chunk{
+									{
+										Begin: bgzf.Offset{File: 1, Block: 0},
+										End:   bgzf.Offset{File: 2, Block: 0},
+									},
+									{
+										Begin: bgzf.Offset{File: 0x4ffff, Block: 0},
+										End:   bgzf.Offset{File: 0x50000, Block: 0},
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+		},
+		compStrat: CompressorStrategy(0x20000),
+		expectCompress: &Index{
+			References: []RefIndex{
+				{
+					Bins: []Bin{
+						{
+							Bin: 0,
+							Chunks: []Chunk{
+								{
+									Begin: bgzf.Offset{File: 1, Block: 0},
+									End:   bgzf.Offset{File: 0x10000, Block: 0},
+								},
+							},
+						},
+						{
+							Bin: 1,
+							Chunks: []Chunk{
+								{
+									Begin: bgzf.Offset{File: 1, Block: 0},
+									End:   bgzf.Offset{File: 2, Block: 0},
+								},
+								{
+									Begin: bgzf.Offset{File: 0x4ffff, Block: 0},
+									End:   bgzf.Offset{File: 0x50000, Block: 0},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	},
+}
+
+func (s *S) TestMergeChunks(c *check.C) {
+	var bai *Index
+	for _, test := range chunkMergeTests {
+		if test.expectAdjacent != nil {
+			bai = test.index()
+			bai.MergeChunks(Adjacent)
+			c.Check(bai, check.DeepEquals, test.expectAdjacent)
+		}
+
+		if test.expectSquash != nil {
+			bai = test.index()
+			bai.MergeChunks(Squash)
+			c.Check(bai, check.DeepEquals, test.expectSquash)
+		}
+
+		if test.expectCompress != nil {
+			bai = test.index()
+			bai.MergeChunks(test.compStrat)
+			c.Check(bai, check.DeepEquals, test.expectCompress)
+		}
+	}
+}
+
 func (s *S) TestIndexRoundtrip(c *check.C) {
 	for i, test := range baiTestData {
 		expect := test.expect
