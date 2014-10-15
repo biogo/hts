@@ -178,10 +178,10 @@ func (bg *Writer) Write(b []byte) (int, error) {
 			_n = copy(c.block[c.next:], b)
 			b = b[_n:]
 			c.next += _n
+			n += _n
 		}
 
 		if c.next == len(c.block) || _n == 0 {
-			n += c.buf.Len()
 			bg.queue <- c
 			bg.qwg.Add(1)
 			go c.writeBlock()

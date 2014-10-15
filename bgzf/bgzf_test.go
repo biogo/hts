@@ -10,6 +10,7 @@ package bgzf
 
 import (
 	"bytes"
+	"compress/gzip"
 	"flag"
 	"io"
 	"io/ioutil"
@@ -337,6 +338,27 @@ func TestRoundTripMultiSeek(t *testing.T) {
 		t.Errorf("payload is %q, want %q", string(b[:n]), "payloadTwo")
 	}
 	os.Remove(fname)
+}
+
+type zero struct{}
+
+func (z zero) Read(p []byte) (int, error) {
+	for i := range p {
+		p[i] = 0
+	}
+	return len(p), nil
+}
+
+func TestWriteByteCount(t *testing.T) {
+	cw := NewWriterLevel(ioutil.Discard, gzip.BestCompression, 4)
+	defer cw.Close()
+	n, err := io.Copy(cw, &io.LimitedReader{R: new(zero), N: 100000})
+	if n != 100000 {
+		t.Errorf("Unexpected number of bytes, got:%d, want:%d", n, 100000)
+	}
+	if err != nil {
+		t.Errorf("Unexpected error got:%v", err)
+	}
 }
 
 func BenchmarkWrite(b *testing.B) {
