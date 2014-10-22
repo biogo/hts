@@ -6,21 +6,19 @@ package bgzf
 
 import (
 	"bytes"
-	"compress/gzip"
+	"code.google.com/p/biogo.bam/bgzf/gzip"
 	"io"
 	"io/ioutil"
 )
 
 type Reader struct {
 	Header
-	rs  io.ReadSeeker
-	gz  *gzip.Reader
-	err error
-}
+	r  io.Reader
+	gz *gzip.Reader
 
-func readSeeker(r io.Reader) io.ReadSeeker {
-	rs, _ := r.(io.ReadSeeker)
-	return rs
+	offset Offset
+
+	err error
 }
 
 func NewReader(r io.Reader) (*Reader, error) {
@@ -28,13 +26,14 @@ func NewReader(r io.Reader) (*Reader, error) {
 	if err != nil {
 		return nil, err
 	}
+	gz.Multistream(false)
 	h := Header(gz.Header)
 	if h.BlockSize() < 0 {
 		return nil, ErrNoBlockSize
 	}
 	bg := &Reader{
 		Header: h,
-		rs:     readSeeker(r),
+		r:      r,
 		gz:     gz,
 	}
 	return bg, nil
@@ -46,23 +45,30 @@ type Offset struct {
 }
 
 func (bg *Reader) Seek(off Offset, whence int) error {
-	if bg.rs == nil {
+	rs, ok := bg.r.(io.ReadSeeker)
+	if !ok {
 		return ErrNotASeeker
 	}
-	_, bg.err = bg.rs.Seek(off.File, whence)
+	_, bg.err = rs.Seek(off.File, whence)
 	if bg.err != nil {
 		return bg.err
 	}
-	bg.err = bg.gz.Reset(bg.rs)
+	bg.err = bg.gz.Reset(rs)
 	if bg.err != nil {
 		return bg.err
 	}
+	bg.gz.Multistream(false)
 	bg.Header = Header(bg.gz.Header)
+	bg.offset = Offset{File: off.File, Block: 0}
 	if off.Block > 0 {
-		_, bg.err = io.CopyN(ioutil.Discard, bg.gz, int64(off.Block))
+		var n int64
+		n, bg.err = io.CopyN(ioutil.Discard, bg.gz, int64(off.Block))
+		bg.offset.Block = uint16(n)
 	}
 	return bg.err
 }
+
+func (bg *Reader) Offset() Offset { return bg.offset }
 
 func (bg *Reader) Close() error {
 	return bg.gz.Close()
@@ -72,25 +78,31 @@ func (bg *Reader) Read(p []byte) (int, error) {
 	if bg.err != nil {
 		return 0, bg.err
 	}
-	var (
-		n         int
-		clearSize bool
-	)
+
+	var n int
 	for n < len(p) && bg.err == nil {
 		var _n int
 		_n, bg.err = bg.gz.Read(p[n:])
-		if _n == 0 {
-			clearSize = true
-		}
 		n += _n
-	}
-	if clearSize {
-		i := bytes.Index(bg.Extra, bgzfExtraPrefix)
-		if i <= len(bg.Extra)-6 {
-			copy(bg.Extra[i:i+6], bg.Extra[i+6:])
-			bg.Extra = bg.Extra[:len(bg.Extra)-6]
+		bg.offset.Block += uint16(_n)
+		// FIXME(kortschak) Reading through members fails after a seek.
+		if bg.err == io.EOF {
+			if n == len(p) {
+				bg.err = nil
+				break
+			}
+			bs := bg.Header.BlockSize()
+			bg.err = bg.gz.Reset(bg.r)
+			if bs < 0 || bg.err != nil {
+				bg.offset.File = -1
+			} else {
+				bg.offset.File += int64(bs)
+			}
+			bg.offset.Block = 0
+			bg.gz.Multistream(false)
 		}
 	}
+
 	return n, bg.err
 }
 

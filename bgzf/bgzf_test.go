@@ -125,11 +125,11 @@ func TestRoundTrip(t *testing.T) {
 	if r.Comment != "comment" {
 		t.Errorf("comment is %q, want %q", r.Comment, "comment")
 	}
-	if bl := r.BlockSize(); bl != -1 {
-		t.Errorf("BlockSize() is %d, want %d", bl, -1)
+	if bl := r.BlockSize(); bl != wbl {
+		t.Errorf("BlockSize() is %d, want %d", bl, wbl)
 	}
-	if string(r.Extra) != "extra" {
-		t.Errorf("extra is %q, want %q", r.Extra, "extra")
+	if string(r.Extra) != "BC\x02\x008\x00extra" {
+		t.Errorf("extra is %q, want %q", r.Extra, "BC\x02\x008\x00extra")
 	}
 	if r.ModTime.Unix() != 1e8 {
 		t.Errorf("mtime is %d, want %d", r.ModTime.Unix(), uint32(1e8))
@@ -145,7 +145,6 @@ func TestRoundTrip(t *testing.T) {
 // TestRoundTripMulti tests that bgzipping and then bgunzipping is the identity
 // function for a multiple member bgzf.
 func TestRoundTripMulti(t *testing.T) {
-	t.Skip("Blocked gzip reading is not currently supported.")
 	var wbl [2]int
 	buf := new(bytes.Buffer)
 
@@ -200,26 +199,26 @@ func TestRoundTripMulti(t *testing.T) {
 	if bl != wbl[0] {
 		t.Errorf("BlockSize() is %d, want %d", bl, wbl[0])
 	}
-	b = make([]byte, bl+1)
+	b = make([]byte, len("payload1payloadTwo"))
 	n, err = r.Read(b)
+	if string(b[:n]) != "payload1payloadTwo" {
+		t.Errorf("payload is %q, want %q", string(b[:n]), "payload1")
+	}
 	if err != nil {
 		t.Errorf("Read: %v", err)
-	}
-	if string(b[:n]) != "payload1" {
-		t.Errorf("payload is %q, want %q", string(b[:n]), "payload1")
 	}
 
 	bl = r.BlockSize()
-	if bl != wbl[1] {
-		t.Errorf("BlockSize() is %d, want %d", bl, wbl[1])
+	if bl != wbl[0] {
+		t.Errorf("BlockSize() is %d, want %d", bl, wbl[0])
 	}
-	b = make([]byte, bl+1)
+	b = make([]byte, 1)
 	n, err = r.Read(b)
-	if err != nil {
-		t.Errorf("Read: %v", err)
+	if string(b[:n]) != "" {
+		t.Errorf("payload is %q, want %q", string(b[:n]), "")
 	}
-	if string(b[:n]) != "payloadTwo" {
-		t.Errorf("payload is %q, want %q", string(b[:n]), "payloadTwo")
+	if err != io.EOF {
+		t.Errorf("Read: %v", err)
 	}
 
 	if r.Seek(Offset{o, 0}, 1) == nil {
@@ -284,7 +283,7 @@ func TestRoundTripMultiSeek(t *testing.T) {
 	}
 	blEnc := string([]byte{byte(wbl[0] - 1), byte((wbl[0] - 1) >> 8)})
 	if string(r.Extra) != "BC\x02\x00"+blEnc+"extra" {
-		t.Errorf("extra is %q, want %q", r.Extra, "BC\x02\x00\x08\x00extra")
+		t.Errorf("extra is %q, want %q", r.Extra, "BC\x02\x00"+blEnc+"extra")
 	}
 	if r.ModTime.Unix() != 1e8 {
 		t.Errorf("mtime is %d, want %d", r.ModTime.Unix(), uint32(1e8))
@@ -296,18 +295,17 @@ func TestRoundTripMultiSeek(t *testing.T) {
 	if bl != wbl[0] {
 		t.Errorf("BlockSize() is %d, want %d", bl, wbl[0])
 	}
-	// FIXME(kortschak) We cannot stop at the end of a block, so
-	// we currently accept a complete read.
 	b = make([]byte, len("payload1payloadTwo")+1)
 	n, err = r.Read(b)
 	if err != io.EOF {
 		t.Errorf("Read: %v", err)
 	}
-	if bl := r.BlockSize(); bl != -1 {
-		t.Errorf("BlockSize() is %d, want %d", bl, -1)
+	if bl := r.BlockSize(); bl != wbl[1] {
+		t.Errorf("BlockSize() is %d, want %d", bl, wbl[1])
 	}
-	if string(r.Extra) != "extra" {
-		t.Errorf("extra is %q, want %q", r.Extra, "extra")
+	blEnc = string([]byte{byte(wbl[1] - 1), byte((wbl[1] - 1) >> 8)})
+	if string(r.Extra) != "BC\x02\x00"+blEnc+"extra" {
+		t.Errorf("extra is %q, want %q", r.Extra, "BC\x02\x00"+blEnc+"extra")
 	}
 	if string(b[:n]) != "payload1payloadTwo" {
 		t.Errorf("payload is %q, want %q", string(b[:n]), "payload1payloadTwo")
