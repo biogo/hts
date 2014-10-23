@@ -85,7 +85,6 @@ func (bg *Reader) Read(p []byte) (int, error) {
 		_n, bg.err = bg.gz.Read(p[n:])
 		n += _n
 		bg.offset.Block += uint16(_n)
-		// FIXME(kortschak) Reading through members fails after a seek.
 		if bg.err == io.EOF {
 			if n == len(p) {
 				bg.err = nil
