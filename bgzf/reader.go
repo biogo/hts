@@ -5,7 +5,9 @@
 package bgzf
 
 import (
+	"bufio"
 	"bytes"
+	"code.google.com/p/biogo.bam/bgzf/flate"
 	"code.google.com/p/biogo.bam/bgzf/gzip"
 	"io"
 	"io/ioutil"
@@ -14,6 +16,7 @@ import (
 type Reader struct {
 	Header
 	r  io.Reader
+	fr flate.Reader
 	gz *gzip.Reader
 
 	offset Offset
@@ -21,8 +24,16 @@ type Reader struct {
 	err error
 }
 
+func makeReader(r io.Reader) flate.Reader {
+	if rr, ok := r.(flate.Reader); ok {
+		return rr
+	}
+	return bufio.NewReader(r)
+}
+
 func NewReader(r io.Reader) (*Reader, error) {
-	gz, err := gzip.NewReader(r)
+	fr := makeReader(r)
+	gz, err := gzip.NewReader(fr)
 	if err != nil {
 		return nil, err
 	}
@@ -34,6 +45,7 @@ func NewReader(r io.Reader) (*Reader, error) {
 	bg := &Reader{
 		Header: h,
 		r:      r,
+		fr:     fr,
 		gz:     gz,
 	}
 	return bg, nil
@@ -42,6 +54,10 @@ func NewReader(r io.Reader) (*Reader, error) {
 type Offset struct {
 	File  int64
 	Block uint16
+}
+
+type reseter interface {
+	Reset(io.Reader)
 }
 
 func (bg *Reader) Seek(off Offset, whence int) error {
@@ -53,7 +69,12 @@ func (bg *Reader) Seek(off Offset, whence int) error {
 	if bg.err != nil {
 		return bg.err
 	}
-	bg.err = bg.gz.Reset(rs)
+	if r, ok := bg.fr.(reseter); ok {
+		r.Reset(bg.r)
+	} else if bg.r != bg.fr {
+		bg.fr = makeReader(bg.r)
+	}
+	bg.err = bg.gz.Reset(bg.fr)
 	if bg.err != nil {
 		return bg.err
 	}
@@ -91,7 +112,7 @@ func (bg *Reader) Read(p []byte) (int, error) {
 				break
 			}
 			bs := bg.Header.BlockSize()
-			bg.err = bg.gz.Reset(bg.r)
+			bg.err = bg.gz.Reset(bg.fr)
 			if bs < 0 || bg.err != nil {
 				bg.offset.File = -1
 			} else {
