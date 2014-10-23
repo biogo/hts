@@ -263,6 +263,9 @@ func TestRoundTripMultiSeek(t *testing.T) {
 	if err := w.Close(); err != nil {
 		t.Fatalf("Writer.Close: %v", err)
 	}
+	if err := f.Close(); err != nil {
+		t.Fatalf("os.File.Close: %v", err)
+	}
 	wbl[1] = int(cw.bytes-offset) - len(magicBlock)
 
 	var (
