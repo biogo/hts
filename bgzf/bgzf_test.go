@@ -125,13 +125,13 @@ func TestRoundTrip(t *testing.T) {
 	if r.Comment != "comment" {
 		t.Errorf("comment is %q, want %q", r.Comment, "comment")
 	}
-	if bl := r.BlockSize(); bl != wbl {
+	if bl := r.BlockSize(); bl != len(magicBlock) {
 		t.Errorf("BlockSize() is %d, want %d", bl, wbl)
 	}
-	if string(r.Extra) != "BC\x02\x008\x00extra" {
-		t.Errorf("extra is %q, want %q", r.Extra, "BC\x02\x008\x00extra")
+	if string(r.Extra) != "BC\x02\x00\x1b\x00" {
+		t.Errorf("extra is %q, want %q", r.Extra, "BC\x02\x00\x1b\x00")
 	}
-	if r.ModTime.Unix() != 1e8 {
+	if r.ModTime.Unix() != 0 {
 		t.Errorf("mtime is %d, want %d", r.ModTime.Unix(), uint32(1e8))
 	}
 	if r.Name != "name" {
@@ -209,8 +209,8 @@ func TestRoundTripMulti(t *testing.T) {
 	}
 
 	bl = r.BlockSize()
-	if bl != wbl[0] {
-		t.Errorf("BlockSize() is %d, want %d", bl, wbl[0])
+	if bl != wbl[1] {
+		t.Errorf("BlockSize() is %d, want %d", bl, wbl[1])
 	}
 	b = make([]byte, 1)
 	n, err = r.Read(b)
@@ -303,12 +303,11 @@ func TestRoundTripMultiSeek(t *testing.T) {
 	if err != io.EOF {
 		t.Errorf("Read: %v", err)
 	}
-	if bl := r.BlockSize(); bl != wbl[1] {
-		t.Errorf("BlockSize() is %d, want %d", bl, wbl[1])
+	if bl := r.BlockSize(); bl != len(magicBlock) {
+		t.Errorf("BlockSize() is %d, want %d", bl, len(magicBlock))
 	}
-	blEnc = string([]byte{byte(wbl[1] - 1), byte((wbl[1] - 1) >> 8)})
-	if string(r.Extra) != "BC\x02\x00"+blEnc+"extra" {
-		t.Errorf("extra is %q, want %q", r.Extra, "BC\x02\x00"+blEnc+"extra")
+	if string(r.Extra) != "BC\x02\x00\x1b\x00" {
+		t.Errorf("extra is %q, want %q", r.Extra, "BC\x02\x00\x1b\x00")
 	}
 	if string(b[:n]) != "payload1payloadTwo" {
 		t.Errorf("payload is %q, want %q", string(b[:n]), "payload1payloadTwo")

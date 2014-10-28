@@ -111,14 +111,14 @@ func (bg *Reader) Read(p []byte) (int, error) {
 				bg.err = nil
 				break
 			}
-			bs := bg.Header.BlockSize()
-			bg.err = bg.gz.Reset(bg.fr)
-			if bs < 0 || bg.err != nil {
+			if bs := bg.Header.BlockSize(); bs < 0 {
 				bg.offset.File = -1
 			} else {
 				bg.offset.File += int64(bs)
 			}
 			bg.offset.Block = 0
+			bg.err = bg.gz.Reset(bg.fr)
+			bg.Header = Header(bg.gz.Header)
 			bg.gz.Multistream(false)
 		}
 	}
