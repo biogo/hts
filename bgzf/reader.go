@@ -16,7 +16,7 @@ import (
 type Reader struct {
 	Header
 	r  io.Reader
-	fr flate.Reader
+	cr *countReader
 	gz *gzip.Reader
 
 	offset Offset
@@ -24,16 +24,37 @@ type Reader struct {
 	err error
 }
 
-func makeReader(r io.Reader) flate.Reader {
-	if rr, ok := r.(flate.Reader); ok {
-		return rr
+func makeReader(r io.Reader) *countReader {
+	switch r := r.(type) {
+	case *countReader:
+		panic("bgzf: illegal use of internal type")
+	case flate.Reader:
+		return &countReader{r: r}
+	default:
+		return &countReader{r: bufio.NewReader(r)}
 	}
-	return bufio.NewReader(r)
+}
+
+type countReader struct {
+	r flate.Reader
+	n int64
+}
+
+func (r *countReader) Read(p []byte) (int, error) {
+	n, err := r.r.Read(p)
+	r.n += int64(n)
+	return n, err
+}
+
+func (r *countReader) ReadByte() (byte, error) {
+	b, err := r.r.ReadByte()
+	r.n++
+	return b, err
 }
 
 func NewReader(r io.Reader) (*Reader, error) {
-	fr := makeReader(r)
-	gz, err := gzip.NewReader(fr)
+	cr := makeReader(r)
+	gz, err := gzip.NewReader(cr)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +66,7 @@ func NewReader(r io.Reader) (*Reader, error) {
 	bg := &Reader{
 		Header: h,
 		r:      r,
-		fr:     fr,
+		cr:     cr,
 		gz:     gz,
 	}
 	return bg, nil
@@ -69,12 +90,13 @@ func (bg *Reader) Seek(off Offset, whence int) error {
 	if bg.err != nil {
 		return bg.err
 	}
-	if r, ok := bg.fr.(reseter); ok {
+	if r, ok := bg.cr.r.(reseter); ok {
 		r.Reset(bg.r)
-	} else if bg.r != bg.fr {
-		bg.fr = makeReader(bg.r)
+	} else {
+		bg.cr = makeReader(bg.r)
 	}
-	bg.err = bg.gz.Reset(bg.fr)
+	bg.cr.n = off.File
+	bg.err = bg.gz.Reset(bg.cr)
 	if bg.err != nil {
 		return bg.err
 	}
@@ -115,9 +137,13 @@ func (bg *Reader) Read(p []byte) (int, error) {
 				bg.offset.File = -1
 			} else {
 				bg.offset.File += int64(bs)
+				if bg.offset.File != bg.cr.n {
+					bg.err = ErrBlockSizeMismatch
+					break
+				}
 			}
 			bg.offset.Block = 0
-			bg.err = bg.gz.Reset(bg.fr)
+			bg.err = bg.gz.Reset(bg.cr)
 			bg.Header = Header(bg.gz.Header)
 			bg.gz.Multistream(false)
 		}
