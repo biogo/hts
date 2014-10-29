@@ -133,7 +133,7 @@ func (bg *Reader) Read(p []byte) (int, error) {
 				bg.err = nil
 				break
 			}
-			if bs := bg.Header.BlockSize(); bs < 0 {
+			if bs := bg.Header.BlockSize(); bs < 0 || bg.offset.File < 0 {
 				bg.offset.File = -1
 			} else {
 				bg.offset.File += int64(bs)
