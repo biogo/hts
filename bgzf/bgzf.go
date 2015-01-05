@@ -35,11 +35,12 @@ func init() {
 }
 
 var (
-	ErrClosed        = errors.New("bgzf: use of closed writer")
-	ErrBlockOverflow = errors.New("bgzf: block overflow")
-	ErrWrongFileType = errors.New("bgzf: file is a directory")
-	ErrNotASeeker    = errors.New("bgzf: not a seeker")
-	ErrNoBlockSize   = errors.New("bgzf: could not determine block size")
+	ErrClosed            = errors.New("bgzf: use of closed writer")
+	ErrBlockOverflow     = errors.New("bgzf: block overflow")
+	ErrWrongFileType     = errors.New("bgzf: file is a directory")
+	ErrNotASeeker        = errors.New("bgzf: not a seeker")
+	ErrNoBlockSize       = errors.New("bgzf: could not determine block size")
+	ErrBlockSizeMismatch = errors.New("bgzf: unexpected block size")
 )
 
 func CheckEOF(f *os.File) (bool, error) {
