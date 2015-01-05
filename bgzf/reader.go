@@ -7,8 +7,8 @@ package bgzf
 import (
 	"bufio"
 	"bytes"
-	"code.google.com/p/biogo.bam/bgzf/flate"
-	"code.google.com/p/biogo.bam/bgzf/gzip"
+	"compress/flate"
+	"compress/gzip"
 	"io"
 	"io/ioutil"
 )
