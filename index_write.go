@@ -71,7 +71,7 @@ func writeBins(w io.Writer, bins []Bin, idxStats *IndexStats) error {
 	return nil
 }
 
-func writeChunks(w io.Writer, chunks []Chunk) error {
+func writeChunks(w io.Writer, chunks []bgzf.Chunk) error {
 	err := binary.Write(w, binary.LittleEndian, int32(len(chunks)))
 	if err != nil {
 		return fmt.Errorf("bam: failed to write bin count: %v", err)

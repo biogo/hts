@@ -1405,13 +1405,13 @@ var baiTestData = []struct {
 				{
 					Bins: []Bin{
 						{
-							Bin: 4681, Chunks: []Chunk{
+							Bin: 4681, Chunks: []bgzf.Chunk{
 								{Begin: bgzf.Offset{File: 98, Block: 0}, End: bgzf.Offset{File: 401, Block: 0}},
 							},
 						},
 					},
 					Stats: &IndexStats{
-						Chunk:    Chunk{Begin: bgzf.Offset{File: 98, Block: 0}, End: bgzf.Offset{File: 401, Block: 0}},
+						Chunk:    bgzf.Chunk{Begin: bgzf.Offset{File: 98, Block: 0}, End: bgzf.Offset{File: 401, Block: 0}},
 						Mapped:   8,
 						Unmapped: 1,
 					},
@@ -1467,13 +1467,13 @@ var baiTestData = []struct {
 				{
 					Bins: []Bin{
 						{
-							Bin: 4681, Chunks: []Chunk{
+							Bin: 4681, Chunks: []bgzf.Chunk{
 								{Begin: bgzf.Offset{File: 98, Block: 0}, End: bgzf.Offset{File: 401, Block: 0}},
 							},
 						},
 					},
 					Stats: &IndexStats{
-						Chunk:    Chunk{Begin: bgzf.Offset{File: 98, Block: 0}, End: bgzf.Offset{File: 401, Block: 0}},
+						Chunk:    bgzf.Chunk{Begin: bgzf.Offset{File: 98, Block: 0}, End: bgzf.Offset{File: 401, Block: 0}},
 						Mapped:   8,
 						Unmapped: 1,
 					},
@@ -1518,7 +1518,7 @@ var baiTestData = []struct {
 				{
 					Bins: []Bin{
 						{
-							Bin: 4681, Chunks: []Chunk{
+							Bin: 4681, Chunks: []bgzf.Chunk{
 								{Begin: bgzf.Offset{File: 98, Block: 0}, End: bgzf.Offset{File: 401, Block: 0}},
 							},
 						},
@@ -1562,7 +1562,7 @@ var baiTestData = []struct {
 				{
 					Bins: []Bin{
 						{
-							Bin: 4681, Chunks: []Chunk{
+							Bin: 4681, Chunks: []bgzf.Chunk{
 								{Begin: bgzf.Offset{File: 98, Block: 0}, End: bgzf.Offset{File: 401, Block: 0}},
 							},
 						},
@@ -1761,7 +1761,7 @@ var baiTestData = []struct {
 						Bins: []Bin{
 							{
 								Bin: 0x2070,
-								Chunks: []Chunk{
+								Chunks: []bgzf.Chunk{
 									{
 										Begin: bgzf.Offset{File: 0x1246, Block: 0x0},
 										End:   bgzf.Offset{File: 0x1246, Block: 0x1cf9},
@@ -1770,7 +1770,7 @@ var baiTestData = []struct {
 							},
 						},
 						Stats: &IndexStats{
-							Chunk: Chunk{
+							Chunk: bgzf.Chunk{
 								Begin: bgzf.Offset{File: 0x1246, Block: 0x0},
 								End:   bgzf.Offset{File: 0x1246, Block: 0x1cf9},
 							},
@@ -1782,7 +1782,7 @@ var baiTestData = []struct {
 						Bins: []Bin{
 							{
 								Bin: 0x124a,
-								Chunks: []Chunk{
+								Chunks: []bgzf.Chunk{
 									{
 										Begin: bgzf.Offset{File: 0x1246, Block: 0x1cf9},
 										End:   bgzf.Offset{File: 0x1246, Block: 0x401d},
@@ -1791,7 +1791,7 @@ var baiTestData = []struct {
 							},
 						},
 						Stats: &IndexStats{
-							Chunk: Chunk{
+							Chunk: bgzf.Chunk{
 								Begin: bgzf.Offset{File: 0x1246, Block: 0x1cf9},
 								End:   bgzf.Offset{File: 0x1246, Block: 0x401d},
 							},
@@ -1803,7 +1803,7 @@ var baiTestData = []struct {
 						Bins: []Bin{
 							{
 								Bin: 0x1253,
-								Chunks: []Chunk{
+								Chunks: []bgzf.Chunk{
 									{
 										Begin: bgzf.Offset{File: 0x1246, Block: 0x401d},
 										End:   bgzf.Offset{File: 0x1246, Block: 0x41f5},
@@ -1812,7 +1812,7 @@ var baiTestData = []struct {
 							},
 						},
 						Stats: &IndexStats{
-							Chunk: Chunk{
+							Chunk: bgzf.Chunk{
 								Begin: bgzf.Offset{File: 0x1246, Block: 0x401d},
 								End:   bgzf.Offset{File: 0x1246, Block: 0x41f5},
 							},
@@ -1877,9 +1877,67 @@ var conceptualBAIdata = []byte{
 	0x00,
 }
 
+var conceptualBAMdata = []byte{
+	// Header block [{File:0, Block:0}, {File:0, Block:87}).
+	0x1f, 0x8b, 0x08, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff,
+	0x06, 0x00, 0x42, 0x43, 0x02, 0x00, 0x64, 0x00, 0x73, 0x72,
+	0xf4, 0x65, 0xb4, 0x60, 0x60, 0x60, 0x70, 0xf0, 0x70, 0xe1,
+	0x0c, 0xf3, 0xb3, 0x32, 0xd4, 0x33, 0xe0, 0x0c, 0xf6, 0xb7,
+	0x4a, 0xce, 0xcf, 0x2f, 0x4a, 0xc9, 0xcc, 0x4b, 0x2c, 0x49,
+	0xe5, 0x72, 0x08, 0x0e, 0xe4, 0x0c, 0xf6, 0x03, 0x8a, 0xe4,
+	0x25, 0xa7, 0x16, 0x94, 0x94, 0x26, 0xe6, 0x70, 0xfa, 0x00,
+	0x95, 0x19, 0x9b, 0x18, 0x19, 0x9a, 0x9b, 0x1b, 0x59, 0x70,
+	0x31, 0x02, 0xf5, 0x72, 0x03, 0x31, 0x42, 0x1e, 0xc8, 0x61,
+	0xe0, 0x00, 0x00, 0x42, 0x51, 0xcc, 0xea, 0x57, 0x00, 0x00,
+	0x00,
+
+	// Record block [{File:101, Block:0}, {File:101, Block:157}).
+	0x1f, 0x8b, 0x08, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff,
+	0x06, 0x00, 0x42, 0x43, 0x02, 0x00, 0x62, 0x00, 0x33, 0x60,
+	0x80, 0x81, 0x03, 0xcc, 0x3c, 0x1a, 0x0c, 0x0c, 0x8c, 0x50,
+	0xde, 0x7f, 0x28, 0x00, 0xb1, 0xcd, 0x0c, 0x72, 0xcd, 0xcc,
+	0x72, 0xad, 0x92, 0x32, 0xf3, 0x0c, 0x40, 0x5c, 0x36, 0x03,
+	0xb8, 0x9e, 0x04, 0x16, 0x1e, 0x0d, 0x26, 0xac, 0x7a, 0xcc,
+	0x0d, 0x72, 0xcd, 0x21, 0x7a, 0x8c, 0xc0, 0x7a, 0x0c, 0xe1,
+	0x7a, 0x26, 0xb0, 0xf0, 0x6a, 0x08, 0x61, 0xd7, 0x63, 0x9c,
+	0x6b, 0x6e, 0x0a, 0xd6, 0x63, 0x68, 0x01, 0xe2, 0x33, 0x01,
+	0x00, 0x5a, 0x80, 0xfe, 0xec, 0x9d, 0x00, 0x00, 0x00,
+
+	// Magic block [{File:200, Block:0}, {File:200, Block:0}).
+	0x1f, 0x8b, 0x08, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff,
+	0x06, 0x00, 0x42, 0x43, 0x02, 0x00, 0x1b, 0x00, 0x03, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+
+	// End {File:228, Block:0}
+}
+
+// conceptualChunks differs from the chunks described in chunkTests
+// since samtools defines the end offset of the last chunk as the
+// end of the file. We define it as the end of the chunk itself.
+var conceptualChunks = []bgzf.Chunk{
+	{Begin: bgzf.Offset{File: 0, Block: 0}, End: bgzf.Offset{File: 0, Block: 87}},        // header
+	{Begin: bgzf.Offset{File: 101, Block: 0}, End: bgzf.Offset{File: 101, Block: 52}},    // 60m66m:bin0
+	{Begin: bgzf.Offset{File: 101, Block: 52}, End: bgzf.Offset{File: 101, Block: 104}},  // 70m76m:bin2
+	{Begin: bgzf.Offset{File: 101, Block: 104}, End: bgzf.Offset{File: 101, Block: 157}}, // 73m75m:bin18
+	{Begin: bgzf.Offset{File: 228, Block: 0}, End: bgzf.Offset{File: 228, Block: 0}},     // EOF
+}
+
+func (s *S) TestConceptualBAM(c *check.C) {
+	br, err := NewReader(bytes.NewReader(conceptualBAMdata))
+	c.Assert(err, check.Equals, nil)
+	c.Check(br.LastChunk(), check.Equals, conceptualChunks[0])
+	for _, chunk := range conceptualChunks[1:] {
+		_, err := br.Read()
+		c.Check(br.LastChunk(), check.Equals, chunk)
+		if err != nil {
+			break
+		}
+	}
+}
+
 var chunkTests = []struct {
 	beg, end int
-	expect   []Chunk
+	expect   []bgzf.Chunk
 }{
 	{
 		beg: 65000, end: 71000, // Not in covered region.
@@ -1887,25 +1945,25 @@ var chunkTests = []struct {
 	},
 	{
 		beg: 77594624, end: 80740352, // 73m77m:bin2+bin18 - This is the equivalent to the given example.
-		expect: []Chunk{
+		expect: []bgzf.Chunk{
 			{Begin: bgzf.Offset{File: 101, Block: 52}, End: bgzf.Offset{File: 228, Block: 0}},
 		},
 	},
 	{
 		beg: 62914561, end: 68157440, // 60m65m:bin0+bin2
-		expect: []Chunk{
+		expect: []bgzf.Chunk{
 			{Begin: bgzf.Offset{File: 101, Block: 0}, End: bgzf.Offset{File: 101, Block: 104}},
 		},
 	},
 	{
 		beg: 72351744, end: 80740352, // 69m77m:bin0+bin2+18
-		expect: []Chunk{
+		expect: []bgzf.Chunk{
 			{Begin: bgzf.Offset{File: 101, Block: 0}, End: bgzf.Offset{File: 228, Block: 0}},
 		},
 	},
 	{
 		beg: 61865984, end: 80740352, // 59m77m:bin0+bin2+bin18
-		expect: []Chunk{
+		expect: []bgzf.Chunk{
 			{Begin: bgzf.Offset{File: 101, Block: 0}, End: bgzf.Offset{File: 228, Block: 0}},
 		},
 	},
@@ -1944,7 +2002,7 @@ var (
 	}()
 	bamFile = []struct {
 		rec   *Record
-		chunk Chunk
+		chunk bgzf.Chunk
 	}{
 		{
 			rec: &Record{
@@ -1956,7 +2014,7 @@ var (
 					NewCigarOp(CigarMatch, 6291456),
 				},
 			},
-			chunk: Chunk{
+			chunk: bgzf.Chunk{
 				Begin: bgzf.Offset{File: 101, Block: 0},
 				End:   bgzf.Offset{File: 101, Block: 52},
 			},
@@ -1971,7 +2029,7 @@ var (
 					NewCigarOp(CigarMatch, 6291456),
 				},
 			},
-			chunk: Chunk{
+			chunk: bgzf.Chunk{
 				Begin: bgzf.Offset{File: 101, Block: 52},
 				End:   bgzf.Offset{File: 101, Block: 104},
 			},
@@ -1986,7 +2044,7 @@ var (
 					NewCigarOp(CigarMatch, 2097152),
 				},
 			},
-			chunk: Chunk{
+			chunk: bgzf.Chunk{
 				Begin: bgzf.Offset{File: 101, Block: 104},
 				End:   bgzf.Offset{File: 228, Block: 0},
 			},
@@ -2047,7 +2105,7 @@ var chunkMergeTests = []struct {
 						Bins: []Bin{
 							{
 								Bin: 0,
-								Chunks: []Chunk{
+								Chunks: []bgzf.Chunk{
 									{
 										Begin: bgzf.Offset{File: 1, Block: 0},
 										End:   bgzf.Offset{File: 2, Block: 0},
@@ -2060,7 +2118,7 @@ var chunkMergeTests = []struct {
 							},
 							{
 								Bin: 1,
-								Chunks: []Chunk{
+								Chunks: []bgzf.Chunk{
 									{
 										Begin: bgzf.Offset{File: 1, Block: 0},
 										End:   bgzf.Offset{File: 2, Block: 0},
@@ -2082,7 +2140,7 @@ var chunkMergeTests = []struct {
 					Bins: []Bin{
 						{
 							Bin: 0,
-							Chunks: []Chunk{
+							Chunks: []bgzf.Chunk{
 								{
 									Begin: bgzf.Offset{File: 1, Block: 0},
 									End:   bgzf.Offset{File: 3, Block: 0},
@@ -2091,7 +2149,7 @@ var chunkMergeTests = []struct {
 						},
 						{
 							Bin: 1,
-							Chunks: []Chunk{
+							Chunks: []bgzf.Chunk{
 								{
 									Begin: bgzf.Offset{File: 1, Block: 0},
 									End:   bgzf.Offset{File: 3, Block: 0},
@@ -2108,7 +2166,7 @@ var chunkMergeTests = []struct {
 					Bins: []Bin{
 						{
 							Bin: 0,
-							Chunks: []Chunk{
+							Chunks: []bgzf.Chunk{
 								{
 									Begin: bgzf.Offset{File: 1, Block: 0},
 									End:   bgzf.Offset{File: 3, Block: 0},
@@ -2117,7 +2175,7 @@ var chunkMergeTests = []struct {
 						},
 						{
 							Bin: 1,
-							Chunks: []Chunk{
+							Chunks: []bgzf.Chunk{
 								{
 									Begin: bgzf.Offset{File: 1, Block: 0},
 									End:   bgzf.Offset{File: 3, Block: 0},
@@ -2137,7 +2195,7 @@ var chunkMergeTests = []struct {
 						Bins: []Bin{
 							{
 								Bin: 0,
-								Chunks: []Chunk{
+								Chunks: []bgzf.Chunk{
 									{
 										Begin: bgzf.Offset{File: 1, Block: 0},
 										End:   bgzf.Offset{File: 2, Block: 0},
@@ -2150,7 +2208,7 @@ var chunkMergeTests = []struct {
 							},
 							{
 								Bin: 1,
-								Chunks: []Chunk{
+								Chunks: []bgzf.Chunk{
 									{
 										Begin: bgzf.Offset{File: 1, Block: 0},
 										End:   bgzf.Offset{File: 2, Block: 0},
@@ -2172,7 +2230,7 @@ var chunkMergeTests = []struct {
 					Bins: []Bin{
 						{
 							Bin: 0,
-							Chunks: []Chunk{
+							Chunks: []bgzf.Chunk{
 								{
 									Begin: bgzf.Offset{File: 1, Block: 0},
 									End:   bgzf.Offset{File: 2, Block: 0},
@@ -2185,7 +2243,7 @@ var chunkMergeTests = []struct {
 						},
 						{
 							Bin: 1,
-							Chunks: []Chunk{
+							Chunks: []bgzf.Chunk{
 								{
 									Begin: bgzf.Offset{File: 1, Block: 0},
 									End:   bgzf.Offset{File: 2, Block: 0},
@@ -2206,7 +2264,7 @@ var chunkMergeTests = []struct {
 					Bins: []Bin{
 						{
 							Bin: 0,
-							Chunks: []Chunk{
+							Chunks: []bgzf.Chunk{
 								{
 									Begin: bgzf.Offset{File: 1, Block: 0},
 									End:   bgzf.Offset{File: 4, Block: 0},
@@ -2215,7 +2273,7 @@ var chunkMergeTests = []struct {
 						},
 						{
 							Bin: 1,
-							Chunks: []Chunk{
+							Chunks: []bgzf.Chunk{
 								{
 									Begin: bgzf.Offset{File: 1, Block: 0},
 									End:   bgzf.Offset{File: 4, Block: 0},
@@ -2235,7 +2293,7 @@ var chunkMergeTests = []struct {
 						Bins: []Bin{
 							{
 								Bin: 0,
-								Chunks: []Chunk{
+								Chunks: []bgzf.Chunk{
 									{
 										Begin: bgzf.Offset{File: 1, Block: 0},
 										End:   bgzf.Offset{File: 2, Block: 0},
@@ -2248,7 +2306,7 @@ var chunkMergeTests = []struct {
 							},
 							{
 								Bin: 1,
-								Chunks: []Chunk{
+								Chunks: []bgzf.Chunk{
 									{
 										Begin: bgzf.Offset{File: 1, Block: 0},
 										End:   bgzf.Offset{File: 2, Block: 0},
@@ -2271,7 +2329,7 @@ var chunkMergeTests = []struct {
 					Bins: []Bin{
 						{
 							Bin: 0,
-							Chunks: []Chunk{
+							Chunks: []bgzf.Chunk{
 								{
 									Begin: bgzf.Offset{File: 1, Block: 0},
 									End:   bgzf.Offset{File: 0x10000, Block: 0},
@@ -2280,7 +2338,7 @@ var chunkMergeTests = []struct {
 						},
 						{
 							Bin: 1,
-							Chunks: []Chunk{
+							Chunks: []bgzf.Chunk{
 								{
 									Begin: bgzf.Offset{File: 1, Block: 0},
 									End:   bgzf.Offset{File: 2, Block: 0},

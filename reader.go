@@ -14,6 +14,9 @@ import (
 type Reader struct {
 	r *bgzf.Reader
 	h *Header
+	c *bgzf.Chunk
+
+	lastChunk bgzf.Chunk
 }
 
 func NewReader(r io.Reader) (*Reader, error) {
@@ -33,6 +36,8 @@ func NewReader(r io.Reader) (*Reader, error) {
 	if err != nil {
 		return nil, err
 	}
+	br.lastChunk.End = br.r.Chunk().End
+
 	return br, nil
 }
 
@@ -62,12 +67,23 @@ var (
 )
 
 func (br *Reader) Read() (*Record, error) {
+	if br.c != nil && vOffset(br.r.Chunk().End) >= vOffset(br.c.End) {
+		return nil, io.EOF
+	}
+
 	r := errReader{r: br.r}
 	bin := binaryReader{r: &r}
 
 	// Read record header data.
 	blockSize := int(bin.readInt32())
 	r.n = 0 // The blocksize field is not included in the blocksize.
+
+	// br.r.Chunk() is only valid after the call the Read(), so this
+	// must come after the first read in the record.
+	br.lastChunk.Begin = br.r.Chunk().Begin
+	defer func() {
+		br.lastChunk.End = br.r.Chunk().End
+	}()
 
 	var rec Record
 
@@ -135,6 +151,17 @@ func (br *Reader) Read() (*Record, error) {
 	}
 
 	return &rec, nil
+}
+
+func (r *Reader) SetChunk(c *bgzf.Chunk) {
+	if c != nil {
+		r.r.Seek(c.Begin, 0)
+	}
+	r.c = c
+}
+
+func (r *Reader) LastChunk() bgzf.Chunk {
+	return r.lastChunk
 }
 
 func readCigarOps(br *binaryReader, n uint16) []CigarOp {

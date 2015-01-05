@@ -43,7 +43,7 @@ func (b byBinNumber) Len() int           { return len(b) }
 func (b byBinNumber) Less(i, j int) bool { return b[i].Bin < b[j].Bin }
 func (b byBinNumber) Swap(i, j int)      { b[i], b[j] = b[j], b[i] }
 
-type byBeginOffset []Chunk
+type byBeginOffset []bgzf.Chunk
 
 func (c byBeginOffset) Len() int           { return len(c) }
 func (c byBeginOffset) Less(i, j int) bool { return vOffset(c[i].Begin) < vOffset(c[j].Begin) }
@@ -70,18 +70,13 @@ type RefIndex struct {
 
 type Bin struct {
 	Bin    uint32
-	Chunks []Chunk
+	Chunks []bgzf.Chunk
 }
 
 type IndexStats struct {
-	Chunk    Chunk
+	Chunk    bgzf.Chunk
 	Mapped   uint64
 	Unmapped uint64
-}
-
-type Chunk struct {
-	Begin bgzf.Offset
-	End   bgzf.Offset
 }
 
 func (i *Index) Sort() {
@@ -97,7 +92,7 @@ func (i *Index) Sort() {
 	}
 }
 
-func (i *Index) Add(r *Record, c Chunk) error {
+func (i *Index) Add(r *Record, c bgzf.Chunk) error {
 	if i.Unmapped == nil {
 		i.Unmapped = new(uint64)
 	}
@@ -136,7 +131,7 @@ func (i *Index) Add(r *Record, c Chunk) error {
 	i.isSorted = false // TODO(kortschak) Consider making use of this more effectively for bin search.
 	ref.Bins = append(ref.Bins, Bin{
 		Bin:    b,
-		Chunks: []Chunk{c},
+		Chunks: []bgzf.Chunk{c},
 	})
 found:
 
@@ -184,7 +179,7 @@ found:
 	return nil
 }
 
-func (i *Index) Chunks(rid, beg, end int) []Chunk {
+func (i *Index) Chunks(rid, beg, end int) []bgzf.Chunk {
 	if rid >= len(i.References) {
 		return nil
 	}
@@ -198,7 +193,7 @@ func (i *Index) Chunks(rid, beg, end int) []Chunk {
 
 	// Collect candidate chunks according to the scheme described in
 	// the SAM spec under section 5 Indexing BAM.
-	var chunks []Chunk
+	var chunks []bgzf.Chunk
 	for _, bin := range reg2bins(beg, end) {
 		b := uint32(bin)
 		c := sort.Search(len(ref.Bins), func(i int) bool { return ref.Bins[i].Bin >= b })
@@ -235,7 +230,7 @@ func (i *Index) Chunks(rid, beg, end int) []Chunk {
 	return adjacent(chunks)
 }
 
-type Strategy func([]Chunk) []Chunk
+type Strategy func([]bgzf.Chunk) []bgzf.Chunk
 
 var (
 	Identity Strategy = identity
@@ -244,7 +239,7 @@ var (
 )
 
 func CompressorStrategy(near int64) Strategy {
-	return func(chunks []Chunk) []Chunk {
+	return func(chunks []bgzf.Chunk) []bgzf.Chunk {
 		if len(chunks) == 0 {
 			return nil
 		}
@@ -264,9 +259,9 @@ func CompressorStrategy(near int64) Strategy {
 	}
 }
 
-func identity(chunks []Chunk) []Chunk { return chunks }
+func identity(chunks []bgzf.Chunk) []bgzf.Chunk { return chunks }
 
-func adjacent(chunks []Chunk) []Chunk {
+func adjacent(chunks []bgzf.Chunk) []bgzf.Chunk {
 	if len(chunks) == 0 {
 		return nil
 	}
@@ -286,7 +281,7 @@ func adjacent(chunks []Chunk) []Chunk {
 	return chunks
 }
 
-func squash(chunks []Chunk) []Chunk {
+func squash(chunks []bgzf.Chunk) []bgzf.Chunk {
 	if len(chunks) == 0 {
 		return nil
 	}
@@ -297,7 +292,7 @@ func squash(chunks []Chunk) []Chunk {
 			right = c.End
 		}
 	}
-	return []Chunk{{Begin: left, End: right}}
+	return []bgzf.Chunk{{Begin: left, End: right}}
 }
 
 func (i *Index) MergeChunks(s Strategy) {

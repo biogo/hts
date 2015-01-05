@@ -108,7 +108,7 @@ func readBins(r io.Reader) ([]Bin, *IndexStats, error) {
 	return bins, idxStats, nil
 }
 
-func readChunks(r io.Reader, n int32) ([]Chunk, error) {
+func readChunks(r io.Reader, n int32) ([]bgzf.Chunk, error) {
 	if n == 0 {
 		return nil, nil
 	}
@@ -116,7 +116,7 @@ func readChunks(r io.Reader, n int32) ([]Chunk, error) {
 		vOff uint64
 		err  error
 	)
-	chunks := make([]Chunk, n)
+	chunks := make([]bgzf.Chunk, n)
 	for i := range chunks {
 		err = binary.Read(r, binary.LittleEndian, &vOff)
 		if err != nil {
