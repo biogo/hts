@@ -116,7 +116,7 @@ func (bg *Reader) Seek(off Offset, whence int) error {
 	return bg.err
 }
 
-func (bg *Reader) Chunk() Chunk { return bg.chunk }
+func (bg *Reader) LastChunk() Chunk { return bg.chunk }
 
 func (bg *Reader) Close() error {
 	return bg.gz.Close()

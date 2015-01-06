@@ -36,7 +36,7 @@ func NewReader(r io.Reader) (*Reader, error) {
 	if err != nil {
 		return nil, err
 	}
-	br.lastChunk.End = br.r.Chunk().End
+	br.lastChunk.End = br.r.LastChunk().End
 
 	return br, nil
 }
@@ -67,7 +67,7 @@ var (
 )
 
 func (br *Reader) Read() (*Record, error) {
-	if br.c != nil && vOffset(br.r.Chunk().End) >= vOffset(br.c.End) {
+	if br.c != nil && vOffset(br.r.LastChunk().End) >= vOffset(br.c.End) {
 		return nil, io.EOF
 	}
 
@@ -80,9 +80,9 @@ func (br *Reader) Read() (*Record, error) {
 
 	// br.r.Chunk() is only valid after the call the Read(), so this
 	// must come after the first read in the record.
-	br.lastChunk.Begin = br.r.Chunk().Begin
+	br.lastChunk.Begin = br.r.LastChunk().Begin
 	defer func() {
-		br.lastChunk.End = br.r.Chunk().End
+		br.lastChunk.End = br.r.LastChunk().End
 	}()
 
 	var rec Record
