@@ -18,7 +18,7 @@ import (
 
 	"code.google.com/p/biogo.bam/bgzf"
 
-	check "launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
 var (
