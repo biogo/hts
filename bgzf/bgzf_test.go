@@ -202,7 +202,7 @@ func TestRoundTripMulti(t *testing.T) {
 	b = make([]byte, len("payload1payloadTwo"))
 	n, err = r.Read(b)
 	if string(b[:n]) != "payload1payloadTwo" {
-		t.Errorf("payload is %q, want %q", string(b[:n]), "payload1")
+		t.Errorf("payload is %q, want %q", string(b[:n]), "payload1payloadTwo")
 	}
 	if err != nil {
 		t.Errorf("Read: %v", err)
