@@ -45,7 +45,10 @@ var (
 
 func CheckEOF(f *os.File) (bool, error) {
 	fi, err := f.Stat()
-	if err != nil || fi.IsDir() {
+	if err != nil {
+		return false, err
+	}
+	if fi.IsDir() {
 		return false, ErrWrongFileType
 	}
 
