@@ -10,18 +10,178 @@ import (
 	"compress/flate"
 	"compress/gzip"
 	"io"
-	"io/ioutil"
 )
 
 type Reader struct {
 	gzip.Header
-	r  io.Reader
-	cr *countReader
-	gz *gzip.Reader
+	r io.Reader
 
 	chunk Chunk
 
+	block *blockReader
+
 	err error
+}
+
+type blockReader struct {
+	cr *countReader
+	gz *gzip.Reader
+
+	decompressed Block
+}
+
+func newBlockReader(r io.Reader) (*blockReader, error) {
+	cr := makeReader(r)
+	gz, err := gzip.NewReader(cr)
+	if err != nil {
+		return nil, err
+	}
+	if expectedBlockSize(gz.Header) < 0 {
+		return nil, ErrNoBlockSize
+	}
+	return &blockReader{cr: cr, gz: gz}, nil
+}
+
+func (b *blockReader) header() gzip.Header {
+	return b.gz.Header
+}
+
+func (b *blockReader) reset(r io.Reader, off int64) (gzip.Header, error) {
+	isNewBlock := b.decompressed == nil
+	if isNewBlock {
+		b.decompressed = &block{}
+	}
+
+	if r != nil {
+		switch cr := b.cr.r.(type) {
+		case reseter:
+			cr.Reset(r)
+		default:
+			b.cr = makeReader(r)
+		}
+		b.cr.n = off
+		b.decompressed.setBase(off)
+	}
+
+	if isNewBlock {
+		b.decompressed.setHeader(b.gz.Header)
+		return b.gz.Header, b.fill()
+	}
+
+	b.decompressed.setBase(b.cr.n)
+
+	err := b.gz.Reset(b.cr)
+	if err == nil && expectedBlockSize(b.gz.Header) < 0 {
+		err = ErrNoBlockSize
+	}
+	if err != nil {
+		return b.gz.Header, err
+	}
+
+	b.decompressed.setHeader(b.gz.Header)
+	return b.gz.Header, b.fill()
+}
+
+func (b *blockReader) fill() error {
+	b.gz.Multistream(false)
+	_, err := b.decompressed.readFrom(b.gz)
+	return err
+}
+
+type Block interface {
+	// Base returns the file offset of the start of
+	// the gzip member from which the Block data was
+	// decompressed.
+	Base() int64
+
+	// Header returns the gzip.Header of the gzip member
+	// from which the Block data was decompressed.
+	Header() gzip.Header
+
+	// The following are unexported equivalents
+	// of the io interfaces.
+	read([]byte) (int, error)
+	seek(offset int64, whence int) (int64, error)
+	readFrom(io.Reader) (int64, error)
+
+	// len returns the number of remaining
+	// bytes that can be read from the Block.
+	len() int
+
+	// setBase sets the file offset of the start
+	// and of the gzip member that the Block data
+	// was decompressed from.
+	setBase(int64)
+
+	// setHeader sets the file header of of the gzip
+	// member that the Block data was decompressed from.
+	setHeader(gzip.Header)
+
+	// beginTx marks the chunk beginning for a set
+	// of reads.
+	beginTx()
+
+	// endTx returns the Chunk describing the chunk
+	// the block read by a set of reads.
+	endTx() Chunk
+}
+
+type block struct {
+	base int64
+	h    gzip.Header
+
+	chunk Chunk
+
+	buf  *bytes.Reader
+	data [MaxBlockSize]byte
+}
+
+func (b *block) readFrom(r io.Reader) (int64, error) {
+	buf := bytes.NewBuffer(b.data[:0])
+	n, err := io.Copy(buf, r)
+	if err != nil {
+		return n, err
+	}
+	b.buf = bytes.NewReader(buf.Bytes())
+	return n, nil
+}
+
+func (b *block) setBase(n int64) {
+	b.base = n
+	b.chunk = Chunk{Begin: Offset{File: n}, End: Offset{File: n}}
+}
+
+func (b *block) setHeader(h gzip.Header) { b.h = h }
+
+func (b *block) Base() int64 { return b.base }
+
+func (b *block) Header() gzip.Header { return b.h }
+
+func (b *block) beginTx() { b.chunk.Begin = b.chunk.End }
+
+func (b *block) endTx() Chunk { return b.chunk }
+
+func (b *block) read(p []byte) (int, error) {
+	n, err := b.buf.Read(p)
+	b.chunk.End.Block += uint16(n)
+	return n, err
+}
+
+func (b *block) seek(offset int64, whence int) (int64, error) {
+	var err error
+	b.base, err = b.buf.Seek(offset, whence)
+	if err == nil {
+		b.chunk.Begin.Block = uint16(offset)
+		b.chunk.End.Block = uint16(offset)
+	}
+	return b.base, err
+}
+
+func (b *block) len() int {
+	if b.buf == nil {
+		return 0
+	}
+	return b.buf.Len()
 }
 
 func makeReader(r io.Reader) *countReader {
@@ -53,20 +213,14 @@ func (r *countReader) ReadByte() (byte, error) {
 }
 
 func NewReader(r io.Reader) (*Reader, error) {
-	cr := makeReader(r)
-	gz, err := gzip.NewReader(cr)
+	b, err := newBlockReader(r)
 	if err != nil {
 		return nil, err
 	}
-	gz.Multistream(false)
-	if ExpectedBlockSize(gz.Header) < 0 {
-		return nil, ErrNoBlockSize
-	}
 	bg := &Reader{
-		Header: gz.Header,
+		Header: b.header(),
 		r:      r,
-		cr:     cr,
-		gz:     gz,
+		block:  b,
 	}
 	return bg, nil
 }
@@ -94,74 +248,70 @@ func (bg *Reader) Seek(off Offset, whence int) error {
 	if bg.err != nil {
 		return bg.err
 	}
-	if r, ok := bg.cr.r.(reseter); ok {
-		r.Reset(bg.r)
-	} else {
-		bg.cr = makeReader(bg.r)
-	}
-	bg.cr.n = off.File
-	bg.err = bg.gz.Reset(bg.cr)
+	var h gzip.Header
+	h, bg.err = bg.block.reset(bg.r, off.File)
 	if bg.err != nil {
 		return bg.err
 	}
-	bg.gz.Multistream(false)
-	bg.Header = bg.gz.Header
-	bg.chunk.Begin = Offset{File: off.File, Block: 0}
+	bg.Header = h
+
 	if off.Block > 0 {
-		var n int64
-		n, bg.err = io.CopyN(ioutil.Discard, bg.gz, int64(off.Block))
-		bg.chunk.Begin.Block = uint16(n)
+		_, bg.err = bg.block.decompressed.seek(int64(off.Block), 0)
 	}
-	bg.chunk.End = bg.chunk.Begin
+
 	return bg.err
 }
 
 func (bg *Reader) LastChunk() Chunk { return bg.chunk }
 
 func (bg *Reader) Close() error {
-	return bg.gz.Close()
+	return bg.block.gz.Close()
 }
 
 func (bg *Reader) Read(p []byte) (int, error) {
 	if bg.err != nil {
 		return 0, bg.err
 	}
+	var h gzip.Header
 
-	bg.chunk.Begin = bg.chunk.End
+	if bg.block.decompressed != nil {
+		bg.block.decompressed.beginTx()
+	}
+
+	if bg.block.decompressed == nil || bg.block.decompressed.len() == 0 {
+		h, bg.err = bg.block.reset(nil, 0)
+		if bg.err != nil {
+			return 0, bg.err
+		}
+		bg.Header = h
+	}
 
 	var n int
 	for n < len(p) && bg.err == nil {
 		var _n int
-		_n, bg.err = bg.gz.Read(p[n:])
+		_n, bg.err = bg.block.decompressed.read(p[n:])
+		if _n > 0 {
+			bg.chunk = bg.block.decompressed.endTx()
+		}
 		n += _n
-		bg.chunk.Begin.Block = bg.chunk.End.Block
-		bg.chunk.End.Block += uint16(_n)
 		if bg.err == io.EOF {
 			if n == len(p) {
 				bg.err = nil
 				break
 			}
-			if bs := ExpectedBlockSize(bg.Header); bs < 0 || bg.chunk.End.File < 0 {
-				bg.chunk.End.File = -1
-			} else {
-				bg.chunk.End.File += int64(bs)
-				bg.chunk.Begin.File = bg.cr.n
-				if bg.chunk.End.File != bg.cr.n {
-					bg.err = ErrBlockSizeMismatch
-					break
-				}
+
+			h, bg.err = bg.block.reset(nil, 0)
+			if bg.err != nil {
+				break
 			}
-			bg.chunk.End.Block = 0
-			bg.err = bg.gz.Reset(bg.cr)
-			bg.Header = bg.gz.Header
-			bg.gz.Multistream(false)
+			bg.Header = h
 		}
 	}
 
 	return n, bg.err
 }
 
-func ExpectedBlockSize(h gzip.Header) int {
+func expectedBlockSize(h gzip.Header) int {
 	i := bytes.Index(h.Extra, bgzfExtraPrefix)
 	if i < 0 || i+5 >= len(h.Extra) {
 		return -1
