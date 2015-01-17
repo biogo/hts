@@ -16,7 +16,7 @@ type Reader struct {
 	gzip.Header
 	r io.Reader
 
-	chunk Chunk
+	lastChunk Chunk
 
 	block *blockReader
 
@@ -278,7 +278,7 @@ func (bg *Reader) Seek(off Offset, whence int) error {
 	return bg.err
 }
 
-func (bg *Reader) LastChunk() Chunk { return bg.chunk }
+func (bg *Reader) LastChunk() Chunk { return bg.lastChunk }
 
 func (bg *Reader) Close() error {
 	return bg.block.gz.Close()
@@ -307,7 +307,7 @@ func (bg *Reader) Read(p []byte) (int, error) {
 		var _n int
 		_n, bg.err = bg.block.decompressed.Read(p[n:])
 		if _n > 0 {
-			bg.chunk = bg.block.decompressed.endTx()
+			bg.lastChunk = bg.block.decompressed.endTx()
 		}
 		n += _n
 		if bg.err == io.EOF {
