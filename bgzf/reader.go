@@ -94,13 +94,18 @@ type Block interface {
 	// decompressed.
 	Base() int64
 
-	// Header returns the gzip.Header of the gzip member
+	io.Reader
+
+	// header returns the gzip.Header of the gzip member
 	// from which the Block data was decompressed.
-	Header() gzip.Header
+	header() gzip.Header
+
+	// isValid protects the Reader from a cache that provides
+	// a Block that has not been filled with data.
+	isValid() bool
 
 	// The following are unexported equivalents
 	// of the io interfaces.
-	read([]byte) (int, error)
 	seek(offset int64, whence int) (int64, error)
 	readFrom(io.Reader) (int64, error)
 
@@ -127,8 +132,9 @@ type Block interface {
 }
 
 type block struct {
-	base int64
-	h    gzip.Header
+	base  int64
+	h     gzip.Header
+	valid bool
 
 	chunk Chunk
 
@@ -136,35 +142,24 @@ type block struct {
 	data [MaxBlockSize]byte
 }
 
+func (b *block) Base() int64 { return b.base }
+
+func (b *block) Read(p []byte) (int, error) {
+	n, err := b.buf.Read(p)
+	b.chunk.End.Block += uint16(n)
+	return n, err
+}
+
 func (b *block) readFrom(r io.Reader) (int64, error) {
+	b.valid = false
 	buf := bytes.NewBuffer(b.data[:0])
 	n, err := io.Copy(buf, r)
 	if err != nil {
 		return n, err
 	}
 	b.buf = bytes.NewReader(buf.Bytes())
+	b.valid = true
 	return n, nil
-}
-
-func (b *block) setBase(n int64) {
-	b.base = n
-	b.chunk = Chunk{Begin: Offset{File: n}, End: Offset{File: n}}
-}
-
-func (b *block) setHeader(h gzip.Header) { b.h = h }
-
-func (b *block) Base() int64 { return b.base }
-
-func (b *block) Header() gzip.Header { return b.h }
-
-func (b *block) beginTx() { b.chunk.Begin = b.chunk.End }
-
-func (b *block) endTx() Chunk { return b.chunk }
-
-func (b *block) read(p []byte) (int, error) {
-	n, err := b.buf.Read(p)
-	b.chunk.End.Block += uint16(n)
-	return n, err
 }
 
 func (b *block) seek(offset int64, whence int) (int64, error) {
@@ -183,6 +178,21 @@ func (b *block) len() int {
 	}
 	return b.buf.Len()
 }
+
+func (b *block) setBase(n int64) {
+	b.base = n
+	b.chunk = Chunk{Begin: Offset{File: n}, End: Offset{File: n}}
+}
+
+func (b *block) setHeader(h gzip.Header) { b.h = h }
+
+func (b *block) header() gzip.Header { return b.h }
+
+func (b *block) isValid() bool { return b.valid }
+
+func (b *block) beginTx() { b.chunk.Begin = b.chunk.End }
+
+func (b *block) endTx() Chunk { return b.chunk }
 
 func makeReader(r io.Reader) *countReader {
 	switch r := r.(type) {
@@ -289,7 +299,7 @@ func (bg *Reader) Read(p []byte) (int, error) {
 	var n int
 	for n < len(p) && bg.err == nil {
 		var _n int
-		_n, bg.err = bg.block.decompressed.read(p[n:])
+		_n, bg.err = bg.block.decompressed.Read(p[n:])
 		if _n > 0 {
 			bg.chunk = bg.block.decompressed.endTx()
 		}
