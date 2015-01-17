@@ -163,7 +163,6 @@ func TestRoundTripMulti(t *testing.T) {
 		t.Fatalf("Wait: %v", err)
 	}
 	wbl[0] = buf.Len()
-	o := int64(buf.Len())
 	if _, err := w.Write([]byte("payloadTwo")); err != nil {
 		t.Fatalf("Write: %v", err)
 	}
@@ -219,14 +218,6 @@ func TestRoundTripMulti(t *testing.T) {
 	}
 	if err != io.EOF {
 		t.Errorf("Read: %v", err)
-	}
-
-	if r.Seek(Offset{o, 0}, 1) == nil {
-		t.Fatal("expected seek failure")
-	}
-	n, err = r.Read(b)
-	if err == nil {
-		t.Fatal("expected read failure")
 	}
 }
 
@@ -312,7 +303,7 @@ func TestRoundTripMultiSeek(t *testing.T) {
 	if string(b[:n]) != "payload1payloadTwo" {
 		t.Errorf("payload is %q, want %q", string(b[:n]), "payload1payloadTwo")
 	}
-	if err := r.Seek(Offset{}, 0); err != nil {
+	if err := r.Seek(Offset{}); err != nil {
 		t.Errorf("Seek: %v", err)
 	}
 	n, err = r.Read(b)
@@ -322,7 +313,7 @@ func TestRoundTripMultiSeek(t *testing.T) {
 	if string(b[:n]) != "payload1payloadTwo" {
 		t.Errorf("payload is %q, want %q", string(b[:n]), "payload1payloadTwo")
 	}
-	if err := r.Seek(Offset{File: offset}, 0); err != nil {
+	if err := r.Seek(Offset{File: offset}); err != nil {
 		t.Fatalf("Seek: %v", err)
 	}
 	bl = expectedBlockSize(r.Header)

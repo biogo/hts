@@ -255,12 +255,13 @@ type reseter interface {
 	Reset(io.Reader)
 }
 
-func (bg *Reader) Seek(off Offset, whence int) error {
+func (bg *Reader) Seek(off Offset) error {
 	rs, ok := bg.r.(io.ReadSeeker)
 	if !ok {
 		return ErrNotASeeker
 	}
-	_, bg.err = rs.Seek(off.File, whence)
+
+	_, bg.err = rs.Seek(off.File, 0)
 	if bg.err != nil {
 		return bg.err
 	}

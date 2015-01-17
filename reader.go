@@ -5,10 +5,11 @@
 package bam
 
 import (
-	"code.google.com/p/biogo.bam/bgzf"
 	"encoding/binary"
 	"errors"
 	"io"
+
+	"code.google.com/p/biogo.bam/bgzf"
 )
 
 type Reader struct {
@@ -155,7 +156,7 @@ func (br *Reader) Read() (*Record, error) {
 
 func (r *Reader) SetChunk(c *bgzf.Chunk) {
 	if c != nil {
-		r.r.Seek(c.Begin, 0)
+		r.r.Seek(c.Begin)
 	}
 	r.c = c
 }
