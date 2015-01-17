@@ -24,6 +24,8 @@ type Reader struct {
 }
 
 type blockReader struct {
+	owner *Reader
+
 	cr *countReader
 	gz *gzip.Reader
 
@@ -49,7 +51,7 @@ func (b *blockReader) header() gzip.Header {
 func (b *blockReader) reset(r io.Reader, off int64) (gzip.Header, error) {
 	isNewBlock := b.decompressed == nil
 	if isNewBlock {
-		b.decompressed = &block{}
+		b.decompressed = &block{owner: b.owner}
 	}
 
 	if r != nil {
@@ -100,9 +102,9 @@ type Block interface {
 	// from which the Block data was decompressed.
 	header() gzip.Header
 
-	// isValid protects the Reader from a cache that provides
-	// a Block that has not been filled with data.
-	isValid() bool
+	// ownedBy returns whether the Block is owned by
+	// the given Reader.
+	ownedBy(*Reader) bool
 
 	// The following are unexported equivalents
 	// of the io interfaces.
@@ -132,6 +134,8 @@ type Block interface {
 }
 
 type block struct {
+	owner *Reader
+
 	base  int64
 	h     gzip.Header
 	valid bool
@@ -151,14 +155,15 @@ func (b *block) Read(p []byte) (int, error) {
 }
 
 func (b *block) readFrom(r io.Reader) (int64, error) {
-	b.valid = false
+	o := b.owner
+	b.owner = nil
 	buf := bytes.NewBuffer(b.data[:0])
 	n, err := io.Copy(buf, r)
 	if err != nil {
 		return n, err
 	}
 	b.buf = bytes.NewReader(buf.Bytes())
-	b.valid = true
+	b.owner = o
 	return n, nil
 }
 
@@ -188,7 +193,7 @@ func (b *block) setHeader(h gzip.Header) { b.h = h }
 
 func (b *block) header() gzip.Header { return b.h }
 
-func (b *block) isValid() bool { return b.valid }
+func (b *block) ownedBy(r *Reader) bool { return b.owner == r }
 
 func (b *block) beginTx() { b.chunk.Begin = b.chunk.End }
 
@@ -232,6 +237,7 @@ func NewReader(r io.Reader) (*Reader, error) {
 		r:      r,
 		block:  b,
 	}
+	b.owner = bg
 	return bg, nil
 }
 
