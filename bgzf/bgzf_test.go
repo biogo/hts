@@ -12,6 +12,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"flag"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -329,6 +330,146 @@ func TestRoundTripMultiSeek(t *testing.T) {
 		t.Errorf("payload is %q, want %q", string(b[:n]), "payloadTwo")
 	}
 	os.Remove(fname)
+}
+
+type countReadSeeker struct {
+	r       io.ReadSeeker
+	didSeek bool
+	n       int64
+}
+
+func (r *countReadSeeker) Read(p []byte) (int, error) {
+	r.didSeek = false
+	n, err := r.r.Read(p)
+	r.n += int64(n)
+	return n, err
+}
+
+func (r *countReadSeeker) Seek(offset int64, whence int) (int64, error) {
+	r.didSeek = true
+	return r.r.Seek(offset, whence)
+}
+
+func TestSeekFast(t *testing.T) {
+	const infix = "payload"
+	var (
+		buf  bytes.Buffer
+		offs = []int{0}
+	)
+	w := NewWriter(&buf, 2)
+	for i := 0; i < 10; i++ {
+		if _, err := fmt.Fprintf(w, "%d%[2]s%[1]d", i, infix); err != nil {
+			t.Fatalf("Write: %v", err)
+		}
+		if err := w.Flush(); err != nil {
+			t.Fatalf("Flush: %v", err)
+		}
+		if err := w.Wait(); err != nil {
+			t.Fatalf("Wait: %v", err)
+		}
+		offs = append(offs, buf.Len())
+	}
+	c := &countReadSeeker{r: bytes.NewReader(buf.Bytes())}
+	r, err := NewReader(c)
+	if err != nil {
+		t.Fatalf("NewReader: %v", err)
+	}
+	p := make([]byte, len(infix)+2)
+
+	func() {
+		defer func() {
+			r := recover()
+			if r != nil {
+				t.Fatalf("Seek on unread reader panicked: %v", r)
+			}
+		}()
+		err := r.Seek(Offset{})
+		if err != nil {
+			t.Fatalf("Seek: %v", err)
+		}
+	}()
+
+	// Standard read through of the data.
+	for i := range offs[:len(offs)-1] {
+		n, err := r.Read(p)
+		if n != len(p) {
+			t.Fatalf("Unexpected read length: got:%d want:%d", n, len(p))
+		}
+		if err != nil {
+			t.Fatalf("Read: %v", err)
+		}
+		got := string(p)
+		want := fmt.Sprintf("%d%[2]s%[1]d", i, infix)
+		if got != want {
+			t.Errorf("Unexpected result: got:%q want:%q", got, want)
+		}
+	}
+
+	// Seek to each block in turn
+	for i, o := range offs[:len(offs)-1] {
+		err := r.Seek(Offset{File: int64(o)})
+		if err != nil {
+			t.Fatalf("Seek: %v", err)
+		}
+		n, err := r.Read(p)
+		if n != len(p) {
+			t.Errorf("Unexpected read length: got:%d want:%d", n, len(p))
+		}
+		if err != nil {
+			t.Fatalf("Read: %v", err)
+		}
+		got := string(p)
+		want := fmt.Sprintf("%d%[2]s%[1]d", i, infix)
+		if got != want {
+			t.Errorf("Unexpected result: got:%q want:%q", got, want)
+		}
+	}
+
+	// Seek to each block in turn, but read the infix and then the first 2 bytes.
+	for i, o := range offs[:len(offs)-1] {
+		if err := r.Seek(Offset{File: int64(o), Block: 1}); err != nil {
+			t.Fatalf("Seek: %v", err)
+		}
+		p = p[:len(infix)]
+		n, err := r.Read(p)
+		if n != len(p) {
+			t.Fatalf("Unexpected read length: got:%d want:%d", n, len(p))
+		}
+		if err != nil {
+			t.Fatalf("Read: %v", err)
+		}
+		got := string(p)
+		want := infix
+		if got != want {
+			t.Fatalf("Unexpected result: got:%q want:%q", got, want)
+		}
+
+		// Check whether the underlying reader was seeked or read.
+		hasRead := c.n
+		if err = r.Seek(Offset{File: int64(o), Block: 0}); err != nil {
+			t.Fatalf("Seek: %v", err)
+		}
+		if b := c.n - hasRead; b != 0 {
+			t.Errorf("Seek performed unexpected read: %d bytes", b)
+		}
+		if c.didSeek {
+			t.Error("Seek caused underlying Seek.")
+		}
+
+		p = p[:2]
+		n, err = r.Read(p)
+		if n != len(p) {
+			t.Fatalf("Unexpected read length: got:%d want:%d", n, len(p))
+		}
+		if err != nil {
+			t.Fatalf("Read: %v", err)
+		}
+		got = string(p)
+		want = fmt.Sprintf("%dp", i)
+		if got != want {
+			t.Fatalf("Unexpected result: got:%q want:%q", got, want)
+		}
+	}
 }
 
 type zero struct{}

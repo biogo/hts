@@ -52,7 +52,9 @@ func (b *blockReader) header() gzip.Header {
 	return b.gz.Header
 }
 
-func (b *blockReader) reset(r io.Reader, off int64) (gzip.Header, error) {
+// lazyBlock conditionally creates a ready to use Block and returns whether
+// the Block subsequently held by the blockReader needs to be filled.
+func (b *blockReader) lazyBlock() bool {
 	needBlock := b.decompressed == nil || !b.decompressed.ownedBy(b.owner)
 	if needBlock {
 		if w, ok := b.owner.Cache.(Wrapper); ok {
@@ -60,6 +62,24 @@ func (b *blockReader) reset(r io.Reader, off int64) (gzip.Header, error) {
 		} else {
 			b.decompressed = &block{owner: b.owner}
 		}
+	}
+	return !needBlock
+}
+
+func (b *blockReader) reset() (gzip.Header, error) {
+	return b.fill(b.lazyBlock())
+}
+
+func (b *blockReader) seek(r io.ReadSeeker, off int64) (gzip.Header, error) {
+	b.lazyBlock()
+
+	if off == b.decompressed.Base() && b.decompressed.hasData() {
+		return b.decompressed.header(), nil
+	}
+
+	_, err := r.Seek(off, 0)
+	if err != nil {
+		return b.decompressed.header(), err
 	}
 
 	if r != nil {
@@ -73,32 +93,28 @@ func (b *blockReader) reset(r io.Reader, off int64) (gzip.Header, error) {
 			b.cr = makeReader(r)
 		}
 		b.cr.n = off
-		b.decompressed.setBase(off)
 	}
 
-	if needBlock {
-		b.decompressed.setHeader(b.gz.Header)
-		return b.gz.Header, b.fill()
-	}
+	return b.fill(true)
+}
 
-	b.decompressed.setBase(b.cr.n)
+func (b *blockReader) fill(reset bool) (gzip.Header, error) {
+	if reset {
+		b.decompressed.setBase(b.cr.n)
 
-	err := b.gz.Reset(b.cr)
-	if err == nil && expectedBlockSize(b.gz.Header) < 0 {
-		err = ErrNoBlockSize
-	}
-	if err != nil {
-		return b.gz.Header, err
+		err := b.gz.Reset(b.cr)
+		if err == nil && expectedBlockSize(b.gz.Header) < 0 {
+			err = ErrNoBlockSize
+		}
+		if err != nil {
+			return b.gz.Header, err
+		}
 	}
 
 	b.decompressed.setHeader(b.gz.Header)
-	return b.gz.Header, b.fill()
-}
-
-func (b *blockReader) fill() error {
 	b.gz.Multistream(false)
 	_, err := b.decompressed.readFrom(b.gz)
-	return err
+	return b.gz.Header, err
 }
 
 // If a Cache is a Wrapper, its Wrap method is called on newly created blocks.
@@ -132,6 +148,9 @@ type Block interface {
 	// ownedBy returns whether the Block is owned by
 	// the given Reader.
 	ownedBy(*Reader) bool
+
+	// hasData returns whether the Block has read data.
+	hasData() bool
 
 	// The following are unexported equivalents
 	// of the io interfaces. seek is limited to
@@ -223,6 +242,8 @@ func (b *block) header() gzip.Header { return b.h }
 
 func (b *block) ownedBy(r *Reader) bool { return b.owner == r }
 
+func (b *block) hasData() bool { return b.buf != nil }
+
 func (b *block) beginTx() { b.chunk.Begin = b.chunk.End }
 
 func (b *block) endTx() Chunk { return b.chunk }
@@ -289,12 +310,8 @@ func (bg *Reader) Seek(off Offset) error {
 		return ErrNotASeeker
 	}
 
-	_, bg.err = rs.Seek(off.File, 0)
-	if bg.err != nil {
-		return bg.err
-	}
 	var h gzip.Header
-	h, bg.err = bg.block.reset(bg.r, off.File)
+	h, bg.err = bg.block.seek(rs, off.File)
 	if bg.err != nil {
 		return bg.err
 	}
@@ -331,7 +348,7 @@ func (bg *Reader) Read(p []byte) (int, error) {
 	}
 
 	if dec == nil || dec.len() == 0 {
-		h, bg.err = bg.block.reset(nil, 0)
+		h, bg.err = bg.block.reset()
 		if bg.err != nil {
 			return 0, bg.err
 		}
@@ -353,7 +370,7 @@ func (bg *Reader) Read(p []byte) (int, error) {
 				break
 			}
 
-			h, bg.err = bg.block.reset(nil, 0)
+			h, bg.err = bg.block.reset()
 			if bg.err != nil {
 				break
 			}
