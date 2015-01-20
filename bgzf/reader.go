@@ -55,6 +55,9 @@ func (b *blockReader) reset(r io.Reader, off int64) (gzip.Header, error) {
 	}
 
 	if r != nil {
+		type reseter interface {
+			Reset(io.Reader)
+		}
 		switch cr := b.cr.r.(type) {
 		case reseter:
 			cr.Reset(r)
@@ -250,10 +253,6 @@ type Offset struct {
 type Chunk struct {
 	Begin Offset
 	End   Offset
-}
-
-type reseter interface {
-	Reset(io.Reader)
 }
 
 func (bg *Reader) Seek(off Offset) error {
