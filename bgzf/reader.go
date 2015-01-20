@@ -107,8 +107,10 @@ type Block interface {
 	ownedBy(*Reader) bool
 
 	// The following are unexported equivalents
-	// of the io interfaces.
-	seek(offset int64, whence int) (int64, error)
+	// of the io interfaces. seek is limited to
+	// the file origin offset case and does not
+	// return the new offset.
+	seek(offset int64) error
 	readFrom(io.Reader) (int64, error)
 
 	// len returns the number of remaining
@@ -167,13 +169,13 @@ func (b *block) readFrom(r io.Reader) (int64, error) {
 	return n, nil
 }
 
-func (b *block) seek(offset int64, whence int) (int64, error) {
-	n, err := b.buf.Seek(offset, whence)
+func (b *block) seek(offset int64) error {
+	_, err := b.buf.Seek(offset, 0)
 	if err == nil {
 		b.chunk.Begin.Block = uint16(offset)
 		b.chunk.End.Block = uint16(offset)
 	}
-	return n, err
+	return err
 }
 
 func (b *block) len() int {
@@ -272,7 +274,7 @@ func (bg *Reader) Seek(off Offset) error {
 	bg.Header = h
 
 	if off.Block > 0 {
-		_, bg.err = bg.block.decompressed.seek(int64(off.Block), 0)
+		bg.err = bg.block.decompressed.seek(int64(off.Block))
 	}
 
 	return bg.err
