@@ -330,8 +330,9 @@ func (bg *Reader) Seek(off Offset) error {
 // seek operation.
 func (bg *Reader) LastChunk() Chunk { return bg.lastChunk }
 
-// Close closes the reader.
+// Close closes the reader and releases resources.
 func (bg *Reader) Close() error {
+	bg.Cache = nil
 	return bg.block.gz.Close()
 }
 
