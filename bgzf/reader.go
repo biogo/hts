@@ -12,6 +12,8 @@ import (
 	"io"
 )
 
+// Reader implements BGZF reading as described in the SAM specification.
+// The specification is available at https://github.com/samtools/hts-specs.
 type Reader struct {
 	gzip.Header
 	r io.Reader
@@ -253,6 +255,7 @@ func (r *countReader) ReadByte() (byte, error) {
 	return b, err
 }
 
+// NewReader returns a new BGZF reader.
 func NewReader(r io.Reader) (*Reader, error) {
 	b, err := newBlockReader(r)
 	if err != nil {
@@ -267,16 +270,19 @@ func NewReader(r io.Reader) (*Reader, error) {
 	return bg, nil
 }
 
+// Offset is a BGZF virtual offset.
 type Offset struct {
 	File  int64
 	Block uint16
 }
 
+// Chunk is a region of a BGZF file.
 type Chunk struct {
 	Begin Offset
 	End   Offset
 }
 
+// Seek performs a seek operation to the given virtual offset.
 func (bg *Reader) Seek(off Offset) error {
 	rs, ok := bg.r.(io.ReadSeeker)
 	if !ok {
@@ -302,12 +308,17 @@ func (bg *Reader) Seek(off Offset) error {
 	return bg.err
 }
 
+// LastChunk returns the region of the BGZF file read by the last read
+// operation or the resulting virtual offset of the last successful
+// seek operation.
 func (bg *Reader) LastChunk() Chunk { return bg.lastChunk }
 
+// Close closes the reader.
 func (bg *Reader) Close() error {
 	return bg.block.gz.Close()
 }
 
+// Read implements the io.Reader interface.
 func (bg *Reader) Read(p []byte) (int, error) {
 	if bg.err != nil {
 		return 0, bg.err
