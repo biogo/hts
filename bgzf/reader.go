@@ -20,6 +20,8 @@ type Reader struct {
 
 	block *blockReader
 
+	Cache Cache
+
 	err error
 }
 
@@ -51,7 +53,11 @@ func (b *blockReader) header() gzip.Header {
 func (b *blockReader) reset(r io.Reader, off int64) (gzip.Header, error) {
 	isNewBlock := b.decompressed == nil
 	if isNewBlock {
-		b.decompressed = &block{owner: b.owner}
+		if w, ok := b.owner.Cache.(Wrapper); ok {
+			b.decompressed = w.Wrap(&block{owner: b.owner})
+		} else {
+			b.decompressed = &block{owner: b.owner}
+		}
 	}
 
 	if r != nil {
@@ -91,6 +97,22 @@ func (b *blockReader) fill() error {
 	b.gz.Multistream(false)
 	_, err := b.decompressed.readFrom(b.gz)
 	return err
+}
+
+// If a Cache is a Wrapper, its Wrap method is called on newly created blocks.
+type Cache interface {
+	// Get returns the Block in the Cache with the specified
+	// base or a nil Block if it does not exist.
+	Get(base int64) Block
+
+	// Put inserts a Block into the Cache, returning the Block
+	// that was evicted or nil if no eviction was necessary.
+	Put(Block) Block
+}
+
+// Wrapper defines Cache types that need to modify a Block at its creation.
+type Wrapper interface {
+	Wrap(Block) Block
 }
 
 type Block interface {
