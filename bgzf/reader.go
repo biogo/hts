@@ -168,13 +168,12 @@ func (b *block) readFrom(r io.Reader) (int64, error) {
 }
 
 func (b *block) seek(offset int64, whence int) (int64, error) {
-	var err error
-	b.base, err = b.buf.Seek(offset, whence)
+	n, err := b.buf.Seek(offset, whence)
 	if err == nil {
 		b.chunk.Begin.Block = uint16(offset)
 		b.chunk.End.Block = uint16(offset)
 	}
-	return b.base, err
+	return n, err
 }
 
 func (b *block) len() int {
