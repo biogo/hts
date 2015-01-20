@@ -292,24 +292,26 @@ func (bg *Reader) Read(p []byte) (int, error) {
 	}
 	var h gzip.Header
 
-	if bg.block.decompressed != nil {
-		bg.block.decompressed.beginTx()
+	dec := bg.block.decompressed
+	if dec != nil {
+		dec.beginTx()
 	}
 
-	if bg.block.decompressed == nil || bg.block.decompressed.len() == 0 {
+	if dec == nil || dec.len() == 0 {
 		h, bg.err = bg.block.reset(nil, 0)
 		if bg.err != nil {
 			return 0, bg.err
 		}
 		bg.Header = h
+		dec = bg.block.decompressed
 	}
 
 	var n int
 	for n < len(p) && bg.err == nil {
 		var _n int
-		_n, bg.err = bg.block.decompressed.Read(p[n:])
+		_n, bg.err = dec.Read(p[n:])
 		if _n > 0 {
-			bg.lastChunk = bg.block.decompressed.endTx()
+			bg.lastChunk = dec.endTx()
 		}
 		n += _n
 		if bg.err == io.EOF {
@@ -323,6 +325,7 @@ func (bg *Reader) Read(p []byte) (int, error) {
 				break
 			}
 			bg.Header = h
+			dec = bg.block.decompressed
 		}
 	}
 
