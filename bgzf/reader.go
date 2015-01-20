@@ -117,6 +117,14 @@ func (b *blockReader) fill(reset bool) (gzip.Header, error) {
 	return b.gz.Header, err
 }
 
+func expectedBlockSize(h gzip.Header) int {
+	i := bytes.Index(h.Extra, bgzfExtraPrefix)
+	if i < 0 || i+5 >= len(h.Extra) {
+		return -1
+	}
+	return (int(h.Extra[i+4]) | int(h.Extra[i+5])<<8) + 1
+}
+
 // If a Cache is a Wrapper, its Wrap method is called on newly created blocks.
 type Cache interface {
 	// Get returns the Block in the Cache with the specified
@@ -381,12 +389,4 @@ func (bg *Reader) Read(p []byte) (int, error) {
 	}
 
 	return n, bg.err
-}
-
-func expectedBlockSize(h gzip.Header) int {
-	i := bytes.Index(h.Extra, bgzfExtraPrefix)
-	if i < 0 || i+5 >= len(h.Extra) {
-		return -1
-	}
-	return (int(h.Extra[i+4]) | int(h.Extra[i+5])<<8) + 1
 }
