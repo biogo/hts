@@ -17,7 +17,7 @@ var (
 
 // NewLRU returns an LRU cache with the n slots. If n is less than 1
 // a nil cache is returned.
-func NewLRU(n int) *LRU {
+func NewLRU(n int) bgzf.Cache {
 	if n < 1 {
 		return nil
 	}
@@ -96,7 +96,7 @@ func (c *LRU) remove(n *node) {
 
 // NewLRU returns a FIFO cache with the n slots. If n is less than 1
 // a nil cache is returned.
-func NewFIFO(n int) *FIFO {
+func NewFIFO(n int) bgzf.Cache {
 	if n < 1 {
 		return nil
 	}
@@ -171,7 +171,7 @@ func (c *FIFO) remove(n *node) {
 
 // NewLRU returns a random eviction cache with the n slots. If n is less than 1
 // a nil cache is returned.
-func NewRandom(n int) *Random {
+func NewRandom(n int) bgzf.Cache {
 	if n < 1 {
 		return nil
 	}
