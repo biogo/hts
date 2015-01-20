@@ -294,8 +294,9 @@ func (bg *Reader) Seek(off Offset) error {
 	}
 	bg.Header = h
 
-	if off.Block > 0 {
-		bg.err = bg.block.decompressed.seek(int64(off.Block))
+	bg.err = bg.block.decompressed.seek(int64(off.Block))
+	if bg.err == nil {
+		bg.lastChunk = Chunk{Begin: off, End: off}
 	}
 
 	return bg.err
