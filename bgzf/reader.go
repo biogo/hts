@@ -51,8 +51,8 @@ func (b *blockReader) header() gzip.Header {
 }
 
 func (b *blockReader) reset(r io.Reader, off int64) (gzip.Header, error) {
-	isNewBlock := b.decompressed == nil
-	if isNewBlock {
+	needBlock := b.decompressed == nil || !b.decompressed.ownedBy(b.owner)
+	if needBlock {
 		if w, ok := b.owner.Cache.(Wrapper); ok {
 			b.decompressed = w.Wrap(&block{owner: b.owner})
 		} else {
@@ -74,7 +74,7 @@ func (b *blockReader) reset(r io.Reader, off int64) (gzip.Header, error) {
 		b.decompressed.setBase(off)
 	}
 
-	if isNewBlock {
+	if needBlock {
 		b.decompressed.setHeader(b.gz.Header)
 		return b.gz.Header, b.fill()
 	}
