@@ -18,7 +18,14 @@ type Reader struct {
 	gzip.Header
 	r io.Reader
 
+	// lastChunk is the virtual file offset
+	// interval of the last successful read
+	// or seek operation.
 	lastChunk Chunk
+
+	// nextBase is the file offset of the
+	// block following the current block.
+	nextBase int64
 
 	block *blockReader
 
@@ -53,54 +60,116 @@ func (b *blockReader) header() gzip.Header {
 }
 
 // lazyBlock conditionally creates a ready to use Block and returns whether
-// the Block subsequently held by the blockReader needs to be filled.
+// the Block subsequently held by the blockReader needs to be reset before
+// being filled.
 func (b *blockReader) lazyBlock() bool {
-	needBlock := b.decompressed == nil || !b.decompressed.ownedBy(b.owner)
-	if needBlock {
+	if b.decompressed == nil {
 		if w, ok := b.owner.Cache.(Wrapper); ok {
 			b.decompressed = w.Wrap(&block{owner: b.owner})
 		} else {
 			b.decompressed = &block{owner: b.owner}
 		}
+		return false
 	}
-	return !needBlock
+	if !b.decompressed.ownedBy(b.owner) {
+		b.decompressed.setOwner(b.owner)
+	}
+	return true
 }
 
 func (b *blockReader) reset() (gzip.Header, error) {
-	return b.fill(b.lazyBlock())
+	needReset := b.lazyBlock()
+
+	if b.gotBlockFor(b.owner.nextBase) {
+		return b.decompressed.header(), nil
+	}
+
+	if needReset && b.cr.n != b.owner.nextBase {
+		// It should not be possible for the expected next block base
+		// to be out of register with the count reader unless Seek
+		// has been called, so we know the base reader must be an
+		// io.ReadSeeker.
+		err := b.seek(b.owner.r.(io.ReadSeeker), b.owner.nextBase)
+		if err != nil {
+			return b.decompressed.header(), err
+		}
+	}
+
+	return b.fill(needReset)
 }
 
-func (b *blockReader) seek(r io.ReadSeeker, off int64) (gzip.Header, error) {
+func (b *blockReader) seekRead(r io.ReadSeeker, off int64) (gzip.Header, error) {
 	b.lazyBlock()
 
 	if off == b.decompressed.Base() && b.decompressed.hasData() {
 		return b.decompressed.header(), nil
 	}
 
-	_, err := r.Seek(off, 0)
-	if err != nil {
-		return b.decompressed.header(), err
+	if b.gotBlockFor(off) {
+		return b.decompressed.header(), nil
 	}
 
-	if r != nil {
-		type reseter interface {
-			Reset(io.Reader)
-		}
-		switch cr := b.cr.r.(type) {
-		case reseter:
-			cr.Reset(r)
-		default:
-			b.cr = makeReader(r)
-		}
-		b.cr.n = off
+	err := b.seek(r, off)
+	if err != nil {
+		return b.decompressed.header(), err
 	}
 
 	return b.fill(true)
 }
 
+func (b *blockReader) seek(r io.ReadSeeker, off int64) error {
+	_, err := r.Seek(off, 0)
+	if err != nil {
+		return err
+	}
+
+	type reseter interface {
+		Reset(io.Reader)
+	}
+	switch cr := b.cr.r.(type) {
+	case reseter:
+		cr.Reset(r)
+	default:
+		b.cr = makeReader(r)
+	}
+	b.cr.n = off
+
+	return nil
+}
+
+// gotBlockFor returns true if the blockReader has access to a cache
+// and that cache holds the block with given base and the correct
+// owner, otherwise it returns false.
+// gotBlockFor has side effects of recovering the block and putting
+// the currently active block into the cache. If the cache returns
+// a block owned by another reader, it is discarded.
+func (b *blockReader) gotBlockFor(base int64) bool {
+	if b.owner.Cache != nil {
+		dec := b.decompressed
+		if blk := b.owner.Cache.Get(base); blk != nil && blk.ownedBy(b.owner) {
+			if dec != nil && dec.hasData() {
+				b.owner.Cache.Put(dec)
+			}
+			if blk.seek(0) == nil {
+				b.decompressed = blk
+				b.owner.nextBase = blk.nextBase()
+				return true
+			}
+		}
+		if dec != nil && dec.hasData() {
+			b.decompressed = b.owner.Cache.Put(dec)
+			b.lazyBlock()
+		}
+	}
+
+	return false
+}
+
 func (b *blockReader) fill(reset bool) (gzip.Header, error) {
+	dec := b.decompressed
+
 	if reset {
-		b.decompressed.setBase(b.cr.n)
+		dec.setBase(b.cr.n)
 
 		err := b.gz.Reset(b.cr)
 		if err == nil && expectedBlockSize(b.gz.Header) < 0 {
@@ -111,9 +180,10 @@ func (b *blockReader) fill(reset bool) (gzip.Header, error) {
 		}
 	}
 
-	b.decompressed.setHeader(b.gz.Header)
+	dec.setHeader(b.gz.Header)
 	b.gz.Multistream(false)
-	_, err := b.decompressed.readFrom(b.gz)
+	_, err := dec.readFrom(b.gz)
+	b.owner.nextBase = dec.nextBase()
 	return b.gz.Header, err
 }
 
@@ -157,6 +227,10 @@ type Block interface {
 	// the given Reader.
 	ownedBy(*Reader) bool
 
+	// setOwner changes the owner to the given Reader,
+	// reseting other data to its zero state.
+	setOwner(*Reader)
+
 	// hasData returns whether the Block has read data.
 	hasData() bool
 
@@ -176,6 +250,10 @@ type Block interface {
 	// was decompressed from.
 	setBase(int64)
 
+	// nextBase returns the expected position of the next
+	// BGZF block. It returns -1 if the block is not valid.
+	nextBase() int64
+
 	// setHeader sets the file header of of the gzip
 	// member that the Block data was decompressed from.
 	setHeader(gzip.Header)
@@ -192,9 +270,8 @@ type Block interface {
 type block struct {
 	owner *Reader
 
-	base  int64
-	h     gzip.Header
-	valid bool
+	base int64
+	h    gzip.Header
 
 	chunk Chunk
 
@@ -244,9 +321,25 @@ func (b *block) setBase(n int64) {
 	b.chunk = Chunk{Begin: Offset{File: n}, End: Offset{File: n}}
 }
 
+func (b *block) nextBase() int64 {
+	size := int64(expectedBlockSize(b.h))
+	if size == -1 {
+		return -1
+	}
+	return b.base + size
+}
+
 func (b *block) setHeader(h gzip.Header) { b.h = h }
 
 func (b *block) header() gzip.Header { return b.h }
+
+func (b *block) setOwner(r *Reader) {
+	b.owner = r
+	b.base = -1
+	b.h = gzip.Header{}
+	b.chunk = Chunk{}
+	b.buf = nil
+}
 
 func (b *block) ownedBy(r *Reader) bool { return b.owner == r }
 
@@ -319,7 +412,7 @@ func (bg *Reader) Seek(off Offset) error {
 	}
 
 	var h gzip.Header
-	h, bg.err = bg.block.seek(rs, off.File)
+	h, bg.err = bg.block.seekRead(rs, off.File)
 	if bg.err != nil {
 		return bg.err
 	}

@@ -6,9 +6,12 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package bgzf
+package bgzf_test
 
 import (
+	. "code.google.com/p/biogo.bam/bgzf"
+	"code.google.com/p/biogo.bam/bgzf/cache"
+
 	"bytes"
 	"compress/gzip"
 	"flag"
@@ -103,13 +106,13 @@ func TestRoundTrip(t *testing.T) {
 	// FIXME(kortschak) The magic block is written on close,
 	// so we need to discount that until we have the capacity
 	// to see every header again.
-	wbl := buf.Len() - len(magicBlock)
+	wbl := buf.Len() - len(MagicBlock)
 
 	r, err := NewReader(buf)
 	if err != nil {
 		t.Fatalf("NewReader: %v", err)
 	}
-	if bl := expectedBlockSize(r.Header); bl != wbl {
+	if bl := ExpectedBlockSize(r.Header); bl != wbl {
 		t.Errorf("expectedBlockSize() is %d, want %d", bl, wbl)
 	}
 	blEnc := string([]byte{byte(wbl - 1), byte((wbl - 1) >> 8)})
@@ -126,7 +129,7 @@ func TestRoundTrip(t *testing.T) {
 	if r.Comment != "comment" {
 		t.Errorf("comment is %q, want %q", r.Comment, "comment")
 	}
-	if bl := expectedBlockSize(r.Header); bl != len(magicBlock) {
+	if bl := ExpectedBlockSize(r.Header); bl != len(MagicBlock) {
 		t.Errorf("expectedBlockSize() is %d, want %d", bl, wbl)
 	}
 	if string(r.Extra) != "BC\x02\x00\x1b\x00" {
@@ -170,7 +173,7 @@ func TestRoundTripMulti(t *testing.T) {
 	if err := w.Close(); err != nil {
 		t.Fatalf("Writer.Close: %v", err)
 	}
-	wbl[1] = buf.Len() - wbl[0] - len(magicBlock)
+	wbl[1] = buf.Len() - wbl[0] - len(MagicBlock)
 
 	var (
 		b     []byte
@@ -195,7 +198,7 @@ func TestRoundTripMulti(t *testing.T) {
 		t.Errorf("name is %q, want %q", r.Name, "name")
 	}
 
-	bl = expectedBlockSize(r.Header)
+	bl = ExpectedBlockSize(r.Header)
 	if bl != wbl[0] {
 		t.Errorf("expectedBlockSize() is %d, want %d", bl, wbl[0])
 	}
@@ -208,7 +211,7 @@ func TestRoundTripMulti(t *testing.T) {
 		t.Errorf("Read: %v", err)
 	}
 
-	bl = expectedBlockSize(r.Header)
+	bl = ExpectedBlockSize(r.Header)
 	if bl != wbl[1] {
 		t.Errorf("expectedBlockSize() is %d, want %d", bl, wbl[1])
 	}
@@ -258,7 +261,7 @@ func TestRoundTripMultiSeek(t *testing.T) {
 	if err := f.Close(); err != nil {
 		t.Fatalf("os.File.Close: %v", err)
 	}
-	wbl[1] = int(cw.bytes-offset) - len(magicBlock)
+	wbl[1] = int(cw.bytes-offset) - len(MagicBlock)
 
 	var (
 		b     []byte
@@ -286,7 +289,7 @@ func TestRoundTripMultiSeek(t *testing.T) {
 	if r.Name != "name" {
 		t.Errorf("name is %q, want %q", r.Name, "name")
 	}
-	bl = expectedBlockSize(r.Header)
+	bl = ExpectedBlockSize(r.Header)
 	if bl != wbl[0] {
 		t.Errorf("expectedBlockSize() is %d, want %d", bl, wbl[0])
 	}
@@ -295,8 +298,8 @@ func TestRoundTripMultiSeek(t *testing.T) {
 	if err != io.EOF {
 		t.Errorf("Read: %v", err)
 	}
-	if bl := expectedBlockSize(r.Header); bl != len(magicBlock) {
-		t.Errorf("expectedBlockSize() is %d, want %d", bl, len(magicBlock))
+	if bl := ExpectedBlockSize(r.Header); bl != len(MagicBlock) {
+		t.Errorf("expectedBlockSize() is %d, want %d", bl, len(MagicBlock))
 	}
 	if string(r.Extra) != "BC\x02\x00\x1b\x00" {
 		t.Errorf("extra is %q, want %q", r.Extra, "BC\x02\x00\x1b\x00")
@@ -317,7 +320,7 @@ func TestRoundTripMultiSeek(t *testing.T) {
 	if err := r.Seek(Offset{File: offset}); err != nil {
 		t.Fatalf("Seek: %v", err)
 	}
-	bl = expectedBlockSize(r.Header)
+	bl = ExpectedBlockSize(r.Header)
 	if bl != wbl[1] {
 		t.Errorf("expectedBlockSize() is %d, want %d", bl, wbl[1])
 	}
@@ -351,123 +354,431 @@ func (r *countReadSeeker) Seek(offset int64, whence int) (int64, error) {
 }
 
 func TestSeekFast(t *testing.T) {
-	const infix = "payload"
-	var (
-		buf  bytes.Buffer
-		offs = []int{0}
+	const (
+		infix  = "payload"
+		blocks = 10
 	)
-	w := NewWriter(&buf, 2)
-	for i := 0; i < 10; i++ {
-		if _, err := fmt.Fprintf(w, "%d%[2]s%[1]d", i, infix); err != nil {
-			t.Fatalf("Write: %v", err)
-		}
-		if err := w.Flush(); err != nil {
-			t.Fatalf("Flush: %v", err)
-		}
-		if err := w.Wait(); err != nil {
-			t.Fatalf("Wait: %v", err)
-		}
-		offs = append(offs, buf.Len())
-	}
-	c := &countReadSeeker{r: bytes.NewReader(buf.Bytes())}
-	r, err := NewReader(c)
-	if err != nil {
-		t.Fatalf("NewReader: %v", err)
-	}
-	p := make([]byte, len(infix)+2)
 
-	func() {
-		defer func() {
-			r := recover()
-			if r != nil {
-				t.Fatalf("Seek on unread reader panicked: %v", r)
+	// Use different caches.
+	for _, cache := range []Cache{
+		nil, // Explicitly nil.
+
+		cache.NewLRU(0), // Functionally nil.
+		cache.NewLRU(1),
+		cache.NewLRU(blocks / 2),
+		cache.NewLRU(blocks),
+		cache.NewLRU(blocks + 1),
+
+		cache.NewRandom(0), // Functionally nil.
+		cache.NewRandom(1),
+		cache.NewRandom(blocks / 2),
+		cache.NewRandom(blocks),
+		cache.NewRandom(blocks + 1),
+	} {
+		var (
+			buf     bytes.Buffer
+			offsets = []int{0}
+		)
+		w := NewWriter(&buf, 2)
+		for i := 0; i < blocks; i++ {
+			if _, err := fmt.Fprintf(w, "%d%[2]s%[1]d", i, infix); err != nil {
+				t.Fatalf("Write: %v", err)
+			}
+			if err := w.Flush(); err != nil {
+				t.Fatalf("Flush: %v", err)
+			}
+			if err := w.Wait(); err != nil {
+				t.Fatalf("Wait: %v", err)
+			}
+			offsets = append(offsets, buf.Len())
+		}
+		offsets = offsets[:len(offsets)-1]
+
+		c := &countReadSeeker{r: bytes.NewReader(buf.Bytes())}
+		r, err := NewReader(c)
+		if err != nil {
+			t.Fatalf("NewReader: %v", err)
+		}
+		r.Cache = cache
+		p := make([]byte, len(infix)+2)
+
+		func() {
+			defer func() {
+				r := recover()
+				if r != nil {
+					t.Fatalf("Seek on unread reader panicked: %v", r)
+				}
+			}()
+			err := r.Seek(Offset{})
+			if err != nil {
+				t.Fatalf("Seek: %v", err)
 			}
 		}()
-		err := r.Seek(Offset{})
-		if err != nil {
-			t.Fatalf("Seek: %v", err)
-		}
-	}()
 
-	// Standard read through of the data.
-	for i := range offs[:len(offs)-1] {
-		n, err := r.Read(p)
-		if n != len(p) {
-			t.Fatalf("Unexpected read length: got:%d want:%d", n, len(p))
+		// Standard read through of the data.
+		for i := range offsets {
+			n, err := r.Read(p)
+			if n != len(p) {
+				t.Fatalf("Unexpected read length: got:%d want:%d", n, len(p))
+			}
+			if err != nil {
+				t.Fatalf("Read: %v", err)
+			}
+			got := string(p)
+			want := fmt.Sprintf("%d%[2]s%[1]d", i, infix)
+			if got != want {
+				t.Errorf("Unexpected result: got:%q want:%q", got, want)
+			}
 		}
-		if err != nil {
-			t.Fatalf("Read: %v", err)
+
+		// Seek to each block in turn
+		for i, o := range offsets {
+			err := r.Seek(Offset{File: int64(o)})
+			if err != nil {
+				t.Fatalf("Seek: %v", err)
+			}
+			n, err := r.Read(p)
+			if n != len(p) {
+				t.Errorf("Unexpected read length: got:%d want:%d", n, len(p))
+			}
+			if err != nil {
+				t.Fatalf("Read: %v", err)
+			}
+			got := string(p)
+			want := fmt.Sprintf("%d%[2]s%[1]d", i, infix)
+			if got != want {
+				t.Errorf("Unexpected result: got:%q want:%q", got, want)
+			}
 		}
-		got := string(p)
-		want := fmt.Sprintf("%d%[2]s%[1]d", i, infix)
-		if got != want {
-			t.Errorf("Unexpected result: got:%q want:%q", got, want)
+
+		// Seek to each block in turn, but read the infix and then the first 2 bytes.
+		for i, o := range offsets {
+			if err := r.Seek(Offset{File: int64(o), Block: 1}); err != nil {
+				t.Fatalf("Seek: %v", err)
+			}
+			p = p[:len(infix)]
+			n, err := r.Read(p)
+			if n != len(p) {
+				t.Fatalf("Unexpected read length: got:%d want:%d", n, len(p))
+			}
+			if err != nil {
+				t.Fatalf("Read: %v", err)
+			}
+			got := string(p)
+			want := infix
+			if got != want {
+				t.Fatalf("Unexpected result: got:%q want:%q", got, want)
+			}
+
+			// Check whether the underlying reader was seeked or read.
+			hasRead := c.n
+			if err = r.Seek(Offset{File: int64(o), Block: 0}); err != nil {
+				t.Fatalf("Seek: %v", err)
+			}
+			if b := c.n - hasRead; b != 0 {
+				t.Errorf("Seek performed unexpected read: %d bytes", b)
+			}
+			if c.didSeek {
+				t.Error("Seek caused underlying Seek.")
+			}
+
+			p = p[:2]
+			n, err = r.Read(p)
+			if n != len(p) {
+				t.Fatalf("Unexpected read length: got:%d want:%d", n, len(p))
+			}
+			if err != nil {
+				t.Fatalf("Read: %v", err)
+			}
+			got = string(p)
+			want = fmt.Sprintf("%dp", i)
+			if got != want {
+				t.Fatalf("Unexpected result: got:%q want:%q", got, want)
+			}
 		}
 	}
+}
 
-	// Seek to each block in turn
-	for i, o := range offs[:len(offs)-1] {
-		err := r.Seek(Offset{File: int64(o)})
-		if err != nil {
-			t.Fatalf("Seek: %v", err)
-		}
-		n, err := r.Read(p)
-		if n != len(p) {
-			t.Errorf("Unexpected read length: got:%d want:%d", n, len(p))
-		}
-		if err != nil {
-			t.Fatalf("Read: %v", err)
-		}
-		got := string(p)
-		want := fmt.Sprintf("%d%[2]s%[1]d", i, infix)
-		if got != want {
-			t.Errorf("Unexpected result: got:%q want:%q", got, want)
-		}
+func TestCache(t *testing.T) {
+	const (
+		infix  = "payload"
+		blocks = 10
+	)
+
+	// Each pattern is a series of seek-and-read (when the element >= 0)
+	// or read (when the element < 0). Each read is exactly one block
+	// worth of data.
+	type opPair struct{ seekBlock, blockID int }
+	patterns := []struct {
+		ops []opPair
+
+		// One for each cache case below. If new caches are added to the
+		// test list, stats must be added here.
+		expectedStats []cache.Stats
+	}{
+		{
+			ops: []opPair{
+				{seekBlock: -1, blockID: 0},
+				{seekBlock: -1, blockID: 1},
+				{seekBlock: -1, blockID: 2},
+				{seekBlock: +0, blockID: 0},
+				{seekBlock: -1, blockID: 1},
+				{seekBlock: -1, blockID: 2},
+				{seekBlock: -1, blockID: 3},
+				{seekBlock: -1, blockID: 4},
+			},
+			expectedStats: []cache.Stats{
+				{}, // nil cache.
+				{}, // nil cache: LRU(0)
+				{LookUps: 8, Misses: 8, Stores: 7, Evictions: 6}, // LRU(1)
+				{LookUps: 8, Misses: 5, Stores: 7, Evictions: 0}, // LRU(5)
+				{LookUps: 8, Misses: 5, Stores: 7, Evictions: 0}, // LRU(10)
+				{LookUps: 8, Misses: 5, Stores: 7, Evictions: 0}, // LRU(11)
+				{}, // nil cache: FIFO(0)
+				{LookUps: 8, Misses: 8, Stores: 7, Evictions: 6}, // FIFO(1)
+				{LookUps: 8, Misses: 5, Stores: 7, Evictions: 0}, // FIFO(5)
+				{LookUps: 8, Misses: 5, Stores: 7, Evictions: 0}, // FIFO(10)
+				{LookUps: 8, Misses: 5, Stores: 7, Evictions: 0}, // FIFO(11)
+				{}, // nil cache: Random(0)
+				{LookUps: 8, Misses: 8, Stores: 7, Evictions: 6}, // Random(1)
+				{LookUps: 8, Misses: 5, Stores: 7, Evictions: 0}, // Random(5)
+				{LookUps: 8, Misses: 5, Stores: 7, Evictions: 0}, // Random(10)
+				{LookUps: 8, Misses: 5, Stores: 7, Evictions: 0}, // Random(11)
+			},
+		},
+		{
+			ops: []opPair{
+				{seekBlock: -1, blockID: 0},
+				{seekBlock: -1, blockID: 1},
+				{seekBlock: -1, blockID: 2},
+				{seekBlock: +1, blockID: 1},
+				{seekBlock: -1, blockID: 2},
+				{seekBlock: -1, blockID: 3},
+				{seekBlock: -1, blockID: 4},
+				{seekBlock: -1, blockID: 5},
+			},
+			expectedStats: []cache.Stats{
+				{}, // nil cache.
+				{}, // nil cache.
+				{LookUps: 8, Misses: 6, Stores: 7, Evictions: 4}, // LRU(1)
+				{LookUps: 8, Misses: 6, Stores: 7, Evictions: 0}, // LRU(5)
+				{LookUps: 8, Misses: 6, Stores: 7, Evictions: 0}, // LRU(10)
+				{LookUps: 8, Misses: 6, Stores: 7, Evictions: 0}, // LRU(11)
+				{}, // nil cache: FIFO(0)
+				{LookUps: 8, Misses: 6, Stores: 7, Evictions: 6}, // FIFO(1)
+				{LookUps: 8, Misses: 6, Stores: 7, Evictions: 0}, // FIFO(5)
+				{LookUps: 8, Misses: 6, Stores: 7, Evictions: 0}, // FIFO(10)
+				{LookUps: 8, Misses: 6, Stores: 7, Evictions: 0}, // FIFO(11)
+				{}, // nil cache: Random(0)
+				{LookUps: 8, Misses: 6, Stores: 7, Evictions: 4}, // Random(1)
+				{LookUps: 8, Misses: 6, Stores: 7, Evictions: 0}, // Random(5)
+				{LookUps: 8, Misses: 6, Stores: 7, Evictions: 0}, // Random(10)
+				{LookUps: 8, Misses: 6, Stores: 7, Evictions: 0}, // Random(11)
+			},
+		},
+		{
+			ops: []opPair{
+				{seekBlock: -1, blockID: 0},
+				{seekBlock: -1, blockID: 1},
+				{seekBlock: -1, blockID: 2},
+				{seekBlock: +2, blockID: 2},
+				{seekBlock: -1, blockID: 3},
+				{seekBlock: -1, blockID: 4},
+				{seekBlock: -1, blockID: 5},
+				{seekBlock: -1, blockID: 6},
+			},
+			// Re-reading the same block avoids a cache look-up.
+			expectedStats: []cache.Stats{
+				{}, // nil cache.
+				{}, // nil cache.
+				{LookUps: 7, Misses: 7, Stores: 6, Evictions: 5}, // LRU(1)
+				{LookUps: 7, Misses: 7, Stores: 6, Evictions: 1}, // LRU(5)
+				{LookUps: 7, Misses: 7, Stores: 6, Evictions: 0}, // LRU(10)
+				{LookUps: 7, Misses: 7, Stores: 6, Evictions: 0}, // LRU(11)
+				{}, // nil cache: FIFO(0)
+				{LookUps: 7, Misses: 7, Stores: 6, Evictions: 5}, // FIFO(1)
+				{LookUps: 7, Misses: 7, Stores: 6, Evictions: 1}, // FIFO(5)
+				{LookUps: 7, Misses: 7, Stores: 6, Evictions: 0}, // FIFO(10)
+				{LookUps: 7, Misses: 7, Stores: 6, Evictions: 0}, // FIFO(11)
+				{}, // nil cache: Random(0)
+				{LookUps: 7, Misses: 7, Stores: 6, Evictions: 5}, // Random(1)
+				{LookUps: 7, Misses: 7, Stores: 6, Evictions: 1}, // Random(5)
+				{LookUps: 7, Misses: 7, Stores: 6, Evictions: 0}, // Random(10)
+				{LookUps: 7, Misses: 7, Stores: 6, Evictions: 0}, // Random(11)
+			},
+		},
+		{
+			ops: []opPair{
+				{seekBlock: -1, blockID: 0},
+				{seekBlock: -1, blockID: 1},
+				{seekBlock: -1, blockID: 2},
+				{seekBlock: +3, blockID: 3},
+				{seekBlock: -1, blockID: 4},
+				{seekBlock: -1, blockID: 5},
+				{seekBlock: -1, blockID: 6},
+				{seekBlock: -1, blockID: 7},
+			},
+			expectedStats: []cache.Stats{
+				{}, // nil cache.
+				{}, // nil cache.
+				{LookUps: 8, Misses: 8, Stores: 7, Evictions: 6}, // LRU(1)
+				{LookUps: 8, Misses: 8, Stores: 7, Evictions: 2}, // LRU(5)
+				{LookUps: 8, Misses: 8, Stores: 7, Evictions: 0}, // LRU(10)
+				{LookUps: 8, Misses: 8, Stores: 7, Evictions: 0}, // LRU(11)
+				{}, // nil cache: FIFO(0)
+				{LookUps: 8, Misses: 8, Stores: 7, Evictions: 6}, // FIFO(1)
+				{LookUps: 8, Misses: 8, Stores: 7, Evictions: 2}, // FIFO(5)
+				{LookUps: 8, Misses: 8, Stores: 7, Evictions: 0}, // FIFO(10)
+				{LookUps: 8, Misses: 8, Stores: 7, Evictions: 0}, // FIFO(11)
+				{}, // nil cache: Random(0)
+				{LookUps: 8, Misses: 8, Stores: 7, Evictions: 6}, // Random(1)
+				{LookUps: 8, Misses: 8, Stores: 7, Evictions: 2}, // Random(5)
+				{LookUps: 8, Misses: 8, Stores: 7, Evictions: 0}, // Random(10)
+				{LookUps: 8, Misses: 8, Stores: 7, Evictions: 0}, // Random(11)
+			},
+		},
+		{
+			ops: []opPair{
+				{seekBlock: -1, blockID: 0},
+				{seekBlock: -1, blockID: 1},
+				{seekBlock: -1, blockID: 2},
+				{seekBlock: +4, blockID: 4},
+				{seekBlock: -1, blockID: 5},
+				{seekBlock: -1, blockID: 6},
+				{seekBlock: -1, blockID: 7},
+				{seekBlock: -1, blockID: 8},
+			},
+			expectedStats: []cache.Stats{
+				{}, // nil cache.
+				{}, // nil cache.
+				{LookUps: 8, Misses: 8, Stores: 7, Evictions: 6}, // LRU(1)
+				{LookUps: 8, Misses: 8, Stores: 7, Evictions: 2}, // LRU(5)
+				{LookUps: 8, Misses: 8, Stores: 7, Evictions: 0}, // LRU(10)
+				{LookUps: 8, Misses: 8, Stores: 7, Evictions: 0}, // LRU(11)
+				{}, // nil cache: FIFO(0)
+				{LookUps: 8, Misses: 8, Stores: 7, Evictions: 6}, // FIFO(1)
+				{LookUps: 8, Misses: 8, Stores: 7, Evictions: 2}, // FIFO(5)
+				{LookUps: 8, Misses: 8, Stores: 7, Evictions: 0}, // FIFO(10)
+				{LookUps: 8, Misses: 8, Stores: 7, Evictions: 0}, // FIFO(11)
+				{}, // nil cache: Random(0)
+				{LookUps: 8, Misses: 8, Stores: 7, Evictions: 6}, // Random(1)
+				{LookUps: 8, Misses: 8, Stores: 7, Evictions: 2}, // Random(5)
+				{LookUps: 8, Misses: 8, Stores: 7, Evictions: 0}, // Random(10)
+				{LookUps: 8, Misses: 8, Stores: 7, Evictions: 0}, // Random(11)
+			},
+		},
+		{
+			ops: []opPair{
+				{seekBlock: -1, blockID: 0},
+				{seekBlock: -1, blockID: 1},
+				{seekBlock: -1, blockID: 2},
+				{seekBlock: +1, blockID: 1},
+				{seekBlock: +2, blockID: 2},
+				{seekBlock: +1, blockID: 1},
+				{seekBlock: +1, blockID: 1},
+				{seekBlock: -1, blockID: 2},
+				{seekBlock: +7, blockID: 7},
+				{seekBlock: -1, blockID: 8},
+				{seekBlock: -1, blockID: 9},
+			},
+			expectedStats: []cache.Stats{
+				{}, // nil cache.
+				{}, // nil cache.
+				{LookUps: 10, Misses: 6, Stores: 9, Evictions: 4}, // LRU(1)
+				{LookUps: 10, Misses: 6, Stores: 9, Evictions: 0}, // LRU(5)
+				{LookUps: 10, Misses: 6, Stores: 9, Evictions: 0}, // LRU(10)
+				{LookUps: 10, Misses: 6, Stores: 9, Evictions: 0}, // LRU(11)
+				{}, // nil cache: FIFO(0)
+				{LookUps: 10, Misses: 6, Stores: 9, Evictions: 8}, // FIFO(1)
+				{LookUps: 10, Misses: 6, Stores: 9, Evictions: 0}, // FIFO(5)
+				{LookUps: 10, Misses: 6, Stores: 9, Evictions: 0}, // FIFO(10)
+				{LookUps: 10, Misses: 6, Stores: 9, Evictions: 0}, // FIFO(11)
+				{}, // nil cache: Random(0)
+				{LookUps: 10, Misses: 6, Stores: 9, Evictions: 4}, // Random(1)
+				{LookUps: 10, Misses: 6, Stores: 9, Evictions: 0}, // Random(5)
+				{LookUps: 10, Misses: 6, Stores: 9, Evictions: 0}, // Random(10)
+				{LookUps: 10, Misses: 6, Stores: 9, Evictions: 0}, // Random(11)
+			},
+		},
 	}
 
-	// Seek to each block in turn, but read the infix and then the first 2 bytes.
-	for i, o := range offs[:len(offs)-1] {
-		if err := r.Seek(Offset{File: int64(o), Block: 1}); err != nil {
-			t.Fatalf("Seek: %v", err)
-		}
-		p = p[:len(infix)]
-		n, err := r.Read(p)
-		if n != len(p) {
-			t.Fatalf("Unexpected read length: got:%d want:%d", n, len(p))
-		}
-		if err != nil {
-			t.Fatalf("Read: %v", err)
-		}
-		got := string(p)
-		want := infix
-		if got != want {
-			t.Fatalf("Unexpected result: got:%q want:%q", got, want)
-		}
+	for k, pat := range patterns {
+		// Use different caches.
+		for j, s := range []Cache{
+			nil, // Explicitly nil.
 
-		// Check whether the underlying reader was seeked or read.
-		hasRead := c.n
-		if err = r.Seek(Offset{File: int64(o), Block: 0}); err != nil {
-			t.Fatalf("Seek: %v", err)
-		}
-		if b := c.n - hasRead; b != 0 {
-			t.Errorf("Seek performed unexpected read: %d bytes", b)
-		}
-		if c.didSeek {
-			t.Error("Seek caused underlying Seek.")
-		}
+			cache.NewLRU(0), // Functionally nil.
+			cache.NewLRU(1),
+			cache.NewLRU(blocks / 2),
+			cache.NewLRU(blocks),
+			cache.NewLRU(blocks + 1),
 
-		p = p[:2]
-		n, err = r.Read(p)
-		if n != len(p) {
-			t.Fatalf("Unexpected read length: got:%d want:%d", n, len(p))
-		}
-		if err != nil {
-			t.Fatalf("Read: %v", err)
-		}
-		got = string(p)
-		want = fmt.Sprintf("%dp", i)
-		if got != want {
-			t.Fatalf("Unexpected result: got:%q want:%q", got, want)
+			cache.NewFIFO(0), // Functionally nil.
+			cache.NewFIFO(1),
+			cache.NewFIFO(blocks / 2),
+			cache.NewFIFO(blocks),
+			cache.NewFIFO(blocks + 1),
+
+			cache.NewRandom(0), // Functionally nil.
+			cache.NewRandom(1),
+			cache.NewRandom(blocks / 2),
+			cache.NewRandom(blocks),
+			cache.NewRandom(blocks + 1),
+		} {
+			var (
+				buf     bytes.Buffer
+				offsets = []int{0}
+			)
+			w := NewWriter(&buf, 2)
+			for i := 0; i < blocks; i++ {
+				if _, err := fmt.Fprintf(w, "%d%[2]s%[1]d", i, infix); err != nil {
+					t.Fatalf("Write: %v", err)
+				}
+				if err := w.Flush(); err != nil {
+					t.Fatalf("Flush: %v", err)
+				}
+				if err := w.Wait(); err != nil {
+					t.Fatalf("Wait: %v", err)
+				}
+				offsets = append(offsets, buf.Len())
+			}
+			offsets = offsets[:len(offsets)-1]
+
+			r, err := NewReader(bytes.NewReader(buf.Bytes()))
+			if err != nil {
+				t.Fatalf("NewReader: %v", err)
+			}
+			var stats *cache.StatsRecorder
+			if s != nil {
+				stats = &cache.StatsRecorder{Cache: s}
+				s = stats
+			}
+			r.Cache = s
+			p := make([]byte, len(infix)+2)
+
+			for _, op := range pat.ops {
+				if op.seekBlock >= 0 {
+					err := r.Seek(Offset{File: int64(offsets[op.seekBlock])})
+					if err != nil {
+						t.Fatalf("Seek: %v", err)
+					}
+				}
+				n, err := r.Read(p)
+				if n != len(p) {
+					t.Errorf("Unexpected read length: got:%d want:%d", n, len(p))
+				}
+				if err != nil {
+					t.Fatalf("Read: %v", err)
+				}
+				got := string(p)
+				want := fmt.Sprintf("%d%[2]s%[1]d", op.blockID, infix)
+				if got != want {
+					t.Errorf("Unexpected result: got:%q want:%q", got, want)
+				}
+			}
+			if stats != nil && stats.Stats() != pat.expectedStats[j] {
+				t.Errorf("Unexpected result for cache %d pattern %d: got:%+v want:%+v", j, k, stats.Stats(), pat.expectedStats[j])
+			}
 		}
 	}
 }

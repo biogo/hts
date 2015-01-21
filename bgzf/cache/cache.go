@@ -50,6 +50,15 @@ func (c *LRU) Len() int { return len(c.table) }
 // Cap returns the maximum number of elements that can be held by the cache.
 func (c *LRU) Cap() int { return c.cap }
 
+// Resize changes the capacity of the cache to n, dropping excess blocks
+// if n is less than the number of cached blocks.
+func (c *LRU) Resize(n int) {
+	if n < len(c.table) {
+		c.Drop(len(c.table) - n)
+	}
+	c.cap = n
+}
+
 // Drop evicts n elements from the cache according to the cache eviction policy.
 func (c *LRU) Drop(n int) {
 	for ; n > 0 && c.Len() > 0; n-- {
@@ -72,6 +81,9 @@ func (c *LRU) Get(base int64) bgzf.Block {
 // nil if no eviction was necessary.
 func (c *LRU) Put(b bgzf.Block) bgzf.Block {
 	var d bgzf.Block
+	if _, ok := c.table[b.Base()]; ok {
+		return nil
+	}
 	if len(c.table) == c.cap {
 		d = c.root.prev.b
 		c.remove(c.root.prev)
@@ -122,6 +134,15 @@ func (c *FIFO) Len() int { return len(c.table) }
 
 // Cap returns the maximum number of elements that can be held by the cache.
 func (c *FIFO) Cap() int { return c.cap }
+
+// Resize changes the capacity of the cache to n, dropping excess blocks
+// if n is less than the number of cached blocks.
+func (c *FIFO) Resize(n int) {
+	if n < len(c.table) {
+		c.Drop(len(c.table) - n)
+	}
+	c.cap = n
+}
 
 // Drop evicts n elements from the cache according to the cache eviction policy.
 func (c *FIFO) Drop(n int) {
@@ -193,6 +214,15 @@ func (c *Random) Len() int { return len(c.table) }
 // Cap returns the maximum number of elements that can be held by the cache.
 func (c *Random) Cap() int { return c.cap }
 
+// Resize changes the capacity of the cache to n, dropping excess blocks
+// if n is less than the number of cached blocks.
+func (c *Random) Resize(n int) {
+	if n < len(c.table) {
+		c.Drop(len(c.table) - n)
+	}
+	c.cap = n
+}
+
 // Drop evicts n elements from the cache according to the cache eviction policy.
 func (c *Random) Drop(n int) {
 	if n < 1 {
@@ -221,6 +251,9 @@ func (c *Random) Get(base int64) bgzf.Block {
 // nil if no eviction was necessary.
 func (c *Random) Put(b bgzf.Block) bgzf.Block {
 	var d bgzf.Block
+	if _, ok := c.table[b.Base()]; ok {
+		return nil
+	}
 	if len(c.table) == c.cap {
 		for k, v := range c.table {
 			delete(c.table, k)
@@ -230,4 +263,45 @@ func (c *Random) Put(b bgzf.Block) bgzf.Block {
 	}
 	c.table[b.Base()] = b
 	return d
+}
+
+// StatsRecorder allows a bgzf.Cache to capture cache statistics.
+type StatsRecorder struct {
+	bgzf.Cache
+
+	stats Stats
+}
+
+// Stats represents statistics of a BGZF cache.
+type Stats struct {
+	LookUps   int
+	Misses    int
+	Stores    int
+	Evictions int
+}
+
+// Stats returns the current statistics for the cache.
+func (s *StatsRecorder) Stats() Stats { return s.stats }
+
+// Get returns the Block in the underlyingCache with the specified base or a nil
+// Block if it does not exist. It updates the look-ups and misses statistics.
+func (s *StatsRecorder) Get(base int64) bgzf.Block {
+	s.stats.LookUps++
+	blk := s.Cache.Get(base)
+	if blk == nil {
+		s.stats.Misses++
+	}
+	return blk
+}
+
+// Put inserts a Block into the underlying Cache, returning the Block that was
+// evicted or nil if no eviction was necessary. It updates the stores and evictions
+// statistics.
+func (s *StatsRecorder) Put(b bgzf.Block) bgzf.Block {
+	s.stats.Stores++
+	blk := s.Cache.Put(b)
+	if blk != nil {
+		s.stats.Evictions++
+	}
+	return blk
 }
