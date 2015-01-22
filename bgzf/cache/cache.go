@@ -10,14 +10,37 @@ import (
 )
 
 var (
-	_ bgzf.Cache = (*LRU)(nil)
-	_ bgzf.Cache = (*FIFO)(nil)
-	_ bgzf.Cache = (*Random)(nil)
+	_ Cache = (*LRU)(nil)
+	_ Cache = (*FIFO)(nil)
+	_ Cache = (*Random)(nil)
 )
+
+// Cache is an extension of bgzf.Cache that allows inspection
+// and manipulation of the cache.
+type Cache interface {
+	bgzf.Cache
+
+	// Len returns the number of elements held by
+	// the cache.
+	Len() int
+
+	// Cap returns the maximum number of elements
+	// that can be held by the cache.
+	Cap() int
+
+	// Resize changes the capacity of the cache to n,
+	// dropping excess blocks if n is less than the
+	// number of cached blocks.
+	Resize(int)
+
+	// Drop evicts n elements from the cache according
+	// to the cache eviction policy.
+	Drop(int)
+}
 
 // NewLRU returns an LRU cache with the n slots. If n is less than 1
 // a nil cache is returned.
-func NewLRU(n int) bgzf.Cache {
+func NewLRU(n int) Cache {
 	if n < 1 {
 		return nil
 	}
@@ -30,7 +53,7 @@ func NewLRU(n int) bgzf.Cache {
 	return &c
 }
 
-// LRU satisfies the bgzf.Cache interface with least recently used eviction
+// LRU satisfies the Cache interface with least recently used eviction
 // behavior.
 type LRU struct {
 	root  node
@@ -108,7 +131,7 @@ func (c *LRU) remove(n *node) {
 
 // NewLRU returns a FIFO cache with the n slots. If n is less than 1
 // a nil cache is returned.
-func NewFIFO(n int) bgzf.Cache {
+func NewFIFO(n int) Cache {
 	if n < 1 {
 		return nil
 	}
@@ -121,7 +144,7 @@ func NewFIFO(n int) bgzf.Cache {
 	return &c
 }
 
-// FIFO satisfies the bgzf.Cache interface with first in first out eviction
+// FIFO satisfies the Cache interface with first in first out eviction
 // behavior.
 type FIFO struct {
 	root  node
@@ -192,7 +215,7 @@ func (c *FIFO) remove(n *node) {
 
 // NewLRU returns a random eviction cache with the n slots. If n is less than 1
 // a nil cache is returned.
-func NewRandom(n int) bgzf.Cache {
+func NewRandom(n int) Cache {
 	if n < 1 {
 		return nil
 	}
@@ -202,7 +225,7 @@ func NewRandom(n int) bgzf.Cache {
 	}
 }
 
-// Random satisfies the bgzf.Cache interface with random eviction behavior.
+// Random satisfies the Cache interface with random eviction behavior.
 type Random struct {
 	table map[int64]bgzf.Block
 	cap   int
