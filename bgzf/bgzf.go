@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	BlockSize    = 0x0ff00 // Size of input data block.
-	MaxBlockSize = 0x10000 // Maximum size of output block.
+	BlockSize    = 0x0ff00 // The maximum size of an uncompressed input data block.
+	MaxBlockSize = 0x10000 // The maximum size of a compressed output block.
 )
 
 const (
@@ -43,6 +43,9 @@ var (
 	ErrBlockSizeMismatch = errors.New("bgzf: unexpected block size")
 )
 
+// CheckEOF check for the presence of a BGZF magic EOF block.
+// The magic block is defined in the SAM specification. A magic block
+// is written by a Writer on calling Close.
 func CheckEOF(f *os.File) (bool, error) {
 	fi, err := f.Stat()
 	if err != nil {

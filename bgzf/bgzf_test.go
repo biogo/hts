@@ -379,7 +379,7 @@ func TestSeekFast(t *testing.T) {
 			buf     bytes.Buffer
 			offsets = []int{0}
 		)
-		w := NewWriter(&buf, 2)
+		w := NewWriter(&buf, 1)
 		for i := 0; i < blocks; i++ {
 			if _, err := fmt.Fprintf(w, "%d%[2]s%[1]d", i, infix); err != nil {
 				t.Fatalf("Write: %v", err)
@@ -729,7 +729,7 @@ func TestCache(t *testing.T) {
 				buf     bytes.Buffer
 				offsets = []int{0}
 			)
-			w := NewWriter(&buf, 2)
+			w := NewWriter(&buf, 1)
 			for i := 0; i < blocks; i++ {
 				if _, err := fmt.Fprintf(w, "%d%[2]s%[1]d", i, infix); err != nil {
 					t.Fatalf("Write: %v", err)
@@ -793,7 +793,7 @@ func (z zero) Read(p []byte) (int, error) {
 }
 
 func TestWriteByteCount(t *testing.T) {
-	cw := NewWriterLevel(ioutil.Discard, gzip.BestCompression, 4)
+	cw, _ := NewWriterLevel(ioutil.Discard, gzip.BestCompression, 4)
 	defer cw.Close()
 	n, err := io.Copy(cw, &io.LimitedReader{R: new(zero), N: 100000})
 	if n != 100000 {

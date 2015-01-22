@@ -7,10 +7,12 @@ package bgzf
 import (
 	"bytes"
 	"compress/gzip"
+	"fmt"
 	"io"
 	"sync"
 )
 
+// Writer implements BGZF blocked gzip compression.
 type Writer struct {
 	gzip.Header
 	w io.Writer
@@ -30,11 +32,25 @@ type Writer struct {
 	err error
 }
 
+// NewWriter returns a new Writer. Writes to the returned writer are
+// compressed and written to w.
+//
+// The number of concurrent write compressors is specified by wc.
 func NewWriter(w io.Writer, wc int) *Writer {
-	return NewWriterLevel(w, gzip.DefaultCompression, wc)
+	bg, _ := NewWriterLevel(w, gzip.DefaultCompression, wc)
+	return bg
 }
 
-func NewWriterLevel(w io.Writer, level, wc int) *Writer {
+// NewWriterLevel returns a new Writer using the specified compression level
+// instead of gzip.DefaultCompression. Allowable level options are integer
+// values between between gzip.BestSpeed and gzip.BestCompression inclusive.
+//
+// The number of concurrent write compressors is specified by wc.
+func NewWriterLevel(w io.Writer, level, wc int) (*Writer, error) {
+	if level < gzip.DefaultCompression || level > gzip.BestCompression {
+		return nil, fmt.Errorf("bgzf: invalid compression level: %d", level)
+	}
+	wc++ // We count one for the active compressor.
 	if wc < 2 {
 		wc = 2
 	}
@@ -65,7 +81,7 @@ func NewWriterLevel(w io.Writer, level, wc int) *Writer {
 		}
 	}()
 
-	return bg
+	return bg, nil
 }
 
 func writeOK(bg *Writer, c *compressor) bool {
@@ -150,6 +166,8 @@ func (c *compressor) writeBlock() {
 	b[i+4], b[i+5] = byte(size), byte(size>>8)
 }
 
+// Next returns the index of the start of the next write within the
+// decompressed data block.
 func (bg *Writer) Next() (int, error) {
 	if bg.closed {
 		return 0, ErrClosed
@@ -161,6 +179,10 @@ func (bg *Writer) Next() (int, error) {
 	return bg.active.next, nil
 }
 
+// Write writes the compressed form of b to the underlying io.Writer.
+// Decompressed data blocks are limited to BlockSize, so individual
+// byte slices may span block boundaries, however the Writer attempts
+// to keep each write within a single data block.
 func (bg *Writer) Write(b []byte) (int, error) {
 	if bg.closed {
 		return 0, ErrClosed
@@ -193,6 +215,7 @@ func (bg *Writer) Write(b []byte) (int, error) {
 	return n, bg.Error()
 }
 
+// Flush writes unwritten data to the underlying io.Writer. Flush does not block.
 func (bg *Writer) Flush() error {
 	if bg.closed {
 		return ErrClosed
@@ -214,6 +237,8 @@ func (bg *Writer) Flush() error {
 	return bg.Error()
 }
 
+// Wait waits for all pending writes to complete and returns the subsequent
+// error state of the Writer.
 func (bg *Writer) Wait() error {
 	if err := bg.Error(); err != nil {
 		return err
@@ -222,6 +247,7 @@ func (bg *Writer) Wait() error {
 	return bg.Error()
 }
 
+// Error returns the error state of the Writer.
 func (bg *Writer) Error() error {
 	bg.m.Lock()
 	defer bg.m.Unlock()
@@ -236,6 +262,8 @@ func (bg *Writer) setErr(err error) {
 	}
 }
 
+// Close closes the Writer, waiting for any pending writes before returning
+// the final error of the Writer.
 func (bg *Writer) Close() error {
 	if !bg.closed {
 		c := bg.active

@@ -129,7 +129,7 @@ func (c *LRU) remove(n *node) {
 	n.prev = nil
 }
 
-// NewLRU returns a FIFO cache with the n slots. If n is less than 1
+// NewFIFO returns a FIFO cache with the n slots. If n is less than 1
 // a nil cache is returned.
 func NewFIFO(n int) Cache {
 	if n < 1 {
@@ -213,7 +213,7 @@ func (c *FIFO) remove(n *node) {
 	n.prev = nil
 }
 
-// NewLRU returns a random eviction cache with the n slots. If n is less than 1
+// NewRandom returns a random eviction cache with the n slots. If n is less than 1
 // a nil cache is returned.
 func NewRandom(n int) Cache {
 	if n < 1 {
