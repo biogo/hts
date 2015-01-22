@@ -102,10 +102,10 @@ func (c *LRU) Get(base int64) bgzf.Block {
 
 // Put inserts a Block into the Cache, returning the Block that was evicted or
 // nil if no eviction was necessary.
-func (c *LRU) Put(b bgzf.Block) bgzf.Block {
+func (c *LRU) Put(b bgzf.Block) (evicted bgzf.Block, retained bool) {
 	var d bgzf.Block
 	if _, ok := c.table[b.Base()]; ok {
-		return nil
+		return nil, false
 	}
 	if len(c.table) == c.cap {
 		d = c.root.prev.b
@@ -118,7 +118,7 @@ func (c *LRU) Put(b bgzf.Block) bgzf.Block {
 	n.prev = &c.root
 	n.next = f
 	f.prev = n
-	return d
+	return d, true
 }
 
 func (c *LRU) remove(n *node) {
@@ -186,10 +186,10 @@ func (c *FIFO) Get(base int64) bgzf.Block {
 
 // Put inserts a Block into the Cache, returning the Block that was evicted or
 // nil if no eviction was necessary.
-func (c *FIFO) Put(b bgzf.Block) bgzf.Block {
+func (c *FIFO) Put(b bgzf.Block) (evicted bgzf.Block, retained bool) {
 	var d bgzf.Block
 	if _, ok := c.table[b.Base()]; ok {
-		return nil
+		return nil, false
 	}
 	if len(c.table) == c.cap {
 		d = c.root.prev.b
@@ -202,7 +202,7 @@ func (c *FIFO) Put(b bgzf.Block) bgzf.Block {
 	n.prev = &c.root
 	n.next = f
 	f.prev = n
-	return d
+	return d, true
 }
 
 func (c *FIFO) remove(n *node) {
@@ -272,10 +272,10 @@ func (c *Random) Get(base int64) bgzf.Block {
 
 // Put inserts a Block into the Cache, returning the Block that was evicted or
 // nil if no eviction was necessary.
-func (c *Random) Put(b bgzf.Block) bgzf.Block {
+func (c *Random) Put(b bgzf.Block) (evicted bgzf.Block, retained bool) {
 	var d bgzf.Block
 	if _, ok := c.table[b.Base()]; ok {
-		return nil
+		return nil, false
 	}
 	if len(c.table) == c.cap {
 		for k, v := range c.table {
@@ -285,7 +285,7 @@ func (c *Random) Put(b bgzf.Block) bgzf.Block {
 		}
 	}
 	c.table[b.Base()] = b
-	return d
+	return d, true
 }
 
 // StatsRecorder allows a bgzf.Cache to capture cache statistics.
@@ -297,10 +297,11 @@ type StatsRecorder struct {
 
 // Stats represents statistics of a bgzf.Cache.
 type Stats struct {
-	LookUps   int
-	Misses    int
-	Stores    int
-	Evictions int
+	Gets      int // number of Get operations
+	Misses    int // number of cache misses
+	Puts      int // number of Put operations
+	Retains   int // number of times a Put has resulted in Block retention
+	Evictions int // number of times a Put has resulted in a Block eviction
 }
 
 // Stats returns the current statistics for the cache.
@@ -312,7 +313,7 @@ func (s *StatsRecorder) Reset() { s.stats = Stats{} }
 // Get returns the Block in the underlying Cache with the specified base or a nil
 // Block if it does not exist. It updates the look-ups and misses statistics.
 func (s *StatsRecorder) Get(base int64) bgzf.Block {
-	s.stats.LookUps++
+	s.stats.Gets++
 	blk := s.Cache.Get(base)
 	if blk == nil {
 		s.stats.Misses++
@@ -323,11 +324,14 @@ func (s *StatsRecorder) Get(base int64) bgzf.Block {
 // Put inserts a Block into the underlying Cache, returning the Block that was
 // evicted or nil if no eviction was necessary. It updates the stores and evictions
 // statistics.
-func (s *StatsRecorder) Put(b bgzf.Block) bgzf.Block {
-	s.stats.Stores++
-	blk := s.Cache.Put(b)
+func (s *StatsRecorder) Put(b bgzf.Block) (evicted bgzf.Block, retained bool) {
+	s.stats.Puts++
+	blk, retained := s.Cache.Put(b)
+	if retained {
+		s.stats.Retains++
+	}
 	if blk != nil {
 		s.stats.Evictions++
 	}
-	return blk
+	return blk, retained
 }

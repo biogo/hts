@@ -148,6 +148,9 @@ func (b *blockReader) gotBlockFor(base int64) bool {
 		dec := b.decompressed
 		if blk := b.owner.Cache.Get(base); blk != nil && blk.ownedBy(b.owner) {
 			if dec != nil && dec.hasData() {
+				// We have just retrieved a block from the cache
+				// so we know that it must be below capacity and
+				// a put will not cause an eviction.
 				b.owner.Cache.Put(dec)
 			}
 			if blk.seek(0) == nil {
@@ -157,8 +160,11 @@ func (b *blockReader) gotBlockFor(base int64) bool {
 			}
 		}
 		if dec != nil && dec.hasData() {
-			b.decompressed = b.owner.Cache.Put(dec)
-			b.lazyBlock()
+			dec, retained := b.owner.Cache.Put(dec)
+			if retained {
+				b.decompressed = dec
+				b.lazyBlock()
+			}
 		}
 	}
 
@@ -198,12 +204,15 @@ func expectedBlockSize(h gzip.Header) int {
 // If a Cache is a Wrapper, its Wrap method is called on newly created blocks.
 type Cache interface {
 	// Get returns the Block in the Cache with the specified
-	// base or a nil Block if it does not exist.
+	// base or a nil Block if it does not exist. The returned
+	// Block must be removed from the Cache.
 	Get(base int64) Block
 
 	// Put inserts a Block into the Cache, returning the Block
-	// that was evicted or nil if no eviction was necessary.
-	Put(Block) Block
+	// that was evicted or nil if no eviction was necessary and
+	// a boolean indicating whether the put Block was retained
+	// by the Cache.
+	Put(Block) (evicted Block, retained bool)
 }
 
 // Wrapper defines Cache types that need to modify a Block at its creation.
