@@ -306,6 +306,9 @@ type Stats struct {
 // Stats returns the current statistics for the cache.
 func (s *StatsRecorder) Stats() Stats { return s.stats }
 
+// Reset zeros the statistics kept by the StatsRecorder.
+func (s *StatsRecorder) Reset() { s.stats = Stats{} }
+
 // Get returns the Block in the underlying Cache with the specified base or a nil
 // Block if it does not exist. It updates the look-ups and misses statistics.
 func (s *StatsRecorder) Get(base int64) bgzf.Block {
