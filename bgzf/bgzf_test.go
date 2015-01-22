@@ -44,7 +44,7 @@ func TestEmpty(t *testing.T) {
 		t.Fatalf("Writer.Close: %v", err)
 	}
 
-	r, err := NewReader(buf)
+	r, err := NewReader(buf, 1)
 	if err != nil {
 		t.Fatalf("NewReader: %v", err)
 	}
@@ -108,7 +108,7 @@ func TestRoundTrip(t *testing.T) {
 	// to see every header again.
 	wbl := buf.Len() - len(MagicBlock)
 
-	r, err := NewReader(buf)
+	r, err := NewReader(buf, *conc)
 	if err != nil {
 		t.Fatalf("NewReader: %v", err)
 	}
@@ -180,7 +180,7 @@ func TestRoundTripMulti(t *testing.T) {
 		bl, n int
 		err   error
 	)
-	r, err := NewReader(buf)
+	r, err := NewReader(buf, *conc)
 	if err != nil {
 		t.Fatalf("NewReader: %v", err)
 	}
@@ -272,7 +272,7 @@ func TestRoundTripMultiSeek(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Reopen temp file: %v", err)
 	}
-	r, err := NewReader(f)
+	r, err := NewReader(f, *conc)
 	if err != nil {
 		t.Fatalf("NewReader: %v", err)
 	}
@@ -395,7 +395,7 @@ func TestSeekFast(t *testing.T) {
 		offsets = offsets[:len(offsets)-1]
 
 		c := &countReadSeeker{r: bytes.NewReader(buf.Bytes())}
-		r, err := NewReader(c)
+		r, err := NewReader(c, *conc)
 		if err != nil {
 			t.Fatalf("NewReader: %v", err)
 		}
@@ -744,7 +744,7 @@ func TestCache(t *testing.T) {
 			}
 			offsets = offsets[:len(offsets)-1]
 
-			r, err := NewReader(bytes.NewReader(buf.Bytes()))
+			r, err := NewReader(bytes.NewReader(buf.Bytes()), *conc)
 			if err != nil {
 				t.Fatalf("NewReader: %v", err)
 			}

@@ -20,8 +20,8 @@ type Reader struct {
 	lastChunk bgzf.Chunk
 }
 
-func NewReader(r io.Reader) (*Reader, error) {
-	bg, err := bgzf.NewReader(r)
+func NewReader(r io.Reader, rd int) (*Reader, error) {
+	bg, err := bgzf.NewReader(r, rd)
 	if err != nil {
 		return nil, err
 	}

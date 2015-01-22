@@ -14,7 +14,7 @@ import (
 
 func ExampleIndex_Add() {
 	// Create a BAI for the BAM read from standard in and write it to standard out.
-	br, err := bam.NewReader(os.Stdin)
+	br, err := bam.NewReader(os.Stdin, 1)
 	if err != nil {
 		log.Fatalf("failed to open BAM: %v", err)
 	}

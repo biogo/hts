@@ -393,7 +393,10 @@ func (r *countReader) ReadByte() (byte, error) {
 }
 
 // NewReader returns a new BGZF reader.
-func NewReader(r io.Reader) (*Reader, error) {
+//
+// The number of concurrent read decompressors is specified by
+// rd (currently ignored).
+func NewReader(r io.Reader, rd int) (*Reader, error) {
 	b, err := newBlockReader(r)
 	if err != nil {
 		return nil, err

@@ -53,7 +53,7 @@ func (s *S) TestRead(c *check.C) {
 			lines:  1000,
 		},
 	} {
-		br, err := NewReader(bytes.NewBuffer(t.in))
+		br, err := NewReader(bytes.NewBuffer(t.in), *conc)
 		c.Assert(err, check.Equals, nil)
 		c.Check(br.Header(), check.DeepEquals, t.header)
 		if !reflect.DeepEqual(br.Header(), t.header) {
@@ -103,7 +103,7 @@ func (s *S) TestRoundTrip(c *check.C) {
 			lines:  1000,
 		},
 	} {
-		br, err := NewReader(bytes.NewBuffer(t.in))
+		br, err := NewReader(bytes.NewBuffer(t.in), *conc)
 		c.Assert(err, check.Equals, nil)
 
 		var buf bytes.Buffer
@@ -118,9 +118,9 @@ func (s *S) TestRoundTrip(c *check.C) {
 		}
 		c.Assert(bw.Close(), check.Equals, nil)
 
-		br, err = NewReader(bytes.NewBuffer(t.in))
+		br, err = NewReader(bytes.NewBuffer(t.in), *conc)
 		c.Assert(err, check.Equals, nil)
-		brr, err := NewReader(&buf)
+		brr, err := NewReader(&buf, *conc)
 		c.Assert(err, check.Equals, nil)
 		c.Check(brr.Header().String(), check.Equals, br.Header().String())
 		c.Check(brr.Header(), check.DeepEquals, br.Header())
@@ -169,7 +169,7 @@ func BenchmarkRead(b *testing.B) {
 	if err != nil {
 		b.Fatalf("Open failed: %v", err)
 	}
-	br, err := NewReader(f)
+	br, err := NewReader(f, *conc)
 	if err != nil {
 		b.Fatalf("NewReader failed: %v", err)
 	}
@@ -188,7 +188,7 @@ func BenchmarkRead(b *testing.B) {
 
 func BenchmarkWrite(b *testing.B) {
 	b.StopTimer()
-	br, err := NewReader(bytes.NewReader(bamHG00096_1000))
+	br, err := NewReader(bytes.NewReader(bamHG00096_1000), *conc)
 	if err != nil {
 		b.Fatalf("NewReader failed: %v", err)
 	}
@@ -220,7 +220,7 @@ func BenchmarkReadFile(b *testing.B) {
 		if err != nil {
 			b.Fatalf("Open failed: %v", err)
 		}
-		br, err := NewReader(f)
+		br, err := NewReader(f, *conc)
 		if err != nil {
 			b.Fatalf("NewReader failed: %v", err)
 		}
@@ -245,7 +245,7 @@ func BenchmarkRoundtripFile(b *testing.B) {
 		if err != nil {
 			b.Fatalf("Open failed: %v", err)
 		}
-		br, err := NewReader(f)
+		br, err := NewReader(f, *conc)
 		if err != nil {
 			b.Fatalf("NewReader failed: %v", err)
 		}
@@ -268,7 +268,7 @@ func BenchmarkRoundtripFile(b *testing.B) {
 }
 
 func (s *S) TestSpecExamples(c *check.C) {
-	br, err := NewReader(bytes.NewReader(specExamples.data))
+	br, err := NewReader(bytes.NewReader(specExamples.data), *conc)
 	c.Assert(err, check.Equals, nil)
 	bh := br.Header()
 	c.Check(bh.Version, check.Equals, specExamples.header.Version)
@@ -733,7 +733,7 @@ func (s *S) TestCigarIsValid(c *check.C) {
 
 func (s *S) TestIssue3(c *check.C) {
 	for _, test := range issue3 {
-		br, err := NewReader(test)
+		br, err := NewReader(test, *conc)
 		c.Assert(err, check.Equals, nil, check.Commentf("Failed to open BAM"))
 
 		for {
@@ -847,7 +847,7 @@ var issue3 = []io.Reader{
 
 func (s *S) TestIssue11(c *check.C) {
 	for _, test := range issue11 {
-		br, err := NewReader(test.input)
+		br, err := NewReader(test.input, *conc)
 		c.Check(err, check.Equals, nil)
 		c.Check(br.Header().GroupOrder, check.Equals, test.expect)
 	}
@@ -1251,7 +1251,7 @@ var issue11 = []struct {
 }
 
 func (s *S) TestIssue13(c *check.C) {
-	br, err := NewReader(issue13)
+	br, err := NewReader(issue13, *conc)
 	c.Assert(err, check.Equals, nil, check.Commentf("Failed to open BAM"))
 
 	r, err := br.Read()
@@ -1310,7 +1310,7 @@ var issue13 = bytes.NewReader([]byte{
 })
 
 func (s *S) TestIssueDate(c *check.C) {
-	br, err := NewReader(issueDate)
+	br, err := NewReader(issueDate, *conc)
 	c.Assert(err, check.Equals, nil, check.Commentf("Failed to open BAM"))
 
 	rg := br.Header().RGs()
@@ -1923,7 +1923,7 @@ var conceptualChunks = []bgzf.Chunk{
 }
 
 func (s *S) TestConceptualBAM(c *check.C) {
-	br, err := NewReader(bytes.NewReader(conceptualBAMdata))
+	br, err := NewReader(bytes.NewReader(conceptualBAMdata), *conc)
 	c.Assert(err, check.Equals, nil)
 	c.Check(br.LastChunk(), check.Equals, conceptualChunks[0])
 	for _, chunk := range conceptualChunks[1:] {
