@@ -811,5 +811,6 @@ func BenchmarkWrite(b *testing.B) {
 		for j := 0; j < 1000000; j++ {
 			bg.Write(block)
 		}
+		bg.Wait()
 	}
 }
