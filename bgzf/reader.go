@@ -12,8 +12,7 @@ import (
 	"io"
 )
 
-// Reader implements BGZF reading as described in the SAM specification.
-// The specification is available at https://github.com/samtools/hts-specs.
+// Reader implements BGZF blocked gzip decompression.
 type Reader struct {
 	gzip.Header
 	r io.Reader

@@ -2,6 +2,10 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// Package bgzf implements BGZF format reading and writing according to the
+// SAM specification.
+//
+// The specification is available at https://github.com/samtools/hts-specs.
 package bgzf
 
 import (
