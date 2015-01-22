@@ -29,6 +29,9 @@ type Reader struct {
 
 	block *blockReader
 
+	// Cache is the Reader block cache. If Cache is not nil,
+	// the cache is queried for blocks before an attempt to
+	// read from the underlying io.Reader.
 	Cache Cache
 
 	err error
@@ -201,6 +204,9 @@ func expectedBlockSize(h gzip.Header) int {
 	return (int(h.Extra[i+4]) | int(h.Extra[i+5])<<8) + 1
 }
 
+// Cache is a Block caching type. Basic cache implementations are provided
+// in the cache package.
+//
 // If a Cache is a Wrapper, its Wrap method is called on newly created blocks.
 type Cache interface {
 	// Get returns the Block in the Cache with the specified
@@ -220,6 +226,7 @@ type Wrapper interface {
 	Wrap(Block) Block
 }
 
+// Block wraps interaction with decompressed BGZF data blocks.
 type Block interface {
 	// Base returns the file offset of the start of
 	// the gzip member from which the Block data was
