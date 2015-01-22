@@ -272,7 +272,7 @@ type StatsRecorder struct {
 	stats Stats
 }
 
-// Stats represents statistics of a BGZF cache.
+// Stats represents statistics of a bgzf.Cache.
 type Stats struct {
 	LookUps   int
 	Misses    int
@@ -283,7 +283,7 @@ type Stats struct {
 // Stats returns the current statistics for the cache.
 func (s *StatsRecorder) Stats() Stats { return s.stats }
 
-// Get returns the Block in the underlyingCache with the specified base or a nil
+// Get returns the Block in the underlying Cache with the specified base or a nil
 // Block if it does not exist. It updates the look-ups and misses statistics.
 func (s *StatsRecorder) Get(base int64) bgzf.Block {
 	s.stats.LookUps++
