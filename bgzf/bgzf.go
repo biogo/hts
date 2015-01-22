@@ -49,7 +49,7 @@ var (
 	ErrBlockSizeMismatch = errors.New("bgzf: unexpected block size")
 )
 
-// HasEOF check for the presence of a BGZF magic EOF block.
+// HasEOF checks for the presence of a BGZF magic EOF block.
 // The magic block is defined in the SAM specification. A magic block
 // is written by a Writer on calling Close. The ReaderAt must provide
 // some method for determining valid ReadAt offsets.
