@@ -26,7 +26,7 @@ type Reader struct {
 	// block following the current block.
 	nextBase int64
 
-	block *blockReader
+	block *decompressor
 
 	// Cache is the Reader block cache. If Cache is not nil,
 	// the cache is queried for blocks before an attempt to
@@ -36,7 +36,7 @@ type Reader struct {
 	err error
 }
 
-type blockReader struct {
+type decompressor struct {
 	owner *Reader
 
 	cr *countReader
@@ -45,7 +45,7 @@ type blockReader struct {
 	decompressed Block
 }
 
-func newBlockReader(r io.Reader) (*blockReader, error) {
+func newDecompressor(r io.Reader) (*decompressor, error) {
 	cr := makeReader(r)
 	gz, err := gzip.NewReader(cr)
 	if err != nil {
@@ -54,17 +54,17 @@ func newBlockReader(r io.Reader) (*blockReader, error) {
 	if expectedBlockSize(gz.Header) < 0 {
 		return nil, ErrNoBlockSize
 	}
-	return &blockReader{cr: cr, gz: gz}, nil
+	return &decompressor{cr: cr, gz: gz}, nil
 }
 
-func (b *blockReader) header() gzip.Header {
+func (b *decompressor) header() gzip.Header {
 	return b.gz.Header
 }
 
 // lazyBlock conditionally creates a ready to use Block and returns whether
-// the Block subsequently held by the blockReader needs to be reset before
+// the Block subsequently held by the decompressor needs to be reset before
 // being filled.
-func (b *blockReader) lazyBlock() bool {
+func (b *decompressor) lazyBlock() bool {
 	if b.decompressed == nil {
 		if w, ok := b.owner.Cache.(Wrapper); ok {
 			b.decompressed = w.Wrap(&block{owner: b.owner})
@@ -79,7 +79,7 @@ func (b *blockReader) lazyBlock() bool {
 	return true
 }
 
-func (b *blockReader) reset() (gzip.Header, error) {
+func (b *decompressor) reset() (gzip.Header, error) {
 	needReset := b.lazyBlock()
 
 	if b.gotBlockFor(b.owner.nextBase) {
@@ -100,7 +100,7 @@ func (b *blockReader) reset() (gzip.Header, error) {
 	return b.fill(needReset)
 }
 
-func (b *blockReader) seekRead(r io.ReadSeeker, off int64) (gzip.Header, error) {
+func (b *decompressor) seekRead(r io.ReadSeeker, off int64) (gzip.Header, error) {
 	b.lazyBlock()
 
 	if off == b.decompressed.Base() && b.decompressed.hasData() {
@@ -119,7 +119,7 @@ func (b *blockReader) seekRead(r io.ReadSeeker, off int64) (gzip.Header, error) 
 	return b.fill(true)
 }
 
-func (b *blockReader) seek(r io.ReadSeeker, off int64) error {
+func (b *decompressor) seek(r io.ReadSeeker, off int64) error {
 	_, err := r.Seek(off, 0)
 	if err != nil {
 		return err
@@ -139,13 +139,13 @@ func (b *blockReader) seek(r io.ReadSeeker, off int64) error {
 	return nil
 }
 
-// gotBlockFor returns true if the blockReader has access to a cache
+// gotBlockFor returns true if the decompressor has access to a cache
 // and that cache holds the block with given base and the correct
 // owner, otherwise it returns false.
 // gotBlockFor has side effects of recovering the block and putting
 // the currently active block into the cache. If the cache returns
 // a block owned by another reader, it is discarded.
-func (b *blockReader) gotBlockFor(base int64) bool {
+func (b *decompressor) gotBlockFor(base int64) bool {
 	if b.owner.Cache != nil {
 		dec := b.decompressed
 		if blk := b.owner.Cache.Get(base); blk != nil && blk.ownedBy(b.owner) {
@@ -173,7 +173,7 @@ func (b *blockReader) gotBlockFor(base int64) bool {
 	return false
 }
 
-func (b *blockReader) fill(reset bool) (gzip.Header, error) {
+func (b *decompressor) fill(reset bool) (gzip.Header, error) {
 	dec := b.decompressed
 
 	if reset {
@@ -397,7 +397,7 @@ func (r *countReader) ReadByte() (byte, error) {
 // The number of concurrent read decompressors is specified by
 // rd (currently ignored).
 func NewReader(r io.Reader, rd int) (*Reader, error) {
-	b, err := newBlockReader(r)
+	b, err := newDecompressor(r)
 	if err != nil {
 		return nil, err
 	}
