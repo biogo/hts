@@ -24,20 +24,24 @@ func NewWriter(w io.Writer, h *Header, wc int) (*Writer, error) {
 	return NewWriterLevel(w, h, gzip.DefaultCompression, wc)
 }
 
-func makeWriter(w io.Writer, level, wc int) *bgzf.Writer {
+func makeWriter(w io.Writer, level, wc int) (*bgzf.Writer, error) {
 	if bw, ok := w.(*bgzf.Writer); ok {
-		return bw
+		return bw, nil
 	}
 	return bgzf.NewWriterLevel(w, level, wc)
 }
 
 func NewWriterLevel(w io.Writer, h *Header, level, wc int) (*Writer, error) {
+	bg, err := makeWriter(w, level, wc)
+	if err != nil {
+		return nil, err
+	}
 	bw := &Writer{
-		bg: makeWriter(w, level, wc),
+		bg: bg,
 		h:  h,
 	}
 
-	err := bw.writeHeader(h)
+	err = bw.writeHeader(h)
 	if err != nil {
 		return nil, err
 	}
