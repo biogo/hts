@@ -10,6 +10,7 @@ package bgzf
 
 import (
 	"errors"
+	"io"
 	"os"
 )
 
@@ -42,6 +43,7 @@ var (
 	ErrClosed            = errors.New("bgzf: use of closed writer")
 	ErrBlockOverflow     = errors.New("bgzf: block overflow")
 	ErrWrongFileType     = errors.New("bgzf: file is a directory")
+	ErrNoEnd             = errors.New("bgzf: cannot determine offset from end")
 	ErrNotASeeker        = errors.New("bgzf: not a seeker")
 	ErrNoBlockSize       = errors.New("bgzf: could not determine block size")
 	ErrBlockSizeMismatch = errors.New("bgzf: unexpected block size")
@@ -49,23 +51,47 @@ var (
 
 // CheckEOF check for the presence of a BGZF magic EOF block.
 // The magic block is defined in the SAM specification. A magic block
-// is written by a Writer on calling Close.
-func CheckEOF(f *os.File) (bool, error) {
-	fi, err := f.Stat()
-	if err != nil {
-		return false, err
+// is written by a Writer on calling Close. The ReaderAt must provide
+// some method for determining valid ReadAt offsets.
+func CheckEOF(r io.ReaderAt) (bool, error) {
+	type sizer interface {
+		Size() int64
 	}
-	if fi.IsDir() {
-		return false, ErrWrongFileType
+	type stater interface {
+		Stat() (os.FileInfo, error)
+	}
+	type lenSeeker interface {
+		io.Seeker
+		Len() int
+	}
+	var size int64
+	switch r := r.(type) {
+	case sizer:
+		size = r.Size()
+	case stater:
+		fi, err := r.Stat()
+		if err != nil {
+			return false, err
+		}
+		size = fi.Size()
+	case lenSeeker:
+		var err error
+		size, err = r.Seek(0, 1)
+		if err != nil {
+			return false, err
+		}
+		size += int64(r.Len())
+	default:
+		return false, ErrNoEnd
 	}
 
 	b := make([]byte, len(magicBlock))
-	_, err = f.ReadAt(b, fi.Size()-int64(len(magicBlock)))
+	_, err := r.ReadAt(b, size-int64(len(magicBlock)))
 	if err != nil {
 		return false, err
 	}
-	for i := range b {
-		if b[i] != magicBlock[i] {
+	for i, c := range b {
+		if c != magicBlock[i] {
 			return false, nil
 		}
 	}

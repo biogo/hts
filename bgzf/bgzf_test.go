@@ -19,6 +19,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 	"time"
 )
@@ -60,8 +61,17 @@ func TestEmpty(t *testing.T) {
 	}
 }
 
+type crippledReaderAt struct {
+	r *bytes.Reader
+}
+
+func (r crippledReaderAt) ReadAt(b []byte, off int64) (int, error) {
+	return r.r.ReadAt(b, off)
+}
+
 // TestEOF tests CheckEOF can find the EOF magic block.
 func TestEOF(t *testing.T) {
+	// os.File cases
 	f, err := ioutil.TempFile(os.TempDir(), "bgzf_EOF_test_")
 	if err != nil {
 		t.Fatalf("Create temp file: %v", err)
@@ -78,13 +88,55 @@ func TestEOF(t *testing.T) {
 	}
 	ok, err := CheckEOF(f)
 	if err != nil {
-		t.Fatalf("CheckEOF: %v", err)
+		t.Errorf("CheckEOF: %v", err)
 	}
 	if !ok {
-		t.Fatal("Expected EOF: not found.")
+		t.Error("Expected EOF in os.File: not found.")
 	}
 
 	os.Remove(fname)
+
+	f, err = os.Open(os.TempDir())
+	if err != nil {
+		t.Fatalf("Open temp dir: %v", err)
+	}
+	ok, err = CheckEOF(f)
+	if want := "read " + os.TempDir() + ": is a directory"; err.Error() != want {
+		t.Errorf("Expected error:%s got:%v", want, err)
+	}
+	if ok {
+		t.Error("Unexpected EOF in os.File IsDir: found.")
+	}
+
+	// {bytes,strings}.Reader cases
+	var buf bytes.Buffer
+	if err := NewWriter(&buf, *conc).Close(); err != nil {
+		t.Fatalf("Writer.Close: %v", err)
+	}
+
+	ok, err = CheckEOF(bytes.NewReader(buf.Bytes()))
+	if err != nil {
+		t.Errorf("CheckEOF: %v", err)
+	}
+	if !ok {
+		t.Error("Expected EOF in []byte: not found.")
+	}
+
+	ok, err = CheckEOF(strings.NewReader(buf.String()))
+	if err != nil {
+		t.Errorf("CheckEOF: %v", err)
+	}
+	if !ok {
+		t.Error("Expected EOF in string: not found.")
+	}
+
+	ok, err = CheckEOF(crippledReaderAt{bytes.NewReader(buf.Bytes())})
+	if err != ErrNoEnd {
+		t.Errorf("Expected error:%s got:%v", ErrNoEnd, err)
+	}
+	if ok {
+		t.Error("Unexpected EOF in crippled ReaderAt: found.")
+	}
 }
 
 // TestRoundTrip tests that bgzipping and then bgunzipping is the identity
@@ -112,6 +164,10 @@ func TestRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewReader: %v", err)
 	}
+
+	// Insert a CheckEOF to ensure it does not corrupt subsequent reads.
+	CheckEOF(bytes.NewReader(buf.Bytes()))
+
 	if bl := ExpectedBlockSize(r.Header); bl != wbl {
 		t.Errorf("expectedBlockSize() is %d, want %d", bl, wbl)
 	}
@@ -184,6 +240,10 @@ func TestRoundTripMulti(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewReader: %v", err)
 	}
+
+	// Insert a CheckEOF to ensure it does not corrupt subsequent reads.
+	CheckEOF(bytes.NewReader(buf.Bytes()))
+
 	if r.Comment != "comment" {
 		t.Errorf("comment is %q, want %q", r.Comment, "comment")
 	}
@@ -276,6 +336,10 @@ func TestRoundTripMultiSeek(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewReader: %v", err)
 	}
+
+	// Insert a CheckEOF to ensure it does not corrupt subsequent reads.
+	CheckEOF(f)
+
 	if r.Comment != "comment" {
 		t.Errorf("comment is %q, want %q", r.Comment, "comment")
 	}
@@ -399,6 +463,10 @@ func TestSeekFast(t *testing.T) {
 		if err != nil {
 			t.Fatalf("NewReader: %v", err)
 		}
+
+		// Insert a CheckEOF to ensure it does not corrupt subsequent reads.
+		CheckEOF(bytes.NewReader(buf.Bytes()))
+
 		r.Cache = cache
 		p := make([]byte, len(infix)+2)
 
@@ -755,6 +823,9 @@ func TestCache(t *testing.T) {
 			}
 			r.Cache = s
 			p := make([]byte, len(infix)+2)
+
+			// Insert a CheckEOF to ensure it does not corrupt subsequent reads.
+			CheckEOF(bytes.NewReader(buf.Bytes()))
 
 			for _, op := range pat.ops {
 				if op.seekBlock >= 0 {
