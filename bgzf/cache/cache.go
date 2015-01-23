@@ -355,7 +355,7 @@ func (s *StatsRecorder) Get(base int64) bgzf.Block {
 }
 
 // Put inserts a Block into the underlying Cache, returning the Block and eviction
-// status according to the underlying cache behavior. It updates the puts and
+// status according to the underlying cache behavior. It updates the puts, retains and
 // evictions statistics.
 func (s *StatsRecorder) Put(b bgzf.Block) (evicted bgzf.Block, retained bool) {
 	s.stats.Puts++
