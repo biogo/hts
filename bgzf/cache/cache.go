@@ -38,6 +38,14 @@ type Cache interface {
 	Drop(int)
 }
 
+func remove(n *node, table map[int64]*node) {
+	delete(table, n.b.Base())
+	n.prev.next = n.next
+	n.next.prev = n.prev
+	n.next = nil
+	n.prev = nil
+}
+
 // NewLRU returns an LRU cache with the n slots. If n is less than 1
 // a nil cache is returned.
 func NewLRU(n int) Cache {
@@ -85,7 +93,7 @@ func (c *LRU) Resize(n int) {
 // Drop evicts n elements from the cache according to the cache eviction policy.
 func (c *LRU) Drop(n int) {
 	for ; n > 0 && c.Len() > 0; n-- {
-		c.remove(c.root.prev)
+		remove(c.root.prev, c.table)
 	}
 }
 
@@ -96,7 +104,7 @@ func (c *LRU) Get(base int64) bgzf.Block {
 	if !ok {
 		return nil
 	}
-	c.remove(n)
+	remove(n, c.table)
 	return n.b
 }
 
@@ -109,7 +117,7 @@ func (c *LRU) Put(b bgzf.Block) (evicted bgzf.Block, retained bool) {
 	}
 	if len(c.table) == c.cap {
 		d = c.root.prev.b
-		c.remove(c.root.prev)
+		remove(c.root.prev, c.table)
 	}
 	n := &node{b: b}
 	c.table[b.Base()] = n
@@ -119,14 +127,6 @@ func (c *LRU) Put(b bgzf.Block) (evicted bgzf.Block, retained bool) {
 	n.next = f
 	f.prev = n
 	return d, true
-}
-
-func (c *LRU) remove(n *node) {
-	delete(c.table, n.b.Base())
-	n.prev.next = n.next
-	n.next.prev = n.prev
-	n.next = nil
-	n.prev = nil
 }
 
 // NewFIFO returns a FIFO cache with the n slots. If n is less than 1
@@ -170,7 +170,7 @@ func (c *FIFO) Resize(n int) {
 // Drop evicts n elements from the cache according to the cache eviction policy.
 func (c *FIFO) Drop(n int) {
 	for ; n > 0 && c.Len() > 0; n-- {
-		c.remove(c.root.prev)
+		remove(c.root.prev, c.table)
 	}
 }
 
@@ -193,7 +193,7 @@ func (c *FIFO) Put(b bgzf.Block) (evicted bgzf.Block, retained bool) {
 	}
 	if len(c.table) == c.cap {
 		d = c.root.prev.b
-		c.remove(c.root.prev)
+		remove(c.root.prev, c.table)
 	}
 	n := &node{b: b}
 	c.table[b.Base()] = n
@@ -203,14 +203,6 @@ func (c *FIFO) Put(b bgzf.Block) (evicted bgzf.Block, retained bool) {
 	n.next = f
 	f.prev = n
 	return d, true
-}
-
-func (c *FIFO) remove(n *node) {
-	delete(c.table, n.b.Base())
-	n.prev.next = n.next
-	n.next.prev = n.prev
-	n.next = nil
-	n.prev = nil
 }
 
 // NewRandom returns a random eviction cache with the n slots. If n is less than 1
