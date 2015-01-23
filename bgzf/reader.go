@@ -150,9 +150,9 @@ func (b *decompressor) gotBlockFor(base int64) bool {
 		dec := b.decompressed
 		if blk := b.owner.Cache.Get(base); blk != nil && blk.ownedBy(b.owner) {
 			if dec != nil && dec.hasData() {
-				// We have just retrieved a block from the cache
-				// so we know that it must be below capacity and
-				// a put will not cause an eviction.
+				// TODO(kortschak): Under some conditions, e.g. FIFO
+				// cache we will be discarding a non-nil evicted Block.
+				// Consider retaining these in a sync.Pool.
 				b.owner.Cache.Put(dec)
 			}
 			if blk.seek(0) == nil {
