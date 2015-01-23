@@ -31,11 +31,16 @@ type Cache interface {
 	// Resize changes the capacity of the cache to n,
 	// dropping excess blocks if n is less than the
 	// number of cached blocks.
-	Resize(int)
+	Resize(n int)
 
 	// Drop evicts n elements from the cache according
 	// to the cache eviction policy.
-	Drop(int)
+	Drop(n int)
+}
+
+func insertAfter(pos, n *node) {
+	n.prev = pos
+	pos.next, n.next, pos.next.prev = n, pos.next, n
 }
 
 func remove(n *node, table map[int64]*node) {
@@ -46,7 +51,7 @@ func remove(n *node, table map[int64]*node) {
 	n.prev = nil
 }
 
-// NewLRU returns an LRU cache with the n slots. If n is less than 1
+// NewLRU returns an LRU cache with n slots. If n is less than 1
 // a nil cache is returned.
 func NewLRU(n int) Cache {
 	if n < 1 {
@@ -62,7 +67,7 @@ func NewLRU(n int) Cache {
 }
 
 // LRU satisfies the Cache interface with least recently used eviction
-// behavior.
+// behavior where Unused Blocks are preferentially evicted.
 type LRU struct {
 	root  node
 	table map[int64]*node
@@ -109,27 +114,32 @@ func (c *LRU) Get(base int64) bgzf.Block {
 }
 
 // Put inserts a Block into the Cache, returning the Block that was evicted or
-// nil if no eviction was necessary.
+// nil if no eviction was necessary and the Block was retained. Unused Blocks
+// are not retained but are returned if the Cache is full.
 func (c *LRU) Put(b bgzf.Block) (evicted bgzf.Block, retained bool) {
 	var d bgzf.Block
 	if _, ok := c.table[b.Base()]; ok {
 		return nil, false
 	}
+	used := b.Used()
 	if len(c.table) == c.cap {
+		if !used {
+			return b, false
+		}
 		d = c.root.prev.b
 		remove(c.root.prev, c.table)
 	}
 	n := &node{b: b}
 	c.table[b.Base()] = n
-	f := c.root.next
-	c.root.next = n
-	n.prev = &c.root
-	n.next = f
-	f.prev = n
+	if used {
+		insertAfter(&c.root, n)
+	} else {
+		insertAfter(c.root.prev, n)
+	}
 	return d, true
 }
 
-// NewFIFO returns a FIFO cache with the n slots. If n is less than 1
+// NewFIFO returns a FIFO cache with n slots. If n is less than 1
 // a nil cache is returned.
 func NewFIFO(n int) Cache {
 	if n < 1 {
@@ -145,7 +155,7 @@ func NewFIFO(n int) Cache {
 }
 
 // FIFO satisfies the Cache interface with first in first out eviction
-// behavior.
+// behavior where Unused Blocks are preferentially evicted.
 type FIFO struct {
 	root  node
 	table map[int64]*node
@@ -181,31 +191,39 @@ func (c *FIFO) Get(base int64) bgzf.Block {
 	if !ok {
 		return nil
 	}
+	if !n.b.Used() {
+		remove(n, c.table)
+	}
 	return n.b
 }
 
 // Put inserts a Block into the Cache, returning the Block that was evicted or
-// nil if no eviction was necessary.
+// nil if no eviction was necessary and the Block was retained. Unused Blocks
+// are not retained but are returned if the Cache is full.
 func (c *FIFO) Put(b bgzf.Block) (evicted bgzf.Block, retained bool) {
 	var d bgzf.Block
 	if _, ok := c.table[b.Base()]; ok {
 		return nil, false
 	}
+	used := b.Used()
 	if len(c.table) == c.cap {
+		if !used {
+			return b, false
+		}
 		d = c.root.prev.b
 		remove(c.root.prev, c.table)
 	}
 	n := &node{b: b}
 	c.table[b.Base()] = n
-	f := c.root.next
-	c.root.next = n
-	n.prev = &c.root
-	n.next = f
-	f.prev = n
+	if used {
+		insertAfter(&c.root, n)
+	} else {
+		insertAfter(c.root.prev, n)
+	}
 	return d, true
 }
 
-// NewRandom returns a random eviction cache with the n slots. If n is less than 1
+// NewRandom returns a random eviction cache with n slots. If n is less than 1
 // a nil cache is returned.
 func NewRandom(n int) Cache {
 	if n < 1 {
@@ -217,7 +235,8 @@ func NewRandom(n int) Cache {
 	}
 }
 
-// Random satisfies the Cache interface with random eviction behavior.
+// Random satisfies the Cache interface with random eviction behavior
+// where Unused Blocks are preferentially evicted.
 type Random struct {
 	table map[int64]bgzf.Block
 	cap   int
@@ -243,6 +262,15 @@ func (c *Random) Drop(n int) {
 	if n < 1 {
 		return
 	}
+	for k, b := range c.table {
+		if b.Used() {
+			continue
+		}
+		delete(c.table, k)
+		if n--; n == 0 {
+			return
+		}
+	}
 	for k := range c.table {
 		delete(c.table, k)
 		if n--; n == 0 {
@@ -263,18 +291,31 @@ func (c *Random) Get(base int64) bgzf.Block {
 }
 
 // Put inserts a Block into the Cache, returning the Block that was evicted or
-// nil if no eviction was necessary.
+// nil if no eviction was necessary and the Block was retained. Unused Blocks
+// are not retained but are returned if the Cache is full.
 func (c *Random) Put(b bgzf.Block) (evicted bgzf.Block, retained bool) {
 	var d bgzf.Block
 	if _, ok := c.table[b.Base()]; ok {
 		return nil, false
 	}
 	if len(c.table) == c.cap {
+		if !b.Used() {
+			return b, false
+		}
+		for k, v := range c.table {
+			if v.Used() {
+				continue
+			}
+			delete(c.table, k)
+			d = v
+			goto done
+		}
 		for k, v := range c.table {
 			delete(c.table, k)
 			d = v
 			break
 		}
+	done:
 	}
 	c.table[b.Base()] = b
 	return d, true
@@ -303,7 +344,7 @@ func (s *StatsRecorder) Stats() Stats { return s.stats }
 func (s *StatsRecorder) Reset() { s.stats = Stats{} }
 
 // Get returns the Block in the underlying Cache with the specified base or a nil
-// Block if it does not exist. It updates the look-ups and misses statistics.
+// Block if it does not exist. It updates the gets and misses statistics.
 func (s *StatsRecorder) Get(base int64) bgzf.Block {
 	s.stats.Gets++
 	blk := s.Cache.Get(base)
@@ -313,16 +354,16 @@ func (s *StatsRecorder) Get(base int64) bgzf.Block {
 	return blk
 }
 
-// Put inserts a Block into the underlying Cache, returning the Block that was
-// evicted or nil if no eviction was necessary. It updates the stores and evictions
-// statistics.
+// Put inserts a Block into the underlying Cache, returning the Block and eviction
+// status according to the underlying cache behavior. It updates the puts and
+// evictions statistics.
 func (s *StatsRecorder) Put(b bgzf.Block) (evicted bgzf.Block, retained bool) {
 	s.stats.Puts++
 	blk, retained := s.Cache.Put(b)
 	if retained {
 		s.stats.Retains++
 	}
-	if blk != nil {
+	if blk != nil && retained {
 		s.stats.Evictions++
 	}
 	return blk, retained

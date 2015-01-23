@@ -234,6 +234,10 @@ type Block interface {
 
 	io.Reader
 
+	// Used returns whether one or more bytes have
+	// been read from the Block.
+	Used() bool
+
 	// header returns the gzip.Header of the gzip member
 	// from which the Block data was decompressed.
 	header() gzip.Header
@@ -284,6 +288,7 @@ type Block interface {
 
 type block struct {
 	owner *Reader
+	used  bool
 
 	base int64
 	h    gzip.Header
@@ -296,9 +301,14 @@ type block struct {
 
 func (b *block) Base() int64 { return b.base }
 
+func (b *block) Used() bool { return b.used }
+
 func (b *block) Read(p []byte) (int, error) {
 	n, err := b.buf.Read(p)
 	b.chunk.End.Block += uint16(n)
+	if n > 0 {
+		b.used = true
+	}
 	return n, err
 }
 
@@ -350,6 +360,7 @@ func (b *block) header() gzip.Header { return b.h }
 
 func (b *block) setOwner(r *Reader) {
 	b.owner = r
+	b.used = false
 	b.base = -1
 	b.h = gzip.Header{}
 	b.chunk = Chunk{}
