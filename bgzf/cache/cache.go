@@ -362,9 +362,9 @@ func (s *StatsRecorder) Put(b bgzf.Block) (evicted bgzf.Block, retained bool) {
 	blk, retained := s.Cache.Put(b)
 	if retained {
 		s.stats.Retains++
-	}
-	if blk != nil && retained {
-		s.stats.Evictions++
+		if blk != nil {
+			s.stats.Evictions++
+		}
 	}
 	return blk, retained
 }
