@@ -212,8 +212,8 @@ func (r *Record) MarshalSAM(flags int) ([]byte, error) {
 		r.Seq.Expand(),
 		r.Qual,
 	)
-	if len(r.AuxTags) > 0 {
-		fmt.Fprintf(&buf, "\t%v", r.AuxTags)
+	for _, t := range r.AuxTags {
+		fmt.Fprintf(&buf, "\t%v", t)
 	}
 	return buf.Bytes(), nil
 }
