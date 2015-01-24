@@ -6,6 +6,7 @@ package bam
 
 import (
 	"bytes"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strconv"
@@ -200,7 +201,7 @@ func (r *Record) UnmarshalText(b []byte) error {
 // references with zero length and an ID of -1 are created to hold the reference
 // names.
 func (r *Record) UnmarshalSAM(h *Header, b []byte) error {
-	f := bytes.SplitN(b, []byte{'\t'}, 12)
+	f := bytes.Split(b, []byte{'\t'})
 	if len(f) < 11 {
 		return errors.New("bam: missing SAM fields")
 	}
@@ -249,13 +250,12 @@ func (r *Record) UnmarshalSAM(h *Header, b []byte) error {
 	if len(r.Qual) != r.Seq.Length {
 		return errors.New("bam: sequence/quality length mismatch")
 	}
-	if len(f[11]) == 0 {
-		return nil
-	}
-	tags := make([]byte, len(f[11]))
-	copy(tags, f[11])
-	for _, t := range bytes.Split(tags, []byte{'\t'}) {
-		r.AuxTags = append(r.AuxTags, Aux(t))
+	for _, aux := range f[11:] {
+		a, err := parseAuxText(aux)
+		if err != nil {
+			return err
+		}
+		r.AuxTags = append(r.AuxTags, a)
 	}
 	return nil
 }
@@ -278,6 +278,135 @@ func referenceForName(h *Header, name string) (*Reference, error) {
 		}
 	}
 	return nil, fmt.Errorf("no reference with name %q", name)
+}
+
+func parseAuxText(text []byte) (Aux, error) {
+	tf := bytes.SplitN(text, []byte{':'}, 3)
+	if len(tf) != 3 || len(tf[1]) != 1 {
+		return nil, fmt.Errorf("bam: invalid aux tag field: %q", text)
+	}
+	var (
+		typ   byte
+		value interface{}
+	)
+	switch typ = tf[1][0]; typ {
+	case 'A':
+		if len(tf[2]) != 1 {
+			return nil, fmt.Errorf("bam: invalid aux tag field: %q", text)
+		}
+		value = tf[2][0]
+	case 'i':
+		i, err := strconv.Atoi(string(tf[2]))
+		if err != nil {
+			return nil, fmt.Errorf("bam: invalid aux tag field: %v", err)
+		}
+		if i < 0 {
+			value = i
+		} else {
+			value = uint32(i)
+		}
+	case 'f':
+		f, err := strconv.ParseFloat(string(tf[2]), 32)
+		if err != nil {
+			return nil, fmt.Errorf("bam: invalid aux tag field: %v", err)
+		}
+		value = f
+	case 'Z':
+		value = tf[2]
+	case 'H':
+		b := make([]byte, hex.DecodedLen(len(tf[2])))
+		_, err := hex.Decode(b, tf[2])
+		if err != nil {
+			return nil, fmt.Errorf("bam: invalid aux tag field: %v", err)
+		}
+		value = b
+	case 'B':
+		nf := bytes.Split(tf[2][1:], []byte{','})
+		if len(nf) == 0 {
+			return nil, fmt.Errorf("bam: invalid aux tag field: %q", text)
+		}
+		switch auxKind[tf[2][0]] {
+		case 'c':
+			a := make([]int8, len(nf))
+			for i, n := range nf {
+				v, err := strconv.ParseUint(string(n), 0, 8)
+				if err != nil {
+					return nil, fmt.Errorf("bam: invalid aux tag field: %v", err)
+				}
+				a[i] = int8(v)
+			}
+			value = a
+		case 'C':
+			a := make([]uint8, len(nf))
+			for i, n := range nf {
+				v, err := strconv.ParseUint(string(n), 0, 8)
+				if err != nil {
+					return nil, fmt.Errorf("bam: invalid aux tag field: %v", err)
+				}
+				a[i] = uint8(v)
+			}
+			value = a
+		case 's':
+			a := make([]int16, len(nf))
+			for i, n := range nf {
+				v, err := strconv.ParseUint(string(n), 0, 16)
+				if err != nil {
+					return nil, fmt.Errorf("bam: invalid aux tag field: %v", err)
+				}
+				a[i] = int16(v)
+			}
+			value = a
+		case 'S':
+			a := make([]uint16, len(nf))
+			for i, n := range nf {
+				v, err := strconv.ParseUint(string(n), 0, 16)
+				if err != nil {
+					return nil, fmt.Errorf("bam: invalid aux tag field: %v", err)
+				}
+				a[i] = uint16(v)
+			}
+			value = a
+		case 'i':
+			a := make([]int32, len(nf))
+			for i, n := range nf {
+				v, err := strconv.ParseUint(string(n), 0, 32)
+				if err != nil {
+					return nil, fmt.Errorf("bam: invalid aux tag field: %v", err)
+				}
+				a[i] = int32(v)
+			}
+			value = a
+		case 'I':
+			a := make([]uint32, len(nf))
+			for i, n := range nf {
+				v, err := strconv.ParseUint(string(n), 0, 32)
+				if err != nil {
+					return nil, fmt.Errorf("bam: invalid aux tag field: %v", err)
+				}
+				a[i] = uint32(v)
+			}
+			value = a
+		case 'f':
+			a := make([]float32, len(nf))
+			for i, n := range nf {
+				f, err := strconv.ParseFloat(string(n), 32)
+				if err != nil {
+					return nil, fmt.Errorf("bam: invalid aux tag field: %v", err)
+				}
+				a[i] = float32(f)
+			}
+			value = a
+		default:
+			return nil, fmt.Errorf("bam: invalid aux tag field: %q", text)
+		}
+	default:
+		return nil, fmt.Errorf("bam: invalid aux tag field: %q", text)
+	}
+	aux, err := NewAux(string(tf[0]), typ, value)
+	if err != nil {
+		return nil, fmt.Errorf("bam: invalid aux tag field: %v", err)
+	}
+	return aux, nil
 }
 
 // MarshalText implements encoding.TextMarshaler. It calls MarshalSAM with FlagDecimal.

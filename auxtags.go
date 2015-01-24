@@ -36,6 +36,9 @@ type Aux []byte
 // representation.
 //
 func NewAux(tag string, typ byte, value interface{}) (Aux, error) {
+	if len(tag) != 2 {
+		return nil, fmt.Errorf("bam: invalid tag %q", tag)
+	}
 	switch auxKind[typ] {
 	case 'A':
 		if c, ok := value.(byte); ok {
