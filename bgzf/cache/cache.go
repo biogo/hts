@@ -15,6 +15,18 @@ var (
 	_ Cache = (*Random)(nil)
 )
 
+// Free attempts to drop as many blocks from c as needed allow
+// n successful Put calls on c. It returns a boolean indicating
+// whether n slots were made available.
+func Free(n int, c Cache) bool {
+	empty := c.Cap() - c.Len()
+	if n <= empty {
+		return true
+	}
+	c.Drop(n - empty)
+	return c.Cap()-c.Len() >= n
+}
+
 // Cache is an extension of bgzf.Cache that allows inspection
 // and manipulation of the cache.
 type Cache interface {
