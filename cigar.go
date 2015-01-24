@@ -6,6 +6,7 @@ package bam
 
 import (
 	"fmt"
+	"strconv"
 )
 
 type Cigar []CigarOp
@@ -154,4 +155,42 @@ var consume = []Consume{
 	CigarMismatch:    {Query: 1, Reference: 1},
 	CigarBack:        {Query: 0, Reference: -1}, // See notes above.
 	lastCigar:        {},
+}
+
+var cigarOpTypeLookup [256]CigarOpType
+
+func init() {
+	for i := range cigarOpTypeLookup {
+		cigarOpTypeLookup[i] = lastCigar
+	}
+	for op, c := range []byte{'M', 'I', 'D', 'N', 'S', 'H', 'P', '=', 'X', 'B'} {
+		cigarOpTypeLookup[c] = CigarOpType(op)
+	}
+}
+
+func parseCigar(b []byte) (Cigar, error) {
+	var (
+		c   Cigar
+		op  CigarOpType
+		n   int
+		err error
+	)
+	for i := 0; i < len(b); i++ {
+		for j := i; j < len(b); j++ {
+			if b[j] < '0' || '9' < b[j] {
+				n, err = strconv.Atoi(string(b[i:j]))
+				if err != nil {
+					return nil, fmt.Errorf("bam: failed to parse cigar string %q: %v", b, err)
+				}
+				op = cigarOpTypeLookup[b[j]]
+				i = j
+				break
+			}
+		}
+		if op == lastCigar {
+			return nil, fmt.Errorf("bam: failed to parse cigar string %q: unknown operation %q", b, op)
+		}
+		c = append(c, NewCigarOp(op, n))
+	}
+	return c, nil
 }

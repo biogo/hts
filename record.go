@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"strconv"
 	"unsafe"
 )
 
@@ -185,6 +186,98 @@ func (r *Record) String() string {
 		r.Qual,
 		r.AuxTags,
 	)
+}
+
+// UnmarshalText implements the encoding.TextUnmarshaler. It calls UnmarshalSAM with
+// a nil Header.
+func (r *Record) UnmarshalText(b []byte) error {
+	return r.UnmarshalSAM(nil, b)
+}
+
+// UnmarshalSAM parses a SAM format alignment line in the provided []byte, using
+// references from the provided Header. If a nil Header is passed to UnmarshalSAM
+// and the SAM data include non-empty refence and mate reference names fake,
+// references with zero length and an ID of -1 are created to hold the reference
+// names.
+func (r *Record) UnmarshalSAM(h *Header, b []byte) error {
+	f := bytes.SplitN(b, []byte{'\t'}, 12)
+	if len(f) < 11 {
+		return errors.New("bam: missing SAM fields")
+	}
+	*r = Record{Name: string(f[0])}
+	// TODO(kortschak): Consider parsing string format flags.
+	flags, err := strconv.ParseUint(string(f[1]), 0, 16)
+	if err != nil {
+		return fmt.Errorf("bam: failed to parse flags: %v", err)
+	}
+	r.Flags = Flags(flags)
+	r.Ref, err = referenceForName(h, string(f[2]))
+	if err != nil {
+		return fmt.Errorf("bam: failed to assign reference: %v", err)
+	}
+	r.Pos, err = strconv.Atoi(string(f[3]))
+	if err != nil {
+		return fmt.Errorf("bam: failed to parse position: %v", err)
+	}
+	mapQ, err := strconv.ParseUint(string(f[4]), 10, 8)
+	if err != nil {
+		return fmt.Errorf("bam: failed to parse map quality: %v", err)
+	}
+	r.MapQ = byte(mapQ)
+	r.Cigar, err = parseCigar(f[5])
+	if err != nil {
+		return fmt.Errorf("bam: failed to parse cigar string: %v", err)
+	}
+	if bytes.Equal(f[2], f[6]) {
+		r.MateRef = r.Ref
+	} else {
+		r.MateRef, err = referenceForName(h, string(f[6]))
+		if err != nil {
+			return fmt.Errorf("bam: failed to assign mate reference: %v", err)
+		}
+	}
+	r.MatePos, err = strconv.Atoi(string(f[7]))
+	if err != nil {
+		return fmt.Errorf("bam: failed to parse mate position: %v", err)
+	}
+	r.TempLen, err = strconv.Atoi(string(f[8]))
+	if err != nil {
+		return fmt.Errorf("bam: failed to parse template length: %v", err)
+	}
+	r.Seq = NewNybbleSeq(f[9])
+	r.Qual = append(r.Qual, f[10]...)
+	if len(r.Qual) != r.Seq.Length {
+		return errors.New("bam: sequence/quality length mismatch")
+	}
+	if len(f[11]) == 0 {
+		return nil
+	}
+	tags := make([]byte, len(f[11]))
+	copy(tags, f[11])
+	for _, t := range bytes.Split(tags, []byte{'\t'}) {
+		r.AuxTags = append(r.AuxTags, Aux(t))
+	}
+	return nil
+}
+
+func referenceForName(h *Header, name string) (*Reference, error) {
+	if name == "*" {
+		return nil, nil
+	}
+	if h == nil {
+		// If we don't have a Header, return a fake Reference.
+		return &Reference{
+			id:   -1,
+			name: name,
+		}, nil
+	}
+
+	for _, r := range h.refs {
+		if r.Name() == name {
+			return r, nil
+		}
+	}
+	return nil, fmt.Errorf("no reference with name %q", name)
 }
 
 // MarshalText implements encoding.TextMarshaler. It calls MarshalSAM with FlagDecimal.

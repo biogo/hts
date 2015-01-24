@@ -304,6 +304,10 @@ func (s *S) TestSpecExamples(c *check.C) {
 		c.Check(r.Qual, check.DeepEquals, expect.Qual) // No valid qualities here.
 		c.Check(r.End(), check.Equals, specExamples.readEnds[i], check.Commentf("unexpected end position for %q at %v, got:%d expected:%d", r.Name, r.Pos, r.End(), specExamples.readEnds[i]))
 
+		parsedCigar, err := parseCigar([]byte(specExamples.cigars[i]))
+		c.Check(err, check.Equals, nil)
+		c.Check(parsedCigar, check.DeepEquals, expect.Cigar)
+
 		// In all the examples the last base of the read and the last
 		// base of the ref are valid, so we can check this.
 		expSeq := r.Seq.Expand()
@@ -339,6 +343,7 @@ var specExamples = struct {
 	data     []byte
 	header   Header
 	records  []*Record
+	cigars   []string
 	readEnds []int
 }{
 	ref: "AGCATGTTAGATAAGATAGCTGTGCTAGTAGGCAGTCAGCGCCAT",
@@ -526,6 +531,14 @@ var specExamples = struct {
 				Aux("NM:i:1"),
 			},
 		},
+	},
+	cigars: []string{
+		"8M2I4M1D3M",
+		"3S6M1P1I4M",
+		"5S6M",
+		"6M14N5M",
+		"6H5M",
+		"9M",
 	},
 	// These coordinates are all open (and zero-based) so that
 	// a slice of the reference doesn't need any alteration.

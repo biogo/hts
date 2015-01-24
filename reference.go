@@ -86,6 +86,13 @@ func (r *Reference) Len() int {
 	}
 	return int(r.lRef)
 }
+func (r *Reference) SetLen(l int) error {
+	if !validLen(l) {
+		return errors.New("bam: length out of range")
+	}
+	r.lRef = int32(l)
+	return nil
+}
 
 func (r *Reference) String() string {
 	var buf bytes.Buffer
