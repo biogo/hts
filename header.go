@@ -6,6 +6,7 @@ package bam
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
 )
@@ -178,6 +179,44 @@ func (bh *Header) MarshalText() ([]byte, error) {
 		fmt.Fprintf(&buf, "@CO\t%s\n", co)
 	}
 	return buf.Bytes(), nil
+}
+
+// UnmarshalBinary implements the encoding.BinaryUnmarshaler interface.
+func (bh *Header) UnmarshalBinary(b []byte) error {
+	return bh.read(bytes.NewReader(b))
+}
+
+// MarshalBinary implements the encoding.BinaryMarshaler.
+func (bh *Header) MarshalBinary() ([]byte, error) {
+	return bh.marshalBinary(&bytes.Buffer{})
+}
+
+func (bh *Header) marshalBinary(buf *bytes.Buffer) ([]byte, error) {
+	wb := &errWriter{w: buf}
+
+	binary.Write(wb, binary.LittleEndian, bamMagic)
+	text, _ := bh.MarshalText()
+	binary.Write(wb, binary.LittleEndian, int32(len(text)))
+	wb.Write(text)
+	binary.Write(wb, binary.LittleEndian, int32(len(bh.refs)))
+
+	if !validInt32(len(bh.refs)) {
+		return nil, errors.New("bam: value out of range")
+	}
+	var name []byte
+	for _, r := range bh.refs {
+		name = append(name, []byte(r.name)...)
+		name = append(name, 0)
+		binary.Write(wb, binary.LittleEndian, int32(len(name)))
+		wb.Write(name)
+		name = name[:0]
+		binary.Write(wb, binary.LittleEndian, r.lRef)
+	}
+	if wb.err != nil {
+		return nil, wb.err
+	}
+
+	return wb.w.Bytes(), nil
 }
 
 func (bh *Header) Len() int {
