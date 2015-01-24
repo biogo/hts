@@ -196,7 +196,7 @@ func (r *Record) UnmarshalText(b []byte) error {
 
 // UnmarshalSAM parses a SAM format alignment line in the provided []byte, using
 // references from the provided Header. If a nil Header is passed to UnmarshalSAM
-// and the SAM data include non-empty refence and mate reference names fake,
+// and the SAM data include non-empty refence and mate reference names, fake
 // references with zero length and an ID of -1 are created to hold the reference
 // names.
 func (r *Record) UnmarshalSAM(h *Header, b []byte) error {
