@@ -81,7 +81,7 @@ func (bh *Header) read(r io.Reader) error {
 	if n != int(lText) {
 		return errors.New("bam: truncated header")
 	}
-	err = bh.parseHeader(text)
+	err = bh.UnmarshalText(text)
 	if err != nil {
 		return err
 	}
@@ -131,7 +131,8 @@ func readRefRecords(r io.Reader, n int32) ([]*Reference, error) {
 	return rr, nil
 }
 
-func (bh *Header) parseHeader(text []byte) error {
+// UnmarshalText implements the encoding.TextUnmarshaler interface.
+func (bh *Header) UnmarshalText(text []byte) error {
 	var t tag
 	for i, l := range bytes.Split(text, []byte{'\n'}) {
 		if len(l) > 0 && l[len(l)-1] == '\r' {

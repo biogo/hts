@@ -59,7 +59,7 @@ func (bw *Writer) writeHeader(h *Header) error {
 	wb := &errWriter{w: &bw.buf}
 
 	binary.Write(wb, binary.LittleEndian, bamMagic)
-	text := h.Bytes()
+	text, _ := h.MarshalText()
 	binary.Write(wb, binary.LittleEndian, int32(len(text)))
 	wb.Write(text)
 	binary.Write(wb, binary.LittleEndian, int32(len(h.refs)))

@@ -104,15 +104,13 @@ func NewHeader(text []byte, r []*Reference) (*Header, error) {
 		r.id = int32(i)
 	}
 	if text != nil {
-		err = bh.parseHeader(text)
+		err = bh.UnmarshalText(text)
 		if err != nil {
 			return nil, err
 		}
 	}
 	return bh, nil
 }
-
-func (bh *Header) String() string { return string(bh.Bytes()) }
 
 func (bh *Header) Clone() *Header {
 	c := &Header{
@@ -157,7 +155,8 @@ func (bh *Header) Clone() *Header {
 	return c
 }
 
-func (bh *Header) Bytes() []byte {
+// MarshalText implements the encoding.TextMarshaler interface.
+func (bh *Header) MarshalText() ([]byte, error) {
 	var buf bytes.Buffer
 	if bh.Version != "" {
 		if bh.GroupOrder == GroupUnspecified {
@@ -178,7 +177,7 @@ func (bh *Header) Bytes() []byte {
 	for _, co := range bh.Comments {
 		fmt.Fprintf(&buf, "@CO\t%s\n", co)
 	}
-	return buf.Bytes()
+	return buf.Bytes(), nil
 }
 
 func (bh *Header) Len() int {

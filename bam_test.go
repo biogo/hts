@@ -89,6 +89,11 @@ func (s *S) TestCloneHeader(c *check.C) {
 	}
 }
 
+func headerText(h *Header) []byte {
+	b, _ := h.MarshalText()
+	return b
+}
+
 func (s *S) TestRoundTrip(c *check.C) {
 	for i, t := range []struct {
 		in     []byte
@@ -122,7 +127,7 @@ func (s *S) TestRoundTrip(c *check.C) {
 		c.Assert(err, check.Equals, nil)
 		brr, err := NewReader(&buf, *conc)
 		c.Assert(err, check.Equals, nil)
-		c.Check(brr.Header().String(), check.Equals, br.Header().String())
+		c.Check(headerText(brr.Header()), check.DeepEquals, headerText(br.Header()))
 		c.Check(brr.Header(), check.DeepEquals, br.Header())
 		if !reflect.DeepEqual(brr.Header(), br.Header()) {
 			c.Check(brr.Header().Refs(), check.DeepEquals, br.Header().Refs())
