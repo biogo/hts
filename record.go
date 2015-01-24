@@ -230,7 +230,7 @@ func formatFlags(f Flags, format int) interface{} {
 	case FlagDecimal:
 		return uint16(f)
 	case FlagHex:
-		return fmt.Sprintf("0x%X", f)
+		return fmt.Sprintf("0x%x", f)
 	case FlagString:
 		// If 0x01 is unset, no assumptions can be made about 0x02, 0x08, 0x20, 0x40 and 0x80
 		const pairedMask = ProperPair | MateUnmapped | MateReverse | MateReverse | Read1 | Read2
