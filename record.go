@@ -187,6 +187,72 @@ func (r *Record) String() string {
 	)
 }
 
+// MarshalText implements encoding.TextMarshaler. It calls MarshalSAM with FlagDecimal.
+func (r *Record) MarshalText() ([]byte, error) {
+	return r.MarshalSAM(0)
+}
+
+// MarshalSAM formats a Record as SAM using the specified flag format. Acceptable
+// formats are FlagDecimal, FlagHex and FlagString.
+func (r *Record) MarshalSAM(flags int) ([]byte, error) {
+	if flags < FlagDecimal || flags > FlagString {
+		return nil, errors.New("bam: flag format option out of range")
+	}
+	var buf bytes.Buffer
+	fmt.Fprintf(&buf, "%s\t%v\t%s\t%d\t%d\t%s\t%s\t%d\t%d\t%s\t%s",
+		r.Name,
+		formatFlags(r.Flags, flags),
+		r.Ref.Name(),
+		r.Pos,
+		r.MapQ,
+		r.Cigar,
+		r.MateRef.Name(),
+		r.MatePos,
+		r.TempLen,
+		r.Seq.Expand(),
+		r.Qual,
+	)
+	if len(r.AuxTags) > 0 {
+		fmt.Fprintf(&buf, "\t%v", r.AuxTags)
+	}
+	return buf.Bytes(), nil
+}
+
+// Flag format constants.
+const (
+	FlagDecimal = iota
+	FlagHex
+	FlagString
+)
+
+func formatFlags(f Flags, format int) interface{} {
+	switch format {
+	case FlagDecimal:
+		return uint16(f)
+	case FlagHex:
+		return fmt.Sprintf("0x%X", f)
+	case FlagString:
+		// If 0x01 is unset, no assumptions can be made about 0x02, 0x08, 0x20, 0x40 and 0x80
+		const pairedMask = ProperPair | MateUnmapped | MateReverse | MateReverse | Read1 | Read2
+		if f&1 == 0 {
+			f &^= pairedMask
+		}
+
+		const flags = "pPuUrR12sfdS"
+
+		b := make([]byte, 0, len(flags))
+		for i, c := range flags {
+			if f&(1<<uint(i)) != 0 {
+				b = append(b, byte(c))
+			}
+		}
+
+		return string(b)
+	default:
+		panic("bam: invalid flag format")
+	}
+}
+
 type NybblePair byte
 
 type nybblePairs []NybblePair
