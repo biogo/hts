@@ -303,6 +303,7 @@ func (s *S) TestSpecExamples(c *check.C) {
 		c.Check(r.Seq, check.DeepEquals, expect.Seq, check.Commentf("got:%q expected:%q", r.Seq.Expand(), expect.Seq.Expand()))
 		c.Check(r.Qual, check.DeepEquals, expect.Qual) // No valid qualities here.
 		c.Check(r.End(), check.Equals, specExamples.readEnds[i], check.Commentf("unexpected end position for %q at %v, got:%d expected:%d", r.Name, r.Pos, r.End(), specExamples.readEnds[i]))
+		c.Check(r.AuxTags, check.DeepEquals, expect.AuxTags)
 
 		parsedCigar, err := parseCigar([]byte(specExamples.cigars[i]))
 		c.Check(err, check.Equals, nil)
@@ -313,6 +314,13 @@ func (s *S) TestSpecExamples(c *check.C) {
 		expSeq := r.Seq.Expand()
 		c.Check(specExamples.ref[r.End()-1], check.Equals, expSeq[len(expSeq)-1])
 	}
+}
+
+func mustAux(a Aux, err error) Aux {
+	if err != nil {
+		panic(err)
+	}
+	return a
 }
 
 // The following data is the BAM file created from the following SAM using:
@@ -481,7 +489,7 @@ var specExamples = struct {
 			Seq:     NewNybbleSeq([]byte("GCCTAAGCTAA")),
 			Qual:    []uint8{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
 			AuxTags: []Aux{
-				Aux("SA:Z:ref,29,-,6H5M,17,0;"),
+				mustAux(NewAux("SA", 'Z', "ref,29,-,6H5M,17,0;")),
 			},
 		},
 		{
@@ -512,7 +520,7 @@ var specExamples = struct {
 			Seq:     NewNybbleSeq([]byte("TAGGC")),
 			Qual:    []uint8{0xff, 0xff, 0xff, 0xff, 0xff},
 			AuxTags: []Aux{
-				Aux("SA:Z:ref,9,+,5S6M,30,1;"),
+				mustAux(NewAux("SA", 'Z', "ref,9,+,5S6M,30,1;")),
 			},
 		},
 		{
@@ -528,7 +536,7 @@ var specExamples = struct {
 			Seq:     NewNybbleSeq([]byte("CAGCGGCAT")),
 			Qual:    []uint8{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
 			AuxTags: []Aux{
-				Aux("NM:i:1"),
+				mustAux(NewAux("NM", 'i', uint(1))),
 			},
 		},
 	},
