@@ -7,7 +7,6 @@ package bam
 import (
 	"bytes"
 	"encoding/binary"
-	"encoding/hex"
 	"fmt"
 	"math"
 	"reflect"
@@ -121,7 +120,7 @@ func NewAux(tag string, typ byte, value interface{}) (Aux, error) {
 			return a, nil
 		}
 		return nil, fmt.Errorf("bam: wrong dynamic type %T for 'f' tag", value)
-	case 'Z': // Z and H Require that parsing stops before the terminating zero.
+	case 'Z':
 		var a Aux
 		switch s := value.(type) {
 		case []byte:
@@ -134,10 +133,9 @@ func NewAux(tag string, typ byte, value interface{}) (Aux, error) {
 		return a, nil
 	case 'H':
 		if b, ok := value.([]byte); ok {
-			a := make(Aux, hex.EncodedLen(len(b))+3)
-			hex.Encode(a[3:], b)
+			a := make(Aux, 3, len(b)+3)
 			copy(a, Aux{tag[0], tag[1], 'H'})
-			return a, nil
+			return append(a, b...), nil
 		}
 		return nil, fmt.Errorf("bam: wrong dynamic type %T for 'H' tag", value)
 	case 'B':
@@ -264,8 +262,11 @@ func buildAux(aa []Aux) (aux []byte) {
 
 // String returns the string representation of an Aux type.
 func (a Aux) String() string {
-	if a.Type() == 'A' {
+	switch a.Type() {
+	case 'A':
 		return fmt.Sprintf("%s:%c:%c", []byte(a[:2]), a.Kind(), a.Value())
+	case 'H':
+		return fmt.Sprintf("%s:%c:%02x", []byte(a[:2]), a.Kind(), a.Value())
 	}
 	return fmt.Sprintf("%s:%c:%v", []byte(a[:2]), a.Kind(), a.Value())
 }
@@ -309,12 +310,7 @@ func (a Aux) Value() interface{} {
 	case 'Z': // Z and H Require that parsing stops before the terminating zero.
 		return string(a[3:])
 	case 'H':
-		h := make([]byte, hex.DecodedLen(len(a[3:])))
-		_, err := hex.Decode(h, a[3:])
-		if err != nil {
-			panic(fmt.Sprintf("bam: hex decoding error: %v", err))
-		}
-		return h
+		return []byte(a[3:])
 	case 'B':
 		length := int32(binary.LittleEndian.Uint32(a[4:8]))
 		switch t := a[3]; t {
