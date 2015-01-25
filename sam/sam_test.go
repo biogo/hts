@@ -33,7 +33,7 @@ var _ = check.Suite(&S{})
 
 func (s *S) TestCloneHeader(c *check.C) {
 	for _, h := range []*Header{
-		HeaderHG00096_1000,
+		headerHG00096_1000,
 	} {
 		c.Check(h, check.DeepEquals, h.Clone())
 	}

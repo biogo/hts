@@ -54,20 +54,22 @@ func (s *S) TestRead(c *check.C) {
 		lines  int
 	}{
 		{
-			in:     sam.BAM_HG00096_1000,
-			header: sam.HeaderHG00096_1000,
+			in:     bamHG00096_1000,
+			header: headerHG00096_1000,
 			lines:  1000,
 		},
 	} {
 		br, err := NewReader(bytes.NewBuffer(t.in), *conc)
 		c.Assert(err, check.Equals, nil)
-		c.Check(br.Header(), check.DeepEquals, t.header)
-		if !reflect.DeepEqual(br.Header(), t.header) {
-			c.Check(br.Header().Refs(), check.DeepEquals, t.header.Refs())
-			c.Check(br.Header().RGs(), check.DeepEquals, t.header.RGs())
-			c.Check(br.Header().Progs(), check.DeepEquals, t.header.Progs())
-			c.Check(br.Header().Comments, check.DeepEquals, t.header.Comments)
-		}
+
+		c.Check(br.Header().Version, check.Equals, t.header.Version)
+		c.Check(br.Header().SortOrder, check.Equals, t.header.SortOrder)
+		c.Check(br.Header().GroupOrder, check.Equals, t.header.GroupOrder)
+		c.Check(br.Header().Comments, check.DeepEquals, t.header.Comments)
+		c.Check(br.Header().Refs(), check.DeepEquals, t.header.Refs())
+		c.Check(br.Header().RGs(), check.DeepEquals, t.header.RGs())
+		c.Check(br.Header().Progs(), check.DeepEquals, t.header.Progs())
+
 		var lines int
 		for {
 			_, err := br.Read()
@@ -100,8 +102,8 @@ func (s *S) TestRoundTrip(c *check.C) {
 		lines  int
 	}{
 		{
-			in:     sam.BAM_HG00096_1000,
-			header: sam.HeaderHG00096_1000,
+			in:     bamHG00096_1000,
+			header: headerHG00096_1000,
 			conc:   2,
 			lines:  1000,
 		},
@@ -186,7 +188,7 @@ func BenchmarkRead(b *testing.B) {
 
 func BenchmarkWrite(b *testing.B) {
 	b.StopTimer()
-	br, err := NewReader(bytes.NewReader(sam.BAM_HG00096_1000), *conc)
+	br, err := NewReader(bytes.NewReader(bamHG00096_1000), *conc)
 	if err != nil {
 		b.Fatalf("NewReader failed: %v", err)
 	}

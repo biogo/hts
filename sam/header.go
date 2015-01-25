@@ -281,6 +281,7 @@ func (bh *Header) AddReference(r *Reference) error {
 		return usedReference
 	}
 	r.id = int32(len(bh.refs))
+	bh.seenRefs[r.name] = r.id
 	bh.refs = append(bh.refs, r)
 	return nil
 }
@@ -293,18 +294,20 @@ func (bh *Header) AddReadGroup(rg *ReadGroup) error {
 		return usedReadGroup
 	}
 	rg.id = int32(len(bh.rgs))
+	bh.seenGroups[rg.name] = rg.id
 	bh.rgs = append(bh.rgs, rg)
 	return nil
 }
 
 func (bh *Header) AddProgram(p *Program) error {
-	if _, ok := bh.seenProgs[p.name]; ok {
+	if _, ok := bh.seenProgs[p.uid]; ok {
 		return dupProgram
 	}
 	if p.id >= 0 {
 		return usedProgram
 	}
-	p.id = int32(len(bh.rgs))
+	p.id = int32(len(bh.progs))
+	bh.seenProgs[p.uid] = p.id
 	bh.progs = append(bh.progs, p)
 	return nil
 }
