@@ -215,6 +215,7 @@ func (r *Record) UnmarshalSAM(h *Header, b []byte) error {
 		return fmt.Errorf("bam: failed to assign reference: %v", err)
 	}
 	r.Pos, err = strconv.Atoi(string(f[3]))
+	r.Pos--
 	if err != nil {
 		return fmt.Errorf("bam: failed to parse position: %v", err)
 	}
@@ -227,7 +228,7 @@ func (r *Record) UnmarshalSAM(h *Header, b []byte) error {
 	if err != nil {
 		return fmt.Errorf("bam: failed to parse cigar string: %v", err)
 	}
-	if bytes.Equal(f[2], f[6]) {
+	if bytes.Equal(f[2], f[6]) || bytes.Equal(f[6], []byte{'='}) {
 		r.MateRef = r.Ref
 	} else {
 		r.MateRef, err = referenceForName(h, string(f[6]))
@@ -236,6 +237,7 @@ func (r *Record) UnmarshalSAM(h *Header, b []byte) error {
 		}
 	}
 	r.MatePos, err = strconv.Atoi(string(f[7]))
+	r.MatePos--
 	if err != nil {
 		return fmt.Errorf("bam: failed to parse mate position: %v", err)
 	}
@@ -243,9 +245,21 @@ func (r *Record) UnmarshalSAM(h *Header, b []byte) error {
 	if err != nil {
 		return fmt.Errorf("bam: failed to parse template length: %v", err)
 	}
-	r.Seq = NewSeq(f[9])
-	r.Qual = append(r.Qual, f[10]...)
-	if len(r.Qual) != r.Seq.Length {
+	if !bytes.Equal(f[9], []byte{'*'}) {
+		r.Seq = NewSeq(f[9])
+		if !r.Cigar.IsValid(r.Seq.Length) {
+			return errors.New("bam: sequence/CIGAR length mismatch")
+		}
+	}
+	if !bytes.Equal(f[10], []byte{'*'}) {
+		r.Qual = append(r.Qual, f[10]...)
+	} else {
+		r.Qual = make([]byte, r.Seq.Length)
+		for i := range r.Qual {
+			r.Qual[i] = 0xff
+		}
+	}
+	if len(r.Qual) != 0 && len(r.Qual) != r.Seq.Length {
 		return errors.New("bam: sequence/quality length mismatch")
 	}
 	for _, aux := range f[11:] {
@@ -294,14 +308,14 @@ func (r *Record) MarshalSAM(flags int) ([]byte, error) {
 		r.Name,
 		formatFlags(r.Flags, flags),
 		r.Ref.Name(),
-		r.Pos,
+		r.Pos+1,
 		r.MapQ,
 		r.Cigar,
-		r.MateRef.Name(),
-		r.MatePos,
+		formatMate(r.Ref, r.MateRef),
+		r.MatePos+1,
 		r.TempLen,
 		r.Seq.Expand(),
-		r.Qual,
+		formatQual(r.Qual),
 	)
 	for _, t := range r.AuxTags {
 		fmt.Fprintf(&buf, "\t%v", t)
@@ -342,6 +356,22 @@ func formatFlags(f Flags, format int) interface{} {
 	default:
 		panic("bam: invalid flag format")
 	}
+}
+
+func formatMate(ref, mate *Reference) string {
+	if mate != nil && ref == mate {
+		return "="
+	}
+	return mate.Name()
+}
+
+func formatQual(q []byte) []byte {
+	for _, v := range q {
+		if v != 0xff {
+			return q
+		}
+	}
+	return []byte{'*'}
 }
 
 type Doublet byte

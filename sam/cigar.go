@@ -5,6 +5,7 @@
 package sam
 
 import (
+	"bytes"
 	"fmt"
 	"strconv"
 )
@@ -36,6 +37,14 @@ func (c Cigar) IsValid(length int) bool {
 		pos += co.Len() * con.Reference
 	}
 	return length == 0
+}
+
+func (c Cigar) String() string {
+	var b bytes.Buffer
+	for _, co := range c {
+		fmt.Fprint(&b, co)
+	}
+	return b.String()
 }
 
 type CigarOp uint32

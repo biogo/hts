@@ -211,7 +211,7 @@ func ParseAux(text []byte) (Aux, error) {
 		if i < 0 {
 			value = i
 		} else {
-			value = uint32(i)
+			value = uint(i)
 		}
 	case 'f':
 		f, err := strconv.ParseFloat(string(tf[2]), 32)

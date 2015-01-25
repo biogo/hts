@@ -5,6 +5,7 @@
 package sam
 
 import (
+	"bytes"
 	"flag"
 	"testing"
 
@@ -39,49 +40,64 @@ func (s *S) TestCloneHeader(c *check.C) {
 	}
 }
 
-// func (s *S) TestSpecExamples(c *check.C) {
-// 	br, err := NewReader(bytes.NewReader(specExamples.data), *conc)
-// 	c.Assert(err, check.Equals, nil)
-// 	bh := br.Header()
-// 	c.Check(bh.Version, check.Equals, specExamples.header.Version)
-// 	c.Check(bh.SortOrder, check.Equals, specExamples.header.SortOrder)
-// 	c.Check(bh.GroupOrder, check.Equals, specExamples.header.GroupOrder)
-// 	c.Check(bh.Comments, check.DeepEquals, specExamples.header.Comments)
-// 	for i, expect := range specExamples.records {
-// 		r, err := br.Read()
-// 		if err != nil {
-// 			c.Errorf("Unexpected early error: %v", err)
-// 		}
-// 		c.Check(r.Name, check.Equals, expect.Name)
-// 		c.Check(r.Pos, check.Equals, expect.Pos) // Zero-based here.
-// 		c.Check(r.Flags, check.Equals, expect.Flags)
-// 		if r.Flags&Unmapped == 0 {
-// 			c.Check(r.Reference(), check.Not(check.Equals), nil)
-// 			if r.Reference() != nil {
-// 				c.Check(r.Reference().Name(), check.Equals, bh.Refs()[0].Name())
-// 			}
-// 		} else {
-// 			c.Check(r.Reference(), check.Equals, nil)
-// 		}
-// 		c.Check(r.MatePos, check.Equals, expect.MatePos) // Zero-based here.
-// 		c.Check(r.Cigar, check.DeepEquals, expect.Cigar)
-// 		c.Check(r.Cigar.IsValid(r.Seq.Length), check.Equals, true)
-// 		c.Check(r.TempLen, check.Equals, expect.TempLen)
-// 		c.Check(r.Seq, check.DeepEquals, expect.Seq, check.Commentf("got:%q expected:%q", r.Seq.Expand(), expect.Seq.Expand()))
-// 		c.Check(r.Qual, check.DeepEquals, expect.Qual) // No valid qualities here.
-// 		c.Check(r.End(), check.Equals, specExamples.readEnds[i], check.Commentf("unexpected end position for %q at %v, got:%d expected:%d", r.Name, r.Pos, r.End(), specExamples.readEnds[i]))
-// 		c.Check(r.AuxTags, check.DeepEquals, expect.AuxTags)
+func (s *S) TestSpecExamples(c *check.C) {
+	sr, err := NewReader(bytes.NewReader(specExamples.data))
+	c.Assert(err, check.Equals, nil)
+	h := sr.Header()
+	c.Check(h.Version, check.Equals, specExamples.header.Version)
+	c.Check(h.SortOrder, check.Equals, specExamples.header.SortOrder)
+	c.Check(h.GroupOrder, check.Equals, specExamples.header.GroupOrder)
+	c.Check(h.Comments, check.DeepEquals, specExamples.header.Comments)
 
-// 		parsedCigar, err := ParseCigar([]byte(specExamples.cigars[i]))
-// 		c.Check(err, check.Equals, nil)
-// 		c.Check(parsedCigar, check.DeepEquals, expect.Cigar)
+	var buf bytes.Buffer
+	sw, err := NewWriter(&buf, h, FlagDecimal)
+	c.Assert(err, check.Equals, nil)
+	for i, expect := range specExamples.records {
+		r, err := sr.Read()
+		if err != nil {
+			c.Errorf("Unexpected early error: %v", err)
+			continue
+		}
+		c.Check(r.Name, check.Equals, expect.Name)
+		c.Check(r.Pos, check.Equals, expect.Pos) // Zero-based here.
+		c.Check(r.Flags, check.Equals, expect.Flags)
+		if r.Flags&Unmapped == 0 {
+			c.Check(r.Reference(), check.Not(check.Equals), nil)
+			if r.Reference() != nil {
+				c.Check(r.Reference().Name(), check.Equals, h.Refs()[0].Name())
+			}
+		} else {
+			c.Check(r.Reference(), check.Equals, nil)
+		}
+		c.Check(r.MatePos, check.Equals, expect.MatePos) // Zero-based here.
+		c.Check(r.Cigar, check.DeepEquals, expect.Cigar)
+		c.Check(r.Cigar.IsValid(r.Seq.Length), check.Equals, true)
+		c.Check(r.TempLen, check.Equals, expect.TempLen)
+		c.Check(r.Seq, check.DeepEquals, expect.Seq, check.Commentf("got:%q expected:%q", r.Seq.Expand(), expect.Seq.Expand()))
+		c.Check(r.Qual, check.DeepEquals, expect.Qual) // No valid qualities here.
+		c.Check(r.End(), check.Equals, specExamples.readEnds[i], check.Commentf("unexpected end position for %q at %v, got:%d expected:%d", r.Name, r.Pos, r.End(), specExamples.readEnds[i]))
+		c.Check(r.AuxTags, check.DeepEquals, expect.AuxTags)
 
-// 		// In all the examples the last base of the read and the last
-// 		// base of the ref are valid, so we can check this.
-// 		expSeq := r.Seq.Expand()
-// 		c.Check(specExamples.ref[r.End()-1], check.Equals, expSeq[len(expSeq)-1])
-// 	}
-// }
+		parsedCigar, err := ParseCigar([]byte(specExamples.cigars[i]))
+		c.Check(err, check.Equals, nil)
+		c.Check(parsedCigar, check.DeepEquals, expect.Cigar)
+
+		// In all the examples the last base of the read and the last
+		// base of the ref are valid, so we can check this.
+		expSeq := r.Seq.Expand()
+		c.Check(specExamples.ref[r.End()-1], check.Equals, expSeq[len(expSeq)-1])
+
+		// Test round trip.
+		err = sw.Write(r)
+		c.Check(err, check.Equals, nil)
+		b, err := r.MarshalText()
+		c.Check(err, check.Equals, nil)
+		var nr Record
+		c.Check(nr.UnmarshalSAM(sr.Header(), b), check.Equals, nil)
+		c.Check(&nr, check.DeepEquals, r)
+	}
+	c.Check(buf.String(), check.DeepEquals, string(specExamples.data))
+}
 
 func mustAux(a Aux, err error) Aux {
 	if err != nil {
