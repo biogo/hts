@@ -5,16 +5,20 @@
 package bam
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
+	"unsafe"
 
 	"code.google.com/p/biogo.bam/bgzf"
+	"code.google.com/p/biogo.bam/sam"
 )
 
 type Reader struct {
 	r *bgzf.Reader
-	h *Header
+	h *sam.Header
 	c *bgzf.Chunk
 
 	lastChunk bgzf.Chunk
@@ -25,15 +29,12 @@ func NewReader(r io.Reader, rd int) (*Reader, error) {
 	if err != nil {
 		return nil, err
 	}
+	h, _ := sam.NewHeader(nil, nil)
 	br := &Reader{
 		r: bg,
-		h: &Header{
-			seenRefs:   set{},
-			seenGroups: set{},
-			seenProgs:  set{},
-		},
+		h: h,
 	}
-	err = br.h.read(br.r)
+	err = br.h.DecodeBinary(br.r)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +43,7 @@ func NewReader(r io.Reader, rd int) (*Reader, error) {
 	return br, nil
 }
 
-func (br *Reader) Header() *Header {
+func (br *Reader) Header() *sam.Header {
 	return br.h
 }
 
@@ -55,7 +56,7 @@ type bamRecordFixed struct {
 	mapQ      uint8
 	bin       uint16
 	nCigar    uint16
-	flags     Flags
+	flags     sam.Flags
 	lSeq      int32
 	nextRefID int32
 	nextPos   int32
@@ -67,7 +68,7 @@ var (
 	bamFixedRemainder = binary.Size(bamRecordFixed{}) - lenFieldSize
 )
 
-func (br *Reader) Read() (*Record, error) {
+func (br *Reader) Read() (*sam.Record, error) {
 	if br.c != nil && vOffset(br.r.LastChunk().End) >= vOffset(br.c.End) {
 		return nil, io.EOF
 	}
@@ -86,7 +87,7 @@ func (br *Reader) Read() (*Record, error) {
 		br.lastChunk.End = br.r.LastChunk().End
 	}()
 
-	var rec Record
+	var rec sam.Record
 
 	refID := bin.readInt32()
 	rec.Pos = int(bin.readInt32())
@@ -94,7 +95,7 @@ func (br *Reader) Read() (*Record, error) {
 	rec.MapQ = bin.readUint8()
 	_ = bin.readUint16()
 	nCigar := bin.readUint16()
-	rec.Flags = Flags(bin.readUint16())
+	rec.Flags = sam.Flags(bin.readUint16())
 	lSeq := bin.readInt32()
 	nextRefID := bin.readInt32()
 	rec.MatePos = int(bin.readInt32())
@@ -115,11 +116,11 @@ func (br *Reader) Read() (*Record, error) {
 		return nil, r.err
 	}
 
-	seq := make(nybblePairs, (lSeq+1)>>1)
+	seq := make(doublets, (lSeq+1)>>1)
 	if nf, _ := r.Read(seq.Bytes()); nf != int((lSeq+1)>>1) {
 		return nil, errors.New("bam: truncated sequence")
 	}
-	rec.Seq = NybbleSeq{Length: int(lSeq), Seq: seq}
+	rec.Seq = sam.Seq{Length: int(lSeq), Seq: seq}
 
 	rec.Qual = make([]byte, lSeq)
 	if nf, _ := r.Read(rec.Qual); nf != int(lSeq) {
@@ -165,15 +166,80 @@ func (r *Reader) LastChunk() bgzf.Chunk {
 	return r.lastChunk
 }
 
-func readCigarOps(br *binaryReader, n uint16) []CigarOp {
-	co := make([]CigarOp, n)
+func readCigarOps(br *binaryReader, n uint16) []sam.CigarOp {
+	co := make([]sam.CigarOp, n)
 	for i := range co {
-		co[i] = CigarOp(br.readUint32())
+		co[i] = sam.CigarOp(br.readUint32())
 		if br.r.err != nil {
 			return nil
 		}
 	}
 	return co
+}
+
+var jumps = [256]int{
+	'A': 1,
+	'c': 1, 'C': 1,
+	's': 2, 'S': 2,
+	'i': 4, 'I': 4,
+	'f': 4,
+	'Z': -1,
+	'H': -1,
+	'B': -1,
+}
+
+// parseAux examines the data of a SAM record's OPT fields,
+// returning a slice of sam.Aux that are backed by the original data.
+func parseAux(aux []byte) (aa []sam.Aux) {
+	for i := 0; i+2 < len(aux); {
+		t := aux[i+2]
+		switch j := jumps[t]; {
+		case j > 0:
+			j += 3
+			aa = append(aa, sam.Aux(aux[i:i+j]))
+			i += j
+		case j < 0:
+			switch t {
+			case 'Z', 'H':
+				var (
+					j int
+					v byte
+				)
+				for j, v = range aux[i:] {
+					if v == 0 { // C string termination
+						break // Truncate terminal zero.
+					}
+				}
+				aa = append(aa, sam.Aux(aux[i:i+j]))
+				i += j + 1
+			case 'B':
+				var length int32
+				err := binary.Read(bytes.NewBuffer([]byte(aux[i+4:i+8])), binary.LittleEndian, &length)
+				if err != nil {
+					panic(fmt.Sprintf("bam: binary.Read failed: %v", err))
+				}
+				j = int(length)*jumps[aux[i+3]] + int(unsafe.Sizeof(length)) + 4
+				aa = append(aa, sam.Aux(aux[i:i+j]))
+				i += j
+			}
+		default:
+			panic(fmt.Sprintf("bam: unrecognised optional field type: %q", t))
+		}
+	}
+	return
+}
+
+// buildAux constructs a single byte slice that represents a slice of sam.Aux.
+func buildAux(aa []sam.Aux) (aux []byte) {
+	for _, a := range aa {
+		// TODO: validate each 'a'
+		aux = append(aux, []byte(a)...)
+		switch a.Type() {
+		case 'Z', 'H':
+			aux = append(aux, 0)
+		}
+	}
+	return
 }
 
 type errReader struct {
@@ -216,3 +282,7 @@ func (r *binaryReader) readUint32() uint32 {
 	r.r.Read(r.buf[:4])
 	return binary.LittleEndian.Uint32(r.buf[:4])
 }
+
+type doublets []sam.Doublet
+
+func (np doublets) Bytes() []byte { return *(*[]byte)(unsafe.Pointer(&np)) }

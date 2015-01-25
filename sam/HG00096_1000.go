@@ -1,4 +1,4 @@
-package bam
+package sam
 
 import (
 	"net/url"
@@ -12,6 +12,7 @@ var (
 	// samtools view HG00096.unmapped.ILLUMINA.bwa.GBR.low_coverage.20120522.bam -H | sed -e 's/ \{7,8\}/\t/g'> HG00096_1000.sam # The sed sub is required due to broken format in original data.
 	// samtools view HG00096.unmapped.ILLUMINA.bwa.GBR.low_coverage.20120522.bam | head -n 1000 >> HG00096_1000.sam
 	// samtools view -Sb HG00096_1000.sam > HG00096_1000.bam
+	BAM_HG00096_1000 = bamHG00096_1000
 	bamHG00096_1000 = []byte{
 		0x1f, 0x8b, 0x08, 0x04, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0xff, 0x06, 0x00, 0x42, 0x43, 0x02, 0x00,
@@ -12246,6 +12247,7 @@ var (
 		0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00,
 	}
+	HeaderHG00096_1000 = headerHG00096_1000
 	headerHG00096_1000 = &Header{
 		Version:   "1.0",
 		SortOrder: 3,

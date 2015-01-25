@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"code.google.com/p/biogo.bam/bgzf"
+	"code.google.com/p/biogo.bam/sam"
 
 	"gopkg.in/check.v1"
 )
@@ -41,15 +42,20 @@ type S struct{}
 
 var _ = check.Suite(&S{})
 
+var (
+	file = flag.String("bench.file", "", "file to read for benchmarking")
+	conc = flag.Int("conc", 1, "sets the level of concurrency for compression")
+)
+
 func (s *S) TestRead(c *check.C) {
 	for i, t := range []struct {
 		in     []byte
-		header *Header
+		header *sam.Header
 		lines  int
 	}{
 		{
-			in:     bamHG00096_1000,
-			header: headerHG00096_1000,
+			in:     sam.BAM_HG00096_1000,
+			header: sam.HeaderHG00096_1000,
 			lines:  1000,
 		},
 	} {
@@ -81,15 +87,7 @@ func (s *S) TestRead(c *check.C) {
 	}
 }
 
-func (s *S) TestCloneHeader(c *check.C) {
-	for _, h := range []*Header{
-		headerHG00096_1000,
-	} {
-		c.Check(h, check.DeepEquals, h.Clone())
-	}
-}
-
-func headerText(h *Header) []byte {
+func headerText(h *sam.Header) []byte {
 	b, _ := h.MarshalText()
 	return b
 }
@@ -97,13 +95,13 @@ func headerText(h *Header) []byte {
 func (s *S) TestRoundTrip(c *check.C) {
 	for i, t := range []struct {
 		in     []byte
-		header *Header
+		header *sam.Header
 		conc   int
 		lines  int
 	}{
 		{
-			in:     bamHG00096_1000,
-			header: headerHG00096_1000,
+			in:     sam.BAM_HG00096_1000,
+			header: sam.HeaderHG00096_1000,
 			conc:   2,
 			lines:  1000,
 		},
@@ -160,11 +158,6 @@ func (s *S) TestRoundTrip(c *check.C) {
 	}
 }
 
-var (
-	file = flag.String("bench.file", "", "file to read for benchmarking")
-	conc = flag.Int("conc", 1, "sets the level of concurrency for compression")
-)
-
 func BenchmarkRead(b *testing.B) {
 	if *file == "" {
 		b.Skip("no file specified")
@@ -193,7 +186,7 @@ func BenchmarkRead(b *testing.B) {
 
 func BenchmarkWrite(b *testing.B) {
 	b.StopTimer()
-	br, err := NewReader(bytes.NewReader(bamHG00096_1000), *conc)
+	br, err := NewReader(bytes.NewReader(sam.BAM_HG00096_1000), *conc)
 	if err != nil {
 		b.Fatalf("NewReader failed: %v", err)
 	}
@@ -288,7 +281,7 @@ func (s *S) TestSpecExamples(c *check.C) {
 		c.Check(r.Name, check.Equals, expect.Name)
 		c.Check(r.Pos, check.Equals, expect.Pos) // Zero-based here.
 		c.Check(r.Flags, check.Equals, expect.Flags)
-		if r.Flags&Unmapped == 0 {
+		if r.Flags&sam.Unmapped == 0 {
 			c.Check(r.Reference(), check.Not(check.Equals), nil)
 			if r.Reference() != nil {
 				c.Check(r.Reference().Name(), check.Equals, bh.Refs()[0].Name())
@@ -305,7 +298,7 @@ func (s *S) TestSpecExamples(c *check.C) {
 		c.Check(r.End(), check.Equals, specExamples.readEnds[i], check.Commentf("unexpected end position for %q at %v, got:%d expected:%d", r.Name, r.Pos, r.End(), specExamples.readEnds[i]))
 		c.Check(r.AuxTags, check.DeepEquals, expect.AuxTags)
 
-		parsedCigar, err := parseCigar([]byte(specExamples.cigars[i]))
+		parsedCigar, err := sam.ParseCigar([]byte(specExamples.cigars[i]))
 		c.Check(err, check.Equals, nil)
 		c.Check(parsedCigar, check.DeepEquals, expect.Cigar)
 
@@ -316,7 +309,7 @@ func (s *S) TestSpecExamples(c *check.C) {
 	}
 }
 
-func mustAux(a Aux, err error) Aux {
+func mustAux(a sam.Aux, err error) sam.Aux {
 	if err != nil {
 		panic(err)
 	}
@@ -349,8 +342,8 @@ func mustAux(a Aux, err error) Aux {
 var specExamples = struct {
 	ref      string
 	data     []byte
-	header   Header
-	records  []*Record
+	header   sam.Header
+	records  []*sam.Record
 	cigars   []string
 	readEnds []int
 }{
@@ -424,10 +417,10 @@ var specExamples = struct {
 		0x02, 0x00, 0x1b, 0x00, 0x03, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	},
-	header: Header{
+	header: sam.Header{
 		Version:    "1.5",
-		SortOrder:  Coordinate,
-		GroupOrder: GroupUnspecified,
+		SortOrder:  sam.Coordinate,
+		GroupOrder: sam.GroupUnspecified,
 		Comments: []string{
 			"--------------------------------------------------------",
 			"Coor     12345678901234  5678901234567890123456789012345",
@@ -442,101 +435,101 @@ var specExamples = struct {
 			"--------------------------------------------------------",
 		},
 	},
-	records: []*Record{
+	records: []*sam.Record{
 		{
 			Name: "r001",
 			Pos:  6,
 			MapQ: 30,
-			Cigar: Cigar{
-				NewCigarOp(CigarMatch, 8),
-				NewCigarOp(CigarInsertion, 2),
-				NewCigarOp(CigarMatch, 4),
-				NewCigarOp(CigarDeletion, 1),
-				NewCigarOp(CigarMatch, 3),
+			Cigar: sam.Cigar{
+				sam.NewCigarOp(sam.CigarMatch, 8),
+				sam.NewCigarOp(sam.CigarInsertion, 2),
+				sam.NewCigarOp(sam.CigarMatch, 4),
+				sam.NewCigarOp(sam.CigarDeletion, 1),
+				sam.NewCigarOp(sam.CigarMatch, 3),
 			},
-			Flags:   Paired | ProperPair | MateReverse | Read1,
+			Flags:   sam.Paired | sam.ProperPair | sam.MateReverse | sam.Read1,
 			MatePos: 36,
 			TempLen: 39,
-			Seq:     NewNybbleSeq([]byte("TTAGATAAAGGATACTG")),
+			Seq:     sam.NewSeq([]byte("TTAGATAAAGGATACTG")),
 			Qual:    []uint8{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
 		},
 		{
 			Name: "r002",
 			Pos:  8,
 			MapQ: 30,
-			Cigar: Cigar{
-				NewCigarOp(CigarSoftClipped, 3),
-				NewCigarOp(CigarMatch, 6),
-				NewCigarOp(CigarPadded, 1),
-				NewCigarOp(CigarInsertion, 1),
-				NewCigarOp(CigarMatch, 4),
+			Cigar: sam.Cigar{
+				sam.NewCigarOp(sam.CigarSoftClipped, 3),
+				sam.NewCigarOp(sam.CigarMatch, 6),
+				sam.NewCigarOp(sam.CigarPadded, 1),
+				sam.NewCigarOp(sam.CigarInsertion, 1),
+				sam.NewCigarOp(sam.CigarMatch, 4),
 			},
 			MatePos: -1,
 			TempLen: 0,
-			Seq:     NewNybbleSeq([]byte("AAAAGATAAGGATA")),
+			Seq:     sam.NewSeq([]byte("AAAAGATAAGGATA")),
 			Qual:    []uint8{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
 		},
 		{
 			Name: "r003",
 			Pos:  8,
 			MapQ: 30,
-			Cigar: Cigar{
-				NewCigarOp(CigarSoftClipped, 5),
-				NewCigarOp(CigarMatch, 6),
+			Cigar: sam.Cigar{
+				sam.NewCigarOp(sam.CigarSoftClipped, 5),
+				sam.NewCigarOp(sam.CigarMatch, 6),
 			},
 			MatePos: -1,
 			TempLen: 0,
-			Seq:     NewNybbleSeq([]byte("GCCTAAGCTAA")),
+			Seq:     sam.NewSeq([]byte("GCCTAAGCTAA")),
 			Qual:    []uint8{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
-			AuxTags: []Aux{
-				mustAux(NewAux("SA", 'Z', "ref,29,-,6H5M,17,0;")),
+			AuxTags: []sam.Aux{
+				mustAux(sam.NewAux("SA", 'Z', "ref,29,-,6H5M,17,0;")),
 			},
 		},
 		{
 			Name: "r004",
 			Pos:  15,
 			MapQ: 30,
-			Cigar: Cigar{
-				NewCigarOp(CigarMatch, 6),
-				NewCigarOp(CigarSkipped, 14),
-				NewCigarOp(CigarMatch, 5),
+			Cigar: sam.Cigar{
+				sam.NewCigarOp(sam.CigarMatch, 6),
+				sam.NewCigarOp(sam.CigarSkipped, 14),
+				sam.NewCigarOp(sam.CigarMatch, 5),
 			},
 			MatePos: -1,
 			TempLen: 0,
-			Seq:     NewNybbleSeq([]byte("ATAGCTTCAGC")),
+			Seq:     sam.NewSeq([]byte("ATAGCTTCAGC")),
 			Qual:    []uint8{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
 		},
 		{
 			Name: "r003",
 			Pos:  28,
 			MapQ: 17,
-			Cigar: Cigar{
-				NewCigarOp(CigarHardClipped, 6),
-				NewCigarOp(CigarMatch, 5),
+			Cigar: sam.Cigar{
+				sam.NewCigarOp(sam.CigarHardClipped, 6),
+				sam.NewCigarOp(sam.CigarMatch, 5),
 			},
-			Flags:   Reverse | Supplementary,
+			Flags:   sam.Reverse | sam.Supplementary,
 			MatePos: -1,
 			TempLen: 0,
-			Seq:     NewNybbleSeq([]byte("TAGGC")),
+			Seq:     sam.NewSeq([]byte("TAGGC")),
 			Qual:    []uint8{0xff, 0xff, 0xff, 0xff, 0xff},
-			AuxTags: []Aux{
-				mustAux(NewAux("SA", 'Z', "ref,9,+,5S6M,30,1;")),
+			AuxTags: []sam.Aux{
+				mustAux(sam.NewAux("SA", 'Z', "ref,9,+,5S6M,30,1;")),
 			},
 		},
 		{
 			Name: "r001",
 			Pos:  36,
 			MapQ: 30,
-			Cigar: Cigar{
-				NewCigarOp(CigarMatch, 9),
+			Cigar: sam.Cigar{
+				sam.NewCigarOp(sam.CigarMatch, 9),
 			},
-			Flags:   Paired | ProperPair | Reverse | Read2,
+			Flags:   sam.Paired | sam.ProperPair | sam.Reverse | sam.Read2,
 			MatePos: 6,
 			TempLen: -39,
-			Seq:     NewNybbleSeq([]byte("CAGCGGCAT")),
+			Seq:     sam.NewSeq([]byte("CAGCGGCAT")),
 			Qual:    []uint8{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
-			AuxTags: []Aux{
-				mustAux(NewAux("NM", 'i', uint(1))),
+			AuxTags: []sam.Aux{
+				mustAux(sam.NewAux("NM", 'i', uint(1))),
 			},
 		},
 	},
@@ -558,203 +551,6 @@ var specExamples = struct {
 		33,
 		45,
 	},
-}
-
-var endTests = []struct {
-	cigar Cigar
-	end   int
-}{
-	{
-		cigar: Cigar{
-			NewCigarOp(CigarMatch, 20),
-			NewCigarOp(CigarBack, 5),
-			NewCigarOp(CigarMatch, 20),
-		},
-		end: 35,
-	},
-	{
-		cigar: Cigar{
-			NewCigarOp(CigarMatch, 10),
-			NewCigarOp(CigarBack, 3),
-			NewCigarOp(CigarMatch, 11),
-		},
-		end: 18,
-	},
-	{
-		cigar: Cigar{
-			NewCigarOp(CigarHardClipped, 10),
-			NewCigarOp(CigarBack, 3),
-		},
-		end: 0,
-	},
-	{
-		cigar: Cigar{
-			NewCigarOp(CigarMatch, 3),
-			NewCigarOp(CigarHardClipped, 10),
-		},
-		end: 3,
-	},
-	{
-		cigar: Cigar{
-			NewCigarOp(CigarMatch, 3),
-			NewCigarOp(CigarSoftClipped, 10),
-			NewCigarOp(CigarHardClipped, 10),
-		},
-		end: 3,
-	},
-	{
-		cigar: Cigar{
-			NewCigarOp(CigarBack, 10),
-			NewCigarOp(CigarSkipped, 10),
-			NewCigarOp(CigarBack, 10),
-			NewCigarOp(CigarSkipped, 10),
-			NewCigarOp(CigarMatch, 3),
-		},
-		end: 3,
-	},
-	{
-		cigar: Cigar{
-			NewCigarOp(CigarBack, 10),
-			NewCigarOp(CigarSkipped, 10),
-			NewCigarOp(CigarBack, 5),
-			NewCigarOp(CigarSkipped, 10),
-			NewCigarOp(CigarMatch, 3),
-		},
-		end: 8,
-	},
-}
-
-func (s *S) TestEnd(c *check.C) {
-	for _, test := range endTests {
-		c.Check((&Record{Cigar: test.cigar}).End(), check.Equals, test.end)
-	}
-}
-
-var cigarTests = []struct {
-	cigar  Cigar
-	length int
-	valid  bool
-}{
-	{
-		cigar:  nil,
-		length: 0,
-		valid:  true,
-	},
-
-	// One thought is that if B is really intended only to provide the ability
-	// to store CG and similar data where the read "skips" back a few bases now
-	// and again vs. the reference one thing that would make this much easier
-	// on those parsing SAM/BAM would be to limit the use of the B operator so
-	// that it cannot skip backwards past the beginning of the read.
-	//
-	// So something like 20M5B20M would be valid, but 50M5000B20M would not be.
-	//
-	// http://sourceforge.net/p/samtools/mailman/message/28466477/
-	{ // 20M5B20M
-		cigar: Cigar{
-			NewCigarOp(CigarMatch, 20),
-			NewCigarOp(CigarBack, 5),
-			NewCigarOp(CigarMatch, 20),
-		},
-		length: 40,
-		valid:  true,
-	},
-	{ // 50M5000B20M
-		cigar: Cigar{
-			NewCigarOp(CigarMatch, 50),
-			NewCigarOp(CigarBack, 5000),
-			NewCigarOp(CigarMatch, 20),
-		},
-		length: 70,
-		valid:  false,
-	},
-
-	// LH's example at http://sourceforge.net/p/samtools/mailman/message/28463294/
-	{ // 10M3B11M
-		// REF:: GCATACGATCGACTAGTCACGT
-		// READ: --ATACGATCGA----------
-		// READ: ---------CGACTAGTCAC--
-		cigar: Cigar{
-			NewCigarOp(CigarMatch, 10),
-			NewCigarOp(CigarBack, 3),
-			NewCigarOp(CigarMatch, 11),
-		},
-		length: 21,
-		valid:  true,
-	},
-
-	{
-		cigar: Cigar{
-			NewCigarOp(CigarHardClipped, 10),
-			NewCigarOp(CigarBack, 3),
-			NewCigarOp(CigarMatch, 11),
-		},
-		length: 11,
-		valid:  false,
-	},
-	{
-		cigar: Cigar{
-			NewCigarOp(CigarHardClipped, 10),
-			NewCigarOp(CigarBack, 3),
-		},
-		length: 0,
-		valid:  true,
-	},
-	{
-		cigar: Cigar{
-			NewCigarOp(CigarMatch, 3),
-			NewCigarOp(CigarHardClipped, 10),
-		},
-		length: 3,
-		valid:  true,
-	},
-	{
-		cigar: Cigar{
-			NewCigarOp(CigarMatch, 3),
-			NewCigarOp(CigarHardClipped, 10),
-			NewCigarOp(CigarHardClipped, 10),
-		},
-		length: 3,
-		valid:  false,
-	},
-	{
-		cigar: Cigar{
-			NewCigarOp(CigarMatch, 3),
-			NewCigarOp(CigarHardClipped, 10),
-			NewCigarOp(CigarSoftClipped, 10),
-		},
-		length: 13,
-		valid:  false,
-	},
-	{
-		cigar: Cigar{
-			NewCigarOp(CigarMatch, 3),
-			NewCigarOp(CigarSoftClipped, 10),
-			NewCigarOp(CigarHardClipped, 10),
-		},
-		length: 13,
-		valid:  true,
-	},
-
-	// Stupid, but not reason not to be valid. We only care if the
-	// there is a base from the query being used left of the start.
-	{
-		cigar: Cigar{
-			NewCigarOp(CigarBack, 10),
-			NewCigarOp(CigarSkipped, 10),
-			NewCigarOp(CigarBack, 10),
-			NewCigarOp(CigarSkipped, 10),
-			NewCigarOp(CigarMatch, 3),
-		},
-		length: 3,
-		valid:  true,
-	},
-}
-
-func (s *S) TestCigarIsValid(c *check.C) {
-	for _, test := range cigarTests {
-		c.Check(test.cigar.IsValid(test.length), check.Equals, test.valid)
-	}
 }
 
 func (s *S) TestIssue3(c *check.C) {
@@ -881,7 +677,7 @@ func (s *S) TestIssue11(c *check.C) {
 
 var issue11 = []struct {
 	input  io.Reader
-	expect GroupOrder
+	expect sam.GroupOrder
 }{
 	{
 		// 1000 genomes file hand edited to reduce number of refs and reads;
@@ -980,7 +776,7 @@ var issue11 = []struct {
 			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 			0x00,
 		}),
-		expect: GroupUnspecified,
+		expect: sam.GroupUnspecified,
 	},
 	{
 		input: bytes.NewReader([]byte{
@@ -1077,7 +873,7 @@ var issue11 = []struct {
 			0x42, 0x43, 0x02, 0x00, 0x1b, 0x00, 0x03, 0x00,
 			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		}),
-		expect: GroupNone,
+		expect: sam.GroupNone,
 	},
 	{
 		input: bytes.NewReader([]byte{
@@ -1175,7 +971,7 @@ var issue11 = []struct {
 			0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 			0x00, 0x00,
 		}),
-		expect: GroupQuery,
+		expect: sam.GroupQuery,
 	},
 	{
 		input: bytes.NewReader([]byte{
@@ -1272,7 +1068,7 @@ var issue11 = []struct {
 			0x02, 0x00, 0x1b, 0x00, 0x03, 0x00, 0x00, 0x00,
 			0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		}),
-		expect: GroupReference,
+		expect: sam.GroupReference,
 	},
 }
 
@@ -1342,7 +1138,7 @@ func (s *S) TestIssueDate(c *check.C) {
 	rg := br.Header().RGs()
 	c.Assert(len(rg), check.Equals, 1)
 	expect := time.Date(2014, 03, 25, 12, 26, 51, 0, time.FixedZone("", -int(7*time.Hour/time.Second)))
-	c.Check(rg[0].date, check.DeepEquals, expect)
+	c.Check(rg[0].Time(), check.DeepEquals, expect)
 }
 
 // This is BAM data from the following SAM.
@@ -1904,7 +1700,7 @@ var conceptualBAIdata = []byte{
 }
 
 var conceptualBAMdata = []byte{
-	// Header block [{File:0, Block:0}, {File:0, Block:87}).
+	// sam.Header block [{File:0, Block:0}, {File:0, Block:87}).
 	0x1f, 0x8b, 0x08, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff,
 	0x06, 0x00, 0x42, 0x43, 0x02, 0x00, 0x64, 0x00, 0x73, 0x72,
 	0xf4, 0x65, 0xb4, 0x60, 0x60, 0x60, 0x70, 0xf0, 0x70, 0xe1,
@@ -2018,26 +1814,27 @@ func (s *S) TestConceptualBAI(c *check.C) {
 // 70m76m:bin2	0	conceptual	73400321	40	6291456M	*	0	0	*	*
 // 73m75m:bin18	0	conceptual	76546049	40	2097152M	*	0	0	*	*
 var (
-	conceptual = func() *Reference {
-		ref, err := NewReference("conceptual", "0", "unicorns", 134217728, nil, nil)
+	conceptual = func() *sam.Reference {
+		ref, err := sam.NewReference("conceptual", "0", "unicorns", 134217728, nil, nil)
 		if err != nil {
 			panic("Failed to initialise conceptual reference")
 		}
-		ref.id = 0 // This would be done by addition to a Header in the normal case.
+		// Ensure the reference id is valid.
+		sam.NewHeader(nil, []*sam.Reference{ref})
 		return ref
 	}()
 	bamFile = []struct {
-		rec   *Record
+		rec   *sam.Record
 		chunk bgzf.Chunk
 	}{
 		{
-			rec: &Record{
+			rec: &sam.Record{
 				Name: "60m66m:bin0", // [62914560,69206016)
 				Ref:  conceptual,
 				Pos:  62914560,
 				MapQ: 40,
-				Cigar: Cigar{
-					NewCigarOp(CigarMatch, 6291456),
+				Cigar: sam.Cigar{
+					sam.NewCigarOp(sam.CigarMatch, 6291456),
 				},
 			},
 			chunk: bgzf.Chunk{
@@ -2046,13 +1843,13 @@ var (
 			},
 		},
 		{
-			rec: &Record{
+			rec: &sam.Record{
 				Name: "70m76m:bin2", // [73400320,79691776)
 				Ref:  conceptual,
 				Pos:  73400320,
 				MapQ: 40,
-				Cigar: Cigar{
-					NewCigarOp(CigarMatch, 6291456),
+				Cigar: sam.Cigar{
+					sam.NewCigarOp(sam.CigarMatch, 6291456),
 				},
 			},
 			chunk: bgzf.Chunk{
@@ -2061,13 +1858,13 @@ var (
 			},
 		},
 		{
-			rec: &Record{
+			rec: &sam.Record{
 				Name: "73m75m:bin18", // [76546048,78643200)
 				Ref:  conceptual,
 				Pos:  76546048,
 				MapQ: 40,
-				Cigar: Cigar{
-					NewCigarOp(CigarMatch, 2097152),
+				Cigar: sam.Cigar{
+					sam.NewCigarOp(sam.CigarMatch, 2097152),
 				},
 			},
 			chunk: bgzf.Chunk{

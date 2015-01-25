@@ -2,13 +2,14 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package bam
+package sam
 
 import (
 	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
 )
 
 var (
@@ -18,7 +19,6 @@ var (
 	usedReference = errors.New("bam: reference already used")
 	usedReadGroup = errors.New("bam: read group already used")
 	usedProgram   = errors.New("bam: program already used")
-	dupRefLen     = errors.New("bam: repeated reference length")
 	badLen        = errors.New("bam: reference length out of range")
 )
 
@@ -100,7 +100,12 @@ type Header struct {
 
 func NewHeader(text []byte, r []*Reference) (*Header, error) {
 	var err error
-	bh := &Header{refs: r, seenRefs: set{}, seenGroups: set{}}
+	bh := &Header{
+		refs:       r,
+		seenRefs:   set{},
+		seenGroups: set{},
+		seenProgs:  set{},
+	}
 	for i, r := range bh.refs {
 		r.id = int32(i)
 	}
@@ -181,18 +186,18 @@ func (bh *Header) MarshalText() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// UnmarshalBinary implements the encoding.BinaryUnmarshaler interface.
-func (bh *Header) UnmarshalBinary(b []byte) error {
-	return bh.read(bytes.NewReader(b))
-}
-
 // MarshalBinary implements the encoding.BinaryMarshaler.
 func (bh *Header) MarshalBinary() ([]byte, error) {
-	return bh.marshalBinary(&bytes.Buffer{})
+	b := &bytes.Buffer{}
+	err := bh.EncodeBinary(b)
+	if err != nil {
+		return nil, err
+	}
+	return b.Bytes(), nil
 }
 
-func (bh *Header) marshalBinary(buf *bytes.Buffer) ([]byte, error) {
-	wb := &errWriter{w: buf}
+func (bh *Header) EncodeBinary(w io.Writer) error {
+	wb := &errWriter{w: w}
 
 	binary.Write(wb, binary.LittleEndian, bamMagic)
 	text, _ := bh.MarshalText()
@@ -201,7 +206,7 @@ func (bh *Header) marshalBinary(buf *bytes.Buffer) ([]byte, error) {
 	binary.Write(wb, binary.LittleEndian, int32(len(bh.refs)))
 
 	if !validInt32(len(bh.refs)) {
-		return nil, errors.New("bam: value out of range")
+		return errors.New("bam: value out of range")
 	}
 	var name []byte
 	for _, r := range bh.refs {
@@ -213,10 +218,24 @@ func (bh *Header) marshalBinary(buf *bytes.Buffer) ([]byte, error) {
 		binary.Write(wb, binary.LittleEndian, r.lRef)
 	}
 	if wb.err != nil {
-		return nil, wb.err
+		return wb.err
 	}
 
-	return wb.w.Bytes(), nil
+	return nil
+}
+
+type errWriter struct {
+	w   io.Writer
+	err error
+}
+
+func (w *errWriter) Write(p []byte) (int, error) {
+	if w.err != nil {
+		return 0, w.err
+	}
+	var n int
+	n, w.err = w.w.Write(p)
+	return n, w.err
 }
 
 func (bh *Header) Len() int {

@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package bam_test
+package sam_test
 
 import (
 	"fmt"
 
-	"code.google.com/p/biogo.bam"
+	"code.google.com/p/biogo.bam/sam"
 )
 
 func min(a, b int) int {
@@ -25,11 +25,11 @@ func max(a, b int) int {
 }
 
 // Overlap returns the length of the overlap between the alignment
-// of the BAM record and the interval specified.
+// of the SAM record and the interval specified.
 //
 // Note that this will count repeated matches to the same reference
 // location if CigarBack operations are used.
-func Overlap(r *bam.Record, start, end int) int {
+func Overlap(r *sam.Record, start, end int) int {
 	var overlap int
 	pos := r.Pos
 	for _, co := range r.Cigar {
@@ -76,36 +76,36 @@ func ExampleConsume() {
 		refEnd   = 45
 	)
 
-	records := []*bam.Record{
-		{Name: "r001/1", Pos: 6, Cigar: []bam.CigarOp{
-			bam.NewCigarOp(bam.CigarMatch, 8),
-			bam.NewCigarOp(bam.CigarInsertion, 2),
-			bam.NewCigarOp(bam.CigarMatch, 4),
-			bam.NewCigarOp(bam.CigarDeletion, 1),
-			bam.NewCigarOp(bam.CigarMatch, 3),
+	records := []*sam.Record{
+		{Name: "r001/1", Pos: 6, Cigar: []sam.CigarOp{
+			sam.NewCigarOp(sam.CigarMatch, 8),
+			sam.NewCigarOp(sam.CigarInsertion, 2),
+			sam.NewCigarOp(sam.CigarMatch, 4),
+			sam.NewCigarOp(sam.CigarDeletion, 1),
+			sam.NewCigarOp(sam.CigarMatch, 3),
 		}},
-		{Name: "r002", Pos: 8, Cigar: []bam.CigarOp{
-			bam.NewCigarOp(bam.CigarSoftClipped, 3),
-			bam.NewCigarOp(bam.CigarMatch, 6),
-			bam.NewCigarOp(bam.CigarPadded, 1),
-			bam.NewCigarOp(bam.CigarInsertion, 1),
-			bam.NewCigarOp(bam.CigarMatch, 4),
+		{Name: "r002", Pos: 8, Cigar: []sam.CigarOp{
+			sam.NewCigarOp(sam.CigarSoftClipped, 3),
+			sam.NewCigarOp(sam.CigarMatch, 6),
+			sam.NewCigarOp(sam.CigarPadded, 1),
+			sam.NewCigarOp(sam.CigarInsertion, 1),
+			sam.NewCigarOp(sam.CigarMatch, 4),
 		}},
-		{Name: "r003", Pos: 8, Cigar: []bam.CigarOp{
-			bam.NewCigarOp(bam.CigarSoftClipped, 5),
-			bam.NewCigarOp(bam.CigarMatch, 6),
+		{Name: "r003", Pos: 8, Cigar: []sam.CigarOp{
+			sam.NewCigarOp(sam.CigarSoftClipped, 5),
+			sam.NewCigarOp(sam.CigarMatch, 6),
 		}},
-		{Name: "r004", Pos: 15, Cigar: []bam.CigarOp{
-			bam.NewCigarOp(bam.CigarMatch, 6),
-			bam.NewCigarOp(bam.CigarSkipped, 14),
-			bam.NewCigarOp(bam.CigarMatch, 5),
+		{Name: "r004", Pos: 15, Cigar: []sam.CigarOp{
+			sam.NewCigarOp(sam.CigarMatch, 6),
+			sam.NewCigarOp(sam.CigarSkipped, 14),
+			sam.NewCigarOp(sam.CigarMatch, 5),
 		}},
-		{Name: "r003", Pos: 28, Cigar: []bam.CigarOp{
-			bam.NewCigarOp(bam.CigarHardClipped, 6),
-			bam.NewCigarOp(bam.CigarMatch, 5),
+		{Name: "r003", Pos: 28, Cigar: []sam.CigarOp{
+			sam.NewCigarOp(sam.CigarHardClipped, 6),
+			sam.NewCigarOp(sam.CigarMatch, 5),
 		}},
-		{Name: "r001/2", Pos: 36, Cigar: []bam.CigarOp{
-			bam.NewCigarOp(bam.CigarMatch, 9),
+		{Name: "r001/2", Pos: 36, Cigar: []sam.CigarOp{
+			sam.NewCigarOp(sam.CigarMatch, 9),
 		}},
 	}
 

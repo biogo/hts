@@ -6,6 +6,7 @@ package bam
 
 import (
 	"code.google.com/p/biogo.bam/bgzf"
+	"code.google.com/p/biogo.bam/sam"
 
 	"errors"
 	"sort"
@@ -33,7 +34,7 @@ func vOffset(o bgzf.Offset) int64 {
 	return o.File<<16 | int64(o.Block)
 }
 
-func isPlaced(r *Record) bool {
+func isPlaced(r *sam.Record) bool {
 	return r.Ref != nil && r.Pos != -1
 }
 
@@ -92,7 +93,7 @@ func (i *Index) Sort() {
 	}
 }
 
-func (i *Index) Add(r *Record, c bgzf.Chunk) error {
+func (i *Index) Add(r *sam.Record, c bgzf.Chunk) error {
 	if i.Unmapped == nil {
 		i.Unmapped = new(uint64)
 	}
@@ -170,7 +171,7 @@ found:
 	} else {
 		ref.Stats.Chunk.End = c.End
 	}
-	if r.Flags&Unmapped == 0 {
+	if r.Flags&sam.Unmapped == 0 {
 		ref.Stats.Mapped++
 	} else {
 		ref.Stats.Unmapped++

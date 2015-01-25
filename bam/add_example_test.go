@@ -9,7 +9,7 @@ import (
 	"log"
 	"os"
 
-	"code.google.com/p/biogo.bam"
+	"code.google.com/p/biogo.bam/bam"
 )
 
 func ExampleIndex_Add() {

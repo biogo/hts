@@ -2,15 +2,13 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package bam
+package sam
 
 import (
 	"bytes"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"strconv"
-	"unsafe"
 )
 
 // Record represents a SAM/BAM record.
@@ -24,7 +22,7 @@ type Record struct {
 	MateRef *Reference
 	MatePos int
 	TempLen int
-	Seq     NybbleSeq
+	Seq     Seq
 	Qual    []byte
 	AuxTags []Aux
 }
@@ -65,7 +63,7 @@ func NewRecord(name string, ref, mRef *Reference, p, mPos, tLen int, mapQ byte, 
 		MateRef: mRef,
 		MatePos: mPos,
 		TempLen: tLen,
-		Seq:     NewNybbleSeq(seq),
+		Seq:     NewSeq(seq),
 		Qual:    qual,
 		AuxTags: aux,
 	}
@@ -225,7 +223,7 @@ func (r *Record) UnmarshalSAM(h *Header, b []byte) error {
 		return fmt.Errorf("bam: failed to parse map quality: %v", err)
 	}
 	r.MapQ = byte(mapQ)
-	r.Cigar, err = parseCigar(f[5])
+	r.Cigar, err = ParseCigar(f[5])
 	if err != nil {
 		return fmt.Errorf("bam: failed to parse cigar string: %v", err)
 	}
@@ -245,13 +243,13 @@ func (r *Record) UnmarshalSAM(h *Header, b []byte) error {
 	if err != nil {
 		return fmt.Errorf("bam: failed to parse template length: %v", err)
 	}
-	r.Seq = NewNybbleSeq(f[9])
+	r.Seq = NewSeq(f[9])
 	r.Qual = append(r.Qual, f[10]...)
 	if len(r.Qual) != r.Seq.Length {
 		return errors.New("bam: sequence/quality length mismatch")
 	}
 	for _, aux := range f[11:] {
-		a, err := parseAuxText(aux)
+		a, err := ParseAux(aux)
 		if err != nil {
 			return err
 		}
@@ -278,135 +276,6 @@ func referenceForName(h *Header, name string) (*Reference, error) {
 		}
 	}
 	return nil, fmt.Errorf("no reference with name %q", name)
-}
-
-func parseAuxText(text []byte) (Aux, error) {
-	tf := bytes.SplitN(text, []byte{':'}, 3)
-	if len(tf) != 3 || len(tf[1]) != 1 {
-		return nil, fmt.Errorf("bam: invalid aux tag field: %q", text)
-	}
-	var (
-		typ   byte
-		value interface{}
-	)
-	switch typ = tf[1][0]; typ {
-	case 'A':
-		if len(tf[2]) != 1 {
-			return nil, fmt.Errorf("bam: invalid aux tag field: %q", text)
-		}
-		value = tf[2][0]
-	case 'i':
-		i, err := strconv.Atoi(string(tf[2]))
-		if err != nil {
-			return nil, fmt.Errorf("bam: invalid aux tag field: %v", err)
-		}
-		if i < 0 {
-			value = i
-		} else {
-			value = uint32(i)
-		}
-	case 'f':
-		f, err := strconv.ParseFloat(string(tf[2]), 32)
-		if err != nil {
-			return nil, fmt.Errorf("bam: invalid aux tag field: %v", err)
-		}
-		value = f
-	case 'Z':
-		value = tf[2]
-	case 'H':
-		b := make([]byte, hex.DecodedLen(len(tf[2])))
-		_, err := hex.Decode(b, tf[2])
-		if err != nil {
-			return nil, fmt.Errorf("bam: invalid aux tag field: %v", err)
-		}
-		value = b
-	case 'B':
-		nf := bytes.Split(tf[2][1:], []byte{','})
-		if len(nf) == 0 {
-			return nil, fmt.Errorf("bam: invalid aux tag field: %q", text)
-		}
-		switch auxKind[tf[2][0]] {
-		case 'c':
-			a := make([]int8, len(nf))
-			for i, n := range nf {
-				v, err := strconv.ParseUint(string(n), 0, 8)
-				if err != nil {
-					return nil, fmt.Errorf("bam: invalid aux tag field: %v", err)
-				}
-				a[i] = int8(v)
-			}
-			value = a
-		case 'C':
-			a := make([]uint8, len(nf))
-			for i, n := range nf {
-				v, err := strconv.ParseUint(string(n), 0, 8)
-				if err != nil {
-					return nil, fmt.Errorf("bam: invalid aux tag field: %v", err)
-				}
-				a[i] = uint8(v)
-			}
-			value = a
-		case 's':
-			a := make([]int16, len(nf))
-			for i, n := range nf {
-				v, err := strconv.ParseUint(string(n), 0, 16)
-				if err != nil {
-					return nil, fmt.Errorf("bam: invalid aux tag field: %v", err)
-				}
-				a[i] = int16(v)
-			}
-			value = a
-		case 'S':
-			a := make([]uint16, len(nf))
-			for i, n := range nf {
-				v, err := strconv.ParseUint(string(n), 0, 16)
-				if err != nil {
-					return nil, fmt.Errorf("bam: invalid aux tag field: %v", err)
-				}
-				a[i] = uint16(v)
-			}
-			value = a
-		case 'i':
-			a := make([]int32, len(nf))
-			for i, n := range nf {
-				v, err := strconv.ParseUint(string(n), 0, 32)
-				if err != nil {
-					return nil, fmt.Errorf("bam: invalid aux tag field: %v", err)
-				}
-				a[i] = int32(v)
-			}
-			value = a
-		case 'I':
-			a := make([]uint32, len(nf))
-			for i, n := range nf {
-				v, err := strconv.ParseUint(string(n), 0, 32)
-				if err != nil {
-					return nil, fmt.Errorf("bam: invalid aux tag field: %v", err)
-				}
-				a[i] = uint32(v)
-			}
-			value = a
-		case 'f':
-			a := make([]float32, len(nf))
-			for i, n := range nf {
-				f, err := strconv.ParseFloat(string(n), 32)
-				if err != nil {
-					return nil, fmt.Errorf("bam: invalid aux tag field: %v", err)
-				}
-				a[i] = float32(f)
-			}
-			value = a
-		default:
-			return nil, fmt.Errorf("bam: invalid aux tag field: %q", text)
-		}
-	default:
-		return nil, fmt.Errorf("bam: invalid aux tag field: %q", text)
-	}
-	aux, err := NewAux(string(tf[0]), typ, value)
-	if err != nil {
-		return nil, fmt.Errorf("bam: invalid aux tag field: %v", err)
-	}
-	return aux, nil
 }
 
 // MarshalText implements encoding.TextMarshaler. It calls MarshalSAM with FlagDecimal.
@@ -475,20 +344,16 @@ func formatFlags(f Flags, format int) interface{} {
 	}
 }
 
-type NybblePair byte
+type Doublet byte
 
-type nybblePairs []NybblePair
-
-func (np nybblePairs) Bytes() []byte { return *(*[]byte)(unsafe.Pointer(&np)) }
-
-type NybbleSeq struct {
+type Seq struct {
 	Length int
-	Seq    []NybblePair
+	Seq    []Doublet
 }
 
 var (
 	n16TableRev = [16]byte{'=', 'A', 'C', 'M', 'G', 'R', 'S', 'V', 'T', 'W', 'Y', 'H', 'K', 'D', 'B', 'N'}
-	n16Table    = [256]NybblePair{
+	n16Table    = [256]Doublet{
 		0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf,
 		0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf,
 		0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf, 0xf,
@@ -508,16 +373,16 @@ var (
 	}
 )
 
-func NewNybbleSeq(s []byte) NybbleSeq {
-	return NybbleSeq{
+func NewSeq(s []byte) Seq {
+	return Seq{
 		Length: len(s),
 		Seq:    contract(s),
 	}
 }
 
-func contract(s []byte) []NybblePair {
-	ns := make([]NybblePair, (len(s)+1)>>1)
-	var np NybblePair
+func contract(s []byte) []Doublet {
+	ns := make([]Doublet, (len(s)+1)>>1)
+	var np Doublet
 	for i, b := range s {
 		if i&1 == 0 {
 			np = n16Table[b] << 4
@@ -533,7 +398,7 @@ func contract(s []byte) []NybblePair {
 	return ns
 }
 
-func (ns NybbleSeq) Expand() []byte {
+func (ns Seq) Expand() []byte {
 	s := make([]byte, ns.Length)
 	for i := range s {
 		if i&1 == 0 {

@@ -5,25 +5,9 @@
 package bam
 
 const (
-	maxInt16  = int(int16(^uint16(0) >> 1))
-	minInt16  = -int(maxInt16) - 1
-	maxUint16 = int(^uint16(0))
-	maxInt32  = int(int32(^uint32(0) >> 1))
-	minInt32  = -int(maxInt32) - 1
-	maxUint32 = int64(^uint32(0))
+	wordBits     = 29
+	nextBinShift = 3
 )
-
-const wordBits = 29
-
-func validInt16(i int) bool    { return minInt16 <= i && i <= maxInt16 }
-func validInt32(i int) bool    { return minInt32 <= i && i <= maxInt32 }
-func validUint16(i int) bool   { return 0 <= i && i <= maxUint16 }
-func validUint32(i int) bool   { return 0 <= i && int64(i) <= maxUint32 }
-func validPos(i int) bool      { return 0 <= i && i <= 1<<wordBits-1 }
-func validTmpltLen(i int) bool { return -(1<<wordBits) <= i && i <= 1<<wordBits-1 }
-func validLen(i int) bool      { return 1 <= i && i <= 1<<wordBits-1 }
-
-const nextBinShift = 3
 
 const (
 	level0 = uint16(((1 << (iota * nextBinShift)) - 1) / 7)

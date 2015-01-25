@@ -2,14 +2,16 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package bam
+package sam
 
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"math"
 	"reflect"
+	"strconv"
 	"unsafe"
 )
 
@@ -186,81 +188,144 @@ func NewAux(tag string, typ byte, value interface{}) (Aux, error) {
 	}
 }
 
-var (
-	jumps = [256]int{
-		'A': 1,
-		'c': 1, 'C': 1,
-		's': 2, 'S': 2,
-		'i': 4, 'I': 4,
-		'f': 4,
-		'Z': -1,
-		'H': -1,
-		'B': -1,
+func ParseAux(text []byte) (Aux, error) {
+	tf := bytes.SplitN(text, []byte{':'}, 3)
+	if len(tf) != 3 || len(tf[1]) != 1 {
+		return nil, fmt.Errorf("bam: invalid aux tag field: %q", text)
 	}
-	auxKind = [256]byte{
-		'A': 'A',
-		'c': 'i', 'C': 'i',
-		's': 'i', 'S': 'i',
-		'i': 'i', 'I': 'i',
-		'f': 'f',
-		'Z': 'Z',
-		'H': 'H',
-		'B': 'B',
-	}
-)
-
-// parseAux examines the data of a SAM record's OPT fields,
-// returning a slice of Aux that are backed by the original data.
-func parseAux(aux []byte) (aa []Aux) {
-	for i := 0; i+2 < len(aux); {
-		t := aux[i+2]
-		switch j := jumps[t]; {
-		case j > 0:
-			j += 3
-			aa = append(aa, Aux(aux[i:i+j]))
-			i += j
-		case j < 0:
-			switch t {
-			case 'Z', 'H':
-				var (
-					j int
-					v byte
-				)
-				for j, v = range aux[i:] {
-					if v == 0 { // C string termination
-						break // Truncate terminal zero.
-					}
-				}
-				aa = append(aa, Aux(aux[i:i+j]))
-				i += j + 1
-			case 'B':
-				var length int32
-				err := binary.Read(bytes.NewBuffer([]byte(aux[i+4:i+8])), binary.LittleEndian, &length)
-				if err != nil {
-					panic(fmt.Sprintf("bam: binary.Read failed: %v", err))
-				}
-				j = int(length)*jumps[aux[i+3]] + int(unsafe.Sizeof(length)) + 4
-				aa = append(aa, Aux(aux[i:i+j]))
-				i += j
-			}
-		default:
-			panic(fmt.Sprintf("bam: unrecognised optional field type: %q", t))
+	var (
+		typ   byte
+		value interface{}
+	)
+	switch typ = tf[1][0]; typ {
+	case 'A':
+		if len(tf[2]) != 1 {
+			return nil, fmt.Errorf("bam: invalid aux tag field: %q", text)
 		}
+		value = tf[2][0]
+	case 'i':
+		i, err := strconv.Atoi(string(tf[2]))
+		if err != nil {
+			return nil, fmt.Errorf("bam: invalid aux tag field: %v", err)
+		}
+		if i < 0 {
+			value = i
+		} else {
+			value = uint32(i)
+		}
+	case 'f':
+		f, err := strconv.ParseFloat(string(tf[2]), 32)
+		if err != nil {
+			return nil, fmt.Errorf("bam: invalid aux tag field: %v", err)
+		}
+		value = f
+	case 'Z':
+		value = tf[2]
+	case 'H':
+		b := make([]byte, hex.DecodedLen(len(tf[2])))
+		_, err := hex.Decode(b, tf[2])
+		if err != nil {
+			return nil, fmt.Errorf("bam: invalid aux tag field: %v", err)
+		}
+		value = b
+	case 'B':
+		nf := bytes.Split(tf[2][1:], []byte{','})
+		if len(nf) == 0 {
+			return nil, fmt.Errorf("bam: invalid aux tag field: %q", text)
+		}
+		switch auxKind[tf[2][0]] {
+		case 'c':
+			a := make([]int8, len(nf))
+			for i, n := range nf {
+				v, err := strconv.ParseUint(string(n), 0, 8)
+				if err != nil {
+					return nil, fmt.Errorf("bam: invalid aux tag field: %v", err)
+				}
+				a[i] = int8(v)
+			}
+			value = a
+		case 'C':
+			a := make([]uint8, len(nf))
+			for i, n := range nf {
+				v, err := strconv.ParseUint(string(n), 0, 8)
+				if err != nil {
+					return nil, fmt.Errorf("bam: invalid aux tag field: %v", err)
+				}
+				a[i] = uint8(v)
+			}
+			value = a
+		case 's':
+			a := make([]int16, len(nf))
+			for i, n := range nf {
+				v, err := strconv.ParseUint(string(n), 0, 16)
+				if err != nil {
+					return nil, fmt.Errorf("bam: invalid aux tag field: %v", err)
+				}
+				a[i] = int16(v)
+			}
+			value = a
+		case 'S':
+			a := make([]uint16, len(nf))
+			for i, n := range nf {
+				v, err := strconv.ParseUint(string(n), 0, 16)
+				if err != nil {
+					return nil, fmt.Errorf("bam: invalid aux tag field: %v", err)
+				}
+				a[i] = uint16(v)
+			}
+			value = a
+		case 'i':
+			a := make([]int32, len(nf))
+			for i, n := range nf {
+				v, err := strconv.ParseUint(string(n), 0, 32)
+				if err != nil {
+					return nil, fmt.Errorf("bam: invalid aux tag field: %v", err)
+				}
+				a[i] = int32(v)
+			}
+			value = a
+		case 'I':
+			a := make([]uint32, len(nf))
+			for i, n := range nf {
+				v, err := strconv.ParseUint(string(n), 0, 32)
+				if err != nil {
+					return nil, fmt.Errorf("bam: invalid aux tag field: %v", err)
+				}
+				a[i] = uint32(v)
+			}
+			value = a
+		case 'f':
+			a := make([]float32, len(nf))
+			for i, n := range nf {
+				f, err := strconv.ParseFloat(string(n), 32)
+				if err != nil {
+					return nil, fmt.Errorf("bam: invalid aux tag field: %v", err)
+				}
+				a[i] = float32(f)
+			}
+			value = a
+		default:
+			return nil, fmt.Errorf("bam: invalid aux tag field: %q", text)
+		}
+	default:
+		return nil, fmt.Errorf("bam: invalid aux tag field: %q", text)
 	}
-	return
+	aux, err := NewAux(string(tf[0]), typ, value)
+	if err != nil {
+		return nil, fmt.Errorf("bam: invalid aux tag field: %v", err)
+	}
+	return aux, nil
 }
 
-// buildAux constructs a single byte slice that represents a slice of Aux.
-func buildAux(aa []Aux) (aux []byte) {
-	for _, a := range aa {
-		// TODO: validate each 'a'
-		aux = append(aux, []byte(a)...)
-		switch a.Type() {
-		case 'Z', 'H':
-			aux = append(aux, 0)
-		}
-	}
-	return
+var auxKind = [256]byte{
+	'A': 'A',
+	'c': 'i', 'C': 'i',
+	's': 'i', 'S': 'i',
+	'i': 'i', 'I': 'i',
+	'f': 'f',
+	'Z': 'Z',
+	'H': 'H',
+	'B': 'B',
 }
 
 // String returns the string representation of an Aux type.

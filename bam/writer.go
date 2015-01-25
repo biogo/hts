@@ -6,6 +6,7 @@ package bam
 
 import (
 	"bytes"
+	"code.google.com/p/biogo.bam/sam"
 	"compress/gzip"
 	"encoding/binary"
 	"io"
@@ -14,13 +15,13 @@ import (
 )
 
 type Writer struct {
-	h *Header
+	h *sam.Header
 
 	bg  *bgzf.Writer
 	buf bytes.Buffer
 }
 
-func NewWriter(w io.Writer, h *Header, wc int) (*Writer, error) {
+func NewWriter(w io.Writer, h *sam.Header, wc int) (*Writer, error) {
 	return NewWriterLevel(w, h, gzip.DefaultCompression, wc)
 }
 
@@ -31,7 +32,7 @@ func makeWriter(w io.Writer, level, wc int) (*bgzf.Writer, error) {
 	return bgzf.NewWriterLevel(w, level, wc)
 }
 
-func NewWriterLevel(w io.Writer, h *Header, level, wc int) (*Writer, error) {
+func NewWriterLevel(w io.Writer, h *sam.Header, level, wc int) (*Writer, error) {
 	bg, err := makeWriter(w, level, wc)
 	if err != nil {
 		return nil, err
@@ -53,19 +54,18 @@ func NewWriterLevel(w io.Writer, h *Header, level, wc int) (*Writer, error) {
 	return bw, nil
 }
 
-func (bw *Writer) writeHeader(h *Header) error {
-	// bw.buf.Reset() must be called before this if writeHeader is called from anywhere
-	// other than NewWriterLevel.
-	b, err := h.marshalBinary(&bw.buf)
+func (bw *Writer) writeHeader(h *sam.Header) error {
+	bw.buf.Reset()
+	err := h.EncodeBinary(&bw.buf)
 	if err != nil {
 		return err
 	}
 
-	_, err = bw.bg.Write(b)
+	_, err = bw.bg.Write(bw.buf.Bytes())
 	return err
 }
 
-func (bw *Writer) Write(r *Record) error {
+func (bw *Writer) Write(r *sam.Record) error {
 	tags := buildAux(r.AuxTags)
 	recLen := bamFixedRemainder +
 		len(r.Name) + 1 + // Null terminated.
@@ -95,7 +95,7 @@ func (bw *Writer) Write(r *Record) error {
 	// Write variable length data.
 	wb.Write(append([]byte(r.Name), 0))
 	writeCigarOps(&bin, r.Cigar)
-	wb.Write(nybblePairs(r.Seq.Seq).Bytes())
+	wb.Write(doublets(r.Seq.Seq).Bytes())
 	wb.Write(r.Qual)
 	wb.Write(tags)
 	if wb.err != nil {
@@ -106,7 +106,7 @@ func (bw *Writer) Write(r *Record) error {
 	return err
 }
 
-func writeCigarOps(bin *binaryWriter, co []CigarOp) {
+func writeCigarOps(bin *binaryWriter, co []sam.CigarOp) {
 	for _, o := range co {
 		bin.writeUint32(uint32(o))
 		if bin.w.err != nil {

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package bam
+package sam
 
 // A Flags represents a BAM record's alignment FLAG field.
 type Flags uint16

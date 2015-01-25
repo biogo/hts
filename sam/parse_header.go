@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package bam
+package sam
 
 import (
 	"bytes"
@@ -56,7 +56,12 @@ var (
 
 var bamMagic = [4]byte{'B', 'A', 'M', 0x1}
 
-func (bh *Header) read(r io.Reader) error {
+// UnmarshalBinary implements the encoding.BinaryUnmarshaler interface.
+func (bh *Header) UnmarshalBinary(b []byte) error {
+	return bh.DecodeBinary(bytes.NewReader(b))
+}
+
+func (bh *Header) DecodeBinary(r io.Reader) error {
 	var (
 		lText, nRef int32
 		err         error

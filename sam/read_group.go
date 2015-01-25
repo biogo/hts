@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package bam
+package sam
 
 import (
 	"bytes"
@@ -71,6 +71,8 @@ func (r *ReadGroup) Clone() *ReadGroup {
 	cr.keySeq = append([]byte(nil), r.keySeq...)
 	return &cr
 }
+
+func (r *ReadGroup) Time() time.Time { return r.date }
 
 func (r *ReadGroup) String() string {
 	var buf bytes.Buffer

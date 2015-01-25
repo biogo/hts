@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package bam
+package sam
 
 import (
 	"fmt"
@@ -168,7 +168,8 @@ func init() {
 	}
 }
 
-func parseCigar(b []byte) (Cigar, error) {
+// ParseCigar returns a Cigar parsed from the provided byte slice.
+func ParseCigar(b []byte) (Cigar, error) {
 	var (
 		c   Cigar
 		op  CigarOpType
