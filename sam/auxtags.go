@@ -229,7 +229,10 @@ func ParseAux(text []byte) (Aux, error) {
 		}
 		value = b
 	case 'B':
-		nf := bytes.Split(tf[2][1:], []byte{','})
+		if tf[2][1] != ',' {
+			return nil, fmt.Errorf("bam: invalid aux tag field: %q", text)
+		}
+		nf := bytes.Split(tf[2][2:], []byte{','})
 		if len(nf) == 0 {
 			return nil, fmt.Errorf("bam: invalid aux tag field: %q", text)
 		}
