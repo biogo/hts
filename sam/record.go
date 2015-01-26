@@ -310,6 +310,9 @@ func (r *Record) MarshalSAM(flags int) ([]byte, error) {
 	if flags < FlagDecimal || flags > FlagString {
 		return nil, errors.New("bam: flag format option out of range")
 	}
+	if r.Qual != nil && len(r.Qual) != r.Seq.Length {
+		return nil, errors.New("bam: sequence/quality length mismatch")
+	}
 	var buf bytes.Buffer
 	fmt.Fprintf(&buf, "%s\t%v\t%s\t%d\t%d\t%s\t%s\t%d\t%d\t%s\t%s",
 		r.Name,
