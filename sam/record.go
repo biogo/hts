@@ -321,7 +321,7 @@ func (r *Record) MarshalSAM(flags int) ([]byte, error) {
 		formatMate(r.Ref, r.MateRef),
 		r.MatePos+1,
 		r.TempLen,
-		r.Seq.Expand(),
+		formatSeq(r.Seq),
 		formatQual(r.Qual),
 	)
 	for _, t := range r.AuxTags {
@@ -370,6 +370,13 @@ func formatMate(ref, mate *Reference) string {
 		return "="
 	}
 	return mate.Name()
+}
+
+func formatSeq(s Seq) []byte {
+	if s.Length == 0 {
+		return []byte{'*'}
+	}
+	return s.Expand()
 }
 
 func formatQual(q []byte) []byte {
