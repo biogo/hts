@@ -99,16 +99,17 @@ func (w *Writer) Write(r *Record) error {
 }
 
 const (
+	wordBits = 31
+
 	maxInt32 = int(int32(^uint32(0) >> 1))
 	minInt32 = -int(maxInt32) - 1
 )
 
-const wordBits = 29
+func validInt32(i int) bool { return minInt32 <= i && i <= maxInt32 }
 
-func validInt32(i int) bool    { return minInt32 <= i && i <= maxInt32 }
-func validPos(i int) bool      { return 0 <= i && i <= 1<<wordBits-1 }
-func validTmpltLen(i int) bool { return -(1<<wordBits) <= i && i <= 1<<wordBits-1 }
 func validLen(i int) bool      { return 1 <= i && i <= 1<<wordBits-1 }
+func validPos(i int) bool      { return -1 <= i && i <= (1<<wordBits-1)-1 } // 0-based.
+func validTmpltLen(i int) bool { return -(1<<wordBits) <= i && i <= 1<<wordBits-1 }
 
 const nextBinShift = 3
 
@@ -121,8 +122,12 @@ const (
 	level5
 )
 
+const indexWordBits = 29
+
+func validIndexPos(i int) bool { return -1 <= i && i <= (1<<indexWordBits-1)-1 } // 0-based.
+
 const (
-	level0Shift = wordBits - (iota * nextBinShift)
+	level0Shift = indexWordBits - (iota * nextBinShift)
 	level1Shift
 	level2Shift
 	level3Shift

@@ -33,6 +33,9 @@ func NewRecord(name string, ref, mRef *Reference, p, mPos, tLen int, mapQ byte, 
 	if !(validPos(p) && validPos(mPos) && validTmpltLen(tLen) && validLen(len(seq)) && validLen(len(qual))) {
 		return nil, errors.New("bam: value out of range")
 	}
+	if len(name) < 1 || len(name) > 255 {
+		return nil, errors.New("bam: name too long")
+	}
 	if len(qual) != len(seq) {
 		return nil, errors.New("bam: sequence/quality length mismatch")
 	}
@@ -122,6 +125,10 @@ func (r *Record) Start() int {
 func (r *Record) Bin() int {
 	if r.Flags&Unmapped != 0 {
 		return 4680 // reg2bin(-1, 0)
+	}
+	end := r.End()
+	if !validIndexPos(r.Pos) || !validIndexPos(end) {
+		return -1
 	}
 	return int(reg2bin(r.Pos, r.End()))
 }

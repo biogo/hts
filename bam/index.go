@@ -94,6 +94,10 @@ func (i *Index) Sort() {
 }
 
 func (i *Index) Add(r *sam.Record, c bgzf.Chunk) error {
+	if !validIndexPos(r.Start()) || !validIndexPos(r.End()) {
+		return errors.New("bam: attempt to add record outside indexable range")
+	}
+
 	if i.Unmapped == nil {
 		i.Unmapped = new(uint64)
 	}

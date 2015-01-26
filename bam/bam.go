@@ -5,9 +5,11 @@
 package bam
 
 const (
-	wordBits     = 29
-	nextBinShift = 3
+	indexWordBits = 29
+	nextBinShift  = 3
 )
+
+func validIndexPos(i int) bool { return -1 <= i && i <= (1<<indexWordBits-1)-1 } // 0-based.
 
 const (
 	level0 = uint16(((1 << (iota * nextBinShift)) - 1) / 7)
@@ -19,7 +21,7 @@ const (
 )
 
 const (
-	level0Shift = wordBits - (iota * nextBinShift)
+	level0Shift = indexWordBits - (iota * nextBinShift)
 	level1Shift
 	level2Shift
 	level3Shift
