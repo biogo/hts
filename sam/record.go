@@ -30,13 +30,13 @@ type Record struct {
 // NewRecord returns a Record, checking for consistency of the provided
 // attributes.
 func NewRecord(name string, ref, mRef *Reference, p, mPos, tLen int, mapQ byte, co []CigarOp, seq, qual []byte, aux []Aux) (*Record, error) {
-	if !(validPos(p) && validPos(mPos) && validTmpltLen(tLen) && validLen(len(seq)) && validLen(len(qual))) {
+	if !(validPos(p) && validPos(mPos) && validTmpltLen(tLen) && validLen(len(seq)) && (qual == nil || validLen(len(qual)))) {
 		return nil, errors.New("bam: value out of range")
 	}
 	if len(name) < 1 || len(name) > 255 {
 		return nil, errors.New("bam: name too long")
 	}
-	if len(qual) != len(seq) {
+	if qual != nil && len(qual) != len(seq) {
 		return nil, errors.New("bam: sequence/quality length mismatch")
 	}
 	if ref != nil {

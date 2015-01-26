@@ -67,7 +67,7 @@ func (bw *Writer) writeHeader(h *sam.Header) error {
 }
 
 func (bw *Writer) Write(r *sam.Record) error {
-	if len(r.Qual) != r.Seq.Length {
+	if r.Qual != nil && len(r.Qual) != r.Seq.Length {
 		return errors.New("bam: sequence/quality length mismatch")
 	}
 	tags := buildAux(r.AuxTags)
@@ -91,7 +91,7 @@ func (bw *Writer) Write(r *sam.Record) error {
 	bin.writeUint16(reg2bin(r.Pos, r.End())) //r.bin
 	bin.writeUint16(uint16(len(r.Cigar)))
 	bin.writeUint16(uint16(r.Flags))
-	bin.writeInt32(int32(len(r.Qual)))
+	bin.writeInt32(int32(r.Seq.Length))
 	bin.writeInt32(int32(r.MateRef.ID()))
 	bin.writeInt32(int32(r.MatePos))
 	bin.writeInt32(int32(r.TempLen))
@@ -100,7 +100,13 @@ func (bw *Writer) Write(r *sam.Record) error {
 	wb.Write(append([]byte(r.Name), 0))
 	writeCigarOps(&bin, r.Cigar)
 	wb.Write(doublets(r.Seq.Seq).Bytes())
-	wb.Write(r.Qual)
+	if r.Qual != nil {
+		wb.Write(r.Qual)
+	} else {
+		for i := 0; i < r.Seq.Length; i++ {
+			wb.WriteByte(0xff)
+		}
+	}
 	wb.Write(tags)
 	if wb.err != nil {
 		return wb.err
@@ -136,6 +142,14 @@ func (w *errWriter) Write(p []byte) (int, error) {
 	var n int
 	n, w.err = w.w.Write(p)
 	return n, w.err
+}
+
+func (w *errWriter) WriteByte(b byte) error {
+	if w.err != nil {
+		return w.err
+	}
+	w.err = w.w.WriteByte(b)
+	return w.err
 }
 
 type binaryWriter struct {
