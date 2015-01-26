@@ -6,12 +6,13 @@ package bam
 
 import (
 	"bytes"
-	"code.google.com/p/biogo.bam/sam"
 	"compress/gzip"
 	"encoding/binary"
+	"errors"
 	"io"
 
 	"code.google.com/p/biogo.bam/bgzf"
+	"code.google.com/p/biogo.bam/sam"
 )
 
 type Writer struct {
@@ -66,6 +67,9 @@ func (bw *Writer) writeHeader(h *sam.Header) error {
 }
 
 func (bw *Writer) Write(r *sam.Record) error {
+	if len(r.Qual) != r.Seq.Length {
+		return errors.New("bam: sequence/quality length mismatch")
+	}
 	tags := buildAux(r.AuxTags)
 	recLen := bamFixedRemainder +
 		len(r.Name) + 1 + // Null terminated.
