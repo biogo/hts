@@ -284,12 +284,12 @@ func (s *S) TestSpecExamples(c *check.C) {
 		c.Check(r.Pos, check.Equals, expect.Pos) // Zero-based here.
 		c.Check(r.Flags, check.Equals, expect.Flags)
 		if r.Flags&sam.Unmapped == 0 {
-			c.Check(r.Reference(), check.Not(check.Equals), nil)
-			if r.Reference() != nil {
-				c.Check(r.Reference().Name(), check.Equals, bh.Refs()[0].Name())
+			c.Check(r.Ref, check.Not(check.Equals), nil)
+			if r.Ref != nil {
+				c.Check(r.Ref.Name(), check.Equals, bh.Refs()[0].Name())
 			}
 		} else {
-			c.Check(r.Reference(), check.Equals, nil)
+			c.Check(r.Ref, check.Equals, nil)
 		}
 		c.Check(r.MatePos, check.Equals, expect.MatePos) // Zero-based here.
 		c.Check(r.Cigar, check.DeepEquals, expect.Cigar)

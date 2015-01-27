@@ -238,10 +238,6 @@ func (w *errWriter) Write(p []byte) (int, error) {
 	return n, w.err
 }
 
-func (bh *Header) Len() int {
-	return len(bh.refs)
-}
-
 func (bh *Header) Refs() []*Reference {
 	return bh.refs
 }

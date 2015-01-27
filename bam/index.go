@@ -106,7 +106,7 @@ func (i *Index) Add(r *sam.Record, c bgzf.Chunk) error {
 		return nil
 	}
 
-	rid := r.Reference().ID()
+	rid := r.Ref.ID()
 	if rid < len(i.References)-1 {
 		return errors.New("bam: attempt to add record out of reference ID sort order")
 	}

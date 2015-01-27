@@ -100,11 +100,6 @@ func IsValidRecord(r *Record) bool {
 	return true
 }
 
-// Reference returns the records reference.
-func (r *Record) Reference() *Reference {
-	return r.Ref
-}
-
 // Tag returns an Aux tag whose tag ID matches the first two bytes of tag and true.
 // If no tag matches, nil and false are returned.
 func (r *Record) Tag(tag []byte) (v Aux, ok bool) {
