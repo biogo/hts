@@ -13,6 +13,8 @@ import (
 type Reader struct {
 	r *bufio.Reader
 	h *Header
+
+	seenRefs map[string]*Reference
 }
 
 func NewReader(r io.Reader) (*Reader, error) {
@@ -23,6 +25,15 @@ func NewReader(r io.Reader) (*Reader, error) {
 	}
 
 	var b []byte
+	p, err := sr.r.Peek(1)
+	if err != nil {
+		return nil, err
+	}
+	if p[0] != '@' {
+		sr.seenRefs = make(map[string]*Reference)
+		return sr, nil
+	}
+
 	for {
 		l, err := sr.r.ReadBytes('\n')
 		if err != nil {
@@ -41,7 +52,7 @@ func NewReader(r io.Reader) (*Reader, error) {
 		}
 	}
 
-	err := sr.h.UnmarshalText(b)
+	err = sr.h.UnmarshalText(b)
 	if err != nil {
 		return nil, err
 	}
@@ -63,10 +74,45 @@ func (r *Reader) Read() (*Record, error) {
 		b = b[:len(b)-1]
 	}
 	var rec Record
-	err = rec.UnmarshalSAM(r.h, b)
+
+	// Handle cases where a header was present.
+	if r.seenRefs == nil {
+		err = rec.UnmarshalSAM(r.h, b)
+		if err != nil {
+			return nil, err
+		}
+		return &rec, nil
+	}
+
+	// Handle cases where no SAM header is present.
+	err = rec.UnmarshalSAM(nil, b)
 	if err != nil {
 		return nil, err
 	}
+
+	if ref, ok := r.seenRefs[rec.Ref.Name()]; ok {
+		rec.Ref = ref
+	} else if rec.Ref != nil {
+		err = r.h.AddReference(rec.Ref)
+		if err != nil {
+			return nil, err
+		}
+		r.seenRefs[rec.Ref.Name()] = rec.Ref
+	} else {
+		r.seenRefs["*"] = nil
+	}
+	if ref, ok := r.seenRefs[rec.MateRef.Name()]; ok {
+		rec.MateRef = ref
+	} else if rec.MateRef != nil {
+		err = r.h.AddReference(rec.MateRef)
+		if err != nil {
+			return nil, err
+		}
+		r.seenRefs[rec.MateRef.Name()] = rec.MateRef
+	} else {
+		r.seenRefs["*"] = nil
+	}
+
 	return &rec, nil
 }
 
