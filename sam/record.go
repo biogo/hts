@@ -13,18 +13,18 @@ import (
 
 // Record represents a SAM/BAM record.
 type Record struct {
-	Name    string
-	Ref     *Reference
-	Pos     int
-	MapQ    byte
-	Cigar   Cigar
-	Flags   Flags
-	MateRef *Reference
-	MatePos int
-	TempLen int
-	Seq     Seq
-	Qual    []byte
-	AuxTags AuxFields
+	Name      string
+	Ref       *Reference
+	Pos       int
+	MapQ      byte
+	Cigar     Cigar
+	Flags     Flags
+	MateRef   *Reference
+	MatePos   int
+	TempLen   int
+	Seq       Seq
+	Qual      []byte
+	AuxFields AuxFields
 }
 
 // NewRecord returns a Record, checking for consistency of the provided
@@ -58,17 +58,17 @@ func NewRecord(name string, ref, mRef *Reference, p, mPos, tLen int, mapQ byte, 
 		}
 	}
 	r := &Record{
-		Name:    name,
-		Ref:     ref,
-		Pos:     p,
-		MapQ:    mapQ,
-		Cigar:   co,
-		MateRef: mRef,
-		MatePos: mPos,
-		TempLen: tLen,
-		Seq:     NewSeq(seq),
-		Qual:    qual,
-		AuxTags: aux,
+		Name:      name,
+		Ref:       ref,
+		Pos:       p,
+		MapQ:      mapQ,
+		Cigar:     co,
+		MateRef:   mRef,
+		MatePos:   mPos,
+		TempLen:   tLen,
+		Seq:       NewSeq(seq),
+		Qual:      qual,
+		AuxFields: aux,
 	}
 	return r, nil
 }
@@ -103,9 +103,9 @@ func IsValidRecord(r *Record) bool {
 // Tag returns an Aux tag whose tag ID matches the first two bytes of tag and true.
 // If no tag matches, nil and false are returned.
 func (r *Record) Tag(tag []byte) (v Aux, ok bool) {
-	for i := range r.AuxTags {
-		if bytes.Compare(r.AuxTags[i][:2], tag) == 0 {
-			return r.AuxTags[i], true
+	for i := range r.AuxFields {
+		if bytes.Compare(r.AuxFields[i][:2], tag) == 0 {
+			return r.AuxFields[i], true
 		}
 	}
 	return
@@ -185,7 +185,7 @@ func (r *Record) String() string {
 		r.TempLen,
 		r.Seq.Expand(),
 		r.Qual,
-		r.AuxTags,
+		r.AuxFields,
 	)
 }
 
@@ -269,7 +269,7 @@ func (r *Record) UnmarshalSAM(h *Header, b []byte) error {
 		if err != nil {
 			return err
 		}
-		r.AuxTags = append(r.AuxTags, a)
+		r.AuxFields = append(r.AuxFields, a)
 	}
 	return nil
 }
@@ -322,7 +322,7 @@ func (r *Record) MarshalSAM(flags int) ([]byte, error) {
 		formatSeq(r.Seq),
 		formatQual(r.Qual),
 	)
-	for _, t := range r.AuxTags {
+	for _, t := range r.AuxFields {
 		fmt.Fprintf(&buf, "\t%v", t)
 	}
 	return buf.Bytes(), nil

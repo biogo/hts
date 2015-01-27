@@ -239,7 +239,7 @@ func (w *errWriter) Write(p []byte) (int, error) {
 }
 
 func (bh *Header) Validate(r *Record) error {
-	rp := r.AuxTags.Get(programTag)
+	rp := r.AuxFields.Get(programTag)
 	found := false
 	for _, hp := range bh.Progs() {
 		if hp.UID() == rp.Value() {
@@ -251,15 +251,15 @@ func (bh *Header) Validate(r *Record) error {
 		return fmt.Errorf("bam: program uid not found: %v", rp.Value())
 	}
 
-	rg := r.AuxTags.Get(readGroupTag)
+	rg := r.AuxFields.Get(readGroupTag)
 	found = false
 	for _, hg := range bh.RGs() {
 		if hg.Name() == rg.Value() {
-			rPlatformUnit := r.AuxTags.Get(platformUnitTag).Value()
+			rPlatformUnit := r.AuxFields.Get(platformUnitTag).Value()
 			if rPlatformUnit != hg.PlatformUnit() {
 				return fmt.Errorf("bam: mismatched platform for read group %s: %v != %v: %v", hg.Name(), rPlatformUnit, hg.platformUnit)
 			}
-			rLibrary := r.AuxTags.Get(libraryTag).Value()
+			rLibrary := r.AuxFields.Get(libraryTag).Value()
 			if rLibrary != hg.Library() {
 				return fmt.Errorf("bam: mismatched library for read group %s: %v != %v: %v", hg.Name(), rLibrary, hg.library)
 			}

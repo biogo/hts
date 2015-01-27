@@ -76,7 +76,7 @@ func (s *S) TestSpecExamples(c *check.C) {
 		c.Check(r.Seq, check.DeepEquals, expect.Seq, check.Commentf("got:%q expected:%q", r.Seq.Expand(), expect.Seq.Expand()))
 		c.Check(r.Qual, check.DeepEquals, expect.Qual) // No valid qualities here.
 		c.Check(r.End(), check.Equals, specExamples.readEnds[i], check.Commentf("unexpected end position for %q at %v, got:%d expected:%d", r.Name, r.Pos, r.End(), specExamples.readEnds[i]))
-		c.Check(r.AuxTags, check.DeepEquals, expect.AuxTags)
+		c.Check(r.AuxFields, check.DeepEquals, expect.AuxFields)
 
 		parsedCigar, err := ParseCigar([]byte(specExamples.cigars[i]))
 		c.Check(err, check.Equals, nil)
@@ -199,7 +199,7 @@ r001	147	ref	37	30	9M	=	7	-39	CAGCGGCAT	*	NM:i:1
 			TempLen: 0,
 			Seq:     NewSeq([]byte("GCCTAAGCTAA")),
 			Qual:    []uint8{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
-			AuxTags: []Aux{
+			AuxFields: []Aux{
 				mustAux(NewAux("SA", 'Z', "ref,29,-,6H5M,17,0;")),
 			},
 		},
@@ -230,7 +230,7 @@ r001	147	ref	37	30	9M	=	7	-39	CAGCGGCAT	*	NM:i:1
 			TempLen: 0,
 			Seq:     NewSeq([]byte("TAGGC")),
 			Qual:    []uint8{0xff, 0xff, 0xff, 0xff, 0xff},
-			AuxTags: []Aux{
+			AuxFields: []Aux{
 				mustAux(NewAux("SA", 'Z', "ref,9,+,5S6M,30,1;")),
 			},
 		},
@@ -246,7 +246,7 @@ r001	147	ref	37	30	9M	=	7	-39	CAGCGGCAT	*	NM:i:1
 			TempLen: -39,
 			Seq:     NewSeq([]byte("CAGCGGCAT")),
 			Qual:    []uint8{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
-			AuxTags: []Aux{
+			AuxFields: []Aux{
 				mustAux(NewAux("NM", 'i', uint(1))),
 			},
 		},

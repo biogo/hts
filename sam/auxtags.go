@@ -15,7 +15,7 @@ import (
 	"unsafe"
 )
 
-// An Aux represents an auxilliary tag data field from a SAM alignment record.
+// An Aux represents an auxilliary data field from a SAM alignment record.
 type Aux []byte
 
 // NewAux returns a new Aux with the given tag, type and value. Acceptable value

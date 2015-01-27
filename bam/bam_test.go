@@ -298,7 +298,7 @@ func (s *S) TestSpecExamples(c *check.C) {
 		c.Check(r.Seq, check.DeepEquals, expect.Seq, check.Commentf("got:%q expected:%q", r.Seq.Expand(), expect.Seq.Expand()))
 		c.Check(r.Qual, check.DeepEquals, expect.Qual) // No valid qualities here.
 		c.Check(r.End(), check.Equals, specExamples.readEnds[i], check.Commentf("unexpected end position for %q at %v, got:%d expected:%d", r.Name, r.Pos, r.End(), specExamples.readEnds[i]))
-		c.Check(r.AuxTags, check.DeepEquals, expect.AuxTags)
+		c.Check(r.AuxFields, check.DeepEquals, expect.AuxFields)
 
 		parsedCigar, err := sam.ParseCigar([]byte(specExamples.cigars[i]))
 		c.Check(err, check.Equals, nil)
@@ -483,7 +483,7 @@ var specExamples = struct {
 			TempLen: 0,
 			Seq:     sam.NewSeq([]byte("GCCTAAGCTAA")),
 			Qual:    []uint8{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
-			AuxTags: []sam.Aux{
+			AuxFields: []sam.Aux{
 				mustAux(sam.NewAux("SA", 'Z', "ref,29,-,6H5M,17,0;")),
 			},
 		},
@@ -514,7 +514,7 @@ var specExamples = struct {
 			TempLen: 0,
 			Seq:     sam.NewSeq([]byte("TAGGC")),
 			Qual:    []uint8{0xff, 0xff, 0xff, 0xff, 0xff},
-			AuxTags: []sam.Aux{
+			AuxFields: []sam.Aux{
 				mustAux(sam.NewAux("SA", 'Z', "ref,9,+,5S6M,30,1;")),
 			},
 		},
@@ -530,7 +530,7 @@ var specExamples = struct {
 			TempLen: -39,
 			Seq:     sam.NewSeq([]byte("CAGCGGCAT")),
 			Qual:    []uint8{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
-			AuxTags: []sam.Aux{
+			AuxFields: []sam.Aux{
 				mustAux(sam.NewAux("NM", 'i', uint(1))),
 			},
 		},

@@ -70,7 +70,7 @@ func (bw *Writer) Write(r *sam.Record) error {
 	if r.Qual != nil && len(r.Qual) != r.Seq.Length {
 		return errors.New("bam: sequence/quality length mismatch")
 	}
-	tags := buildAux(r.AuxTags)
+	tags := buildAux(r.AuxFields)
 	recLen := bamFixedRemainder +
 		len(r.Name) + 1 + // Null terminated.
 		len(r.Cigar)<<2 + // CigarOps are 4 bytes.

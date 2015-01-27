@@ -132,7 +132,7 @@ func (br *Reader) Read() (*sam.Record, error) {
 	if r.n != blockSize {
 		return nil, errors.New("bam: truncated auxilliary data")
 	}
-	rec.AuxTags = parseAux(auxTags)
+	rec.AuxFields = parseAux(auxTags)
 
 	if r.err != nil {
 		return nil, r.err
