@@ -51,8 +51,13 @@ func newDecompressor(r io.Reader) (*decompressor, error) {
 	if err != nil {
 		return nil, err
 	}
-	if expectedBlockSize(gz.Header) < 0 {
+	bs := expectedBlockSize(gz.Header)
+	if bs < 0 {
 		return nil, ErrNoBlockSize
+	}
+	err = cr.readAhead(bs - int(cr.deltaOffset()))
+	if err != nil {
+		return nil, err
 	}
 	return &decompressor{cr: cr, gz: gz}, nil
 }
@@ -86,7 +91,7 @@ func (b *decompressor) reset() (gzip.Header, error) {
 		return b.decompressed.header(), nil
 	}
 
-	if needReset && b.cr.n != b.owner.nextBase {
+	if needReset && b.cr.offset != b.owner.nextBase {
 		// It should not be possible for the expected next block base
 		// to be out of register with the count reader unless Seek
 		// has been called, so we know the base reader must be an
@@ -134,7 +139,7 @@ func (b *decompressor) seek(r io.ReadSeeker, off int64) error {
 	default:
 		b.cr = makeReader(r)
 	}
-	b.cr.n = off
+	b.cr.offset = off
 
 	return nil
 }
@@ -177,12 +182,18 @@ func (b *decompressor) fill(reset bool) (gzip.Header, error) {
 	dec := b.decompressed
 
 	if reset {
-		dec.setBase(b.cr.n)
+		dec.setBase(b.cr.offset)
 
+		b.cr.useUnderlying()
 		err := b.gz.Reset(b.cr)
-		if err == nil && expectedBlockSize(b.gz.Header) < 0 {
+		bs := expectedBlockSize(b.gz.Header)
+		if err == nil && bs < 0 {
 			err = ErrNoBlockSize
 		}
+		if err != nil {
+			return b.gz.Header, err
+		}
+		err = b.cr.readAhead(bs - int(b.cr.deltaOffset()))
 		if err != nil {
 			return b.gz.Header, err
 		}
@@ -388,18 +399,68 @@ func makeReader(r io.Reader) *countReader {
 
 type countReader struct {
 	r flate.Reader
-	n int64
+
+	offset int64
+	mark   int64
+
+	i, n int
+	buf  [MaxBlockSize]byte
 }
 
+func (r *countReader) readAhead(n int) error {
+	r.i, r.n = 0, n
+	var err error
+	lr := io.LimitedReader{R: r.r, N: int64(n)}
+	for i, _n := 0, 0; i < n && err == nil; i += _n {
+		_n, err = lr.Read(r.buf[i:])
+	}
+	return err
+}
+
+func (r *countReader) useUnderlying() { r.n = 0; r.mark = r.offset }
+
+func (r *countReader) deltaOffset() int64 { return r.offset - r.mark }
+
+func (r *countReader) isLimited() bool { return r.n != 0 }
+
 func (r *countReader) Read(p []byte) (int, error) {
-	n, err := r.r.Read(p)
-	r.n += int64(n)
+	var (
+		n   int
+		err error
+	)
+	if r.isLimited() {
+		if r.i >= r.n {
+			return 0, io.EOF
+		}
+		if n := r.n - r.i; len(p) > n {
+			p = p[:n]
+		}
+		n = copy(p, r.buf[r.i:])
+		r.i += n
+	} else {
+		n, err = r.r.Read(p)
+	}
+	r.offset += int64(n)
 	return n, err
 }
 
 func (r *countReader) ReadByte() (byte, error) {
-	b, err := r.r.ReadByte()
-	r.n++
+	var (
+		b   byte
+		err error
+	)
+	if r.isLimited() {
+		if r.i == r.n {
+			return 0, io.EOF
+		}
+		b = r.buf[r.i]
+		r.i++
+	} else {
+		b, err = r.r.ReadByte()
+	}
+	if err == nil {
+		r.offset++
+	}
 	return b, err
 }
 
