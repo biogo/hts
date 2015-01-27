@@ -72,6 +72,10 @@ func (r *ReadGroup) Clone() *ReadGroup {
 	return &cr
 }
 
+func (r *ReadGroup) Library() string { return r.library }
+
+func (r *ReadGroup) PlatformUnit() string { return r.platformUnit }
+
 func (r *ReadGroup) Time() time.Time { return r.date }
 
 func (r *ReadGroup) String() string {

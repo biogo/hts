@@ -24,7 +24,7 @@ type Record struct {
 	TempLen int
 	Seq     Seq
 	Qual    []byte
-	AuxTags []Aux
+	AuxTags AuxFields
 }
 
 // NewRecord returns a Record, checking for consistency of the provided

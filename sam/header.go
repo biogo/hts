@@ -238,6 +238,41 @@ func (w *errWriter) Write(p []byte) (int, error) {
 	return n, w.err
 }
 
+func (bh *Header) Validate(r *Record) error {
+	rp := r.AuxTags.Get(programTag)
+	found := false
+	for _, hp := range bh.Progs() {
+		if hp.UID() == rp.Value() {
+			found = true
+			break
+		}
+	}
+	if !found && len(bh.Progs()) != 0 {
+		return fmt.Errorf("bam: program uid not found: %v", rp.Value())
+	}
+
+	rg := r.AuxTags.Get(readGroupTag)
+	found = false
+	for _, hg := range bh.RGs() {
+		if hg.Name() == rg.Value() {
+			rPlatformUnit := r.AuxTags.Get(platformUnitTag).Value()
+			if rPlatformUnit != hg.PlatformUnit() {
+				return fmt.Errorf("bam: mismatched platform for read group %s: %v != %v: %v", hg.Name(), rPlatformUnit, hg.platformUnit)
+			}
+			rLibrary := r.AuxTags.Get(libraryTag).Value()
+			if rLibrary != hg.Library() {
+				return fmt.Errorf("bam: mismatched library for read group %s: %v != %v: %v", hg.Name(), rLibrary, hg.library)
+			}
+			found = true
+		}
+	}
+	if !found && len(bh.RGs()) != 0 {
+		return fmt.Errorf("bam: read group not found: %v", rg.Value())
+	}
+
+	return nil
+}
+
 func (bh *Header) Refs() []*Reference {
 	return bh.refs
 }

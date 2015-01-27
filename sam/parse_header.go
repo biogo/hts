@@ -21,37 +21,35 @@ var (
 	dupTag    = errors.New("bam: duplicate field")
 )
 
-type tag [2]byte
-
 var (
-	headerTag       = tag{'H', 'D'}
-	versionTag      = tag{'V', 'N'}
-	sortOrderTag    = tag{'S', 'O'}
-	groupOrderTag   = tag{'G', 'O'}
-	refDictTag      = tag{'S', 'Q'}
-	refNameTag      = tag{'S', 'N'}
-	refLengthTag    = tag{'L', 'N'}
-	assemblyIDTag   = tag{'A', 'S'}
-	md5Tag          = tag{'M', '5'}
-	speciesTag      = tag{'S', 'P'}
-	uriTag          = tag{'U', 'R'}
-	readGroupTag    = tag{'R', 'G'}
-	centerTag       = tag{'C', 'N'}
-	descriptionTag  = tag{'D', 'S'}
-	dateTag         = tag{'D', 'T'}
-	flowOrderTag    = tag{'F', 'O'}
-	keySequenceTag  = tag{'K', 'S'}
-	libraryTag      = tag{'L', 'B'}
-	insertSizeTag   = tag{'P', 'I'}
-	platformTag     = tag{'P', 'L'}
-	platformUnitTag = tag{'P', 'U'}
-	sampleTag       = tag{'S', 'M'}
-	programTag      = tag{'P', 'G'}
-	idTag           = tag{'I', 'D'}
-	programNameTag  = tag{'P', 'N'}
-	commandLineTag  = tag{'C', 'L'}
-	previousProgTag = tag{'P', 'P'}
-	commentTag      = tag{'C', 'O'}
+	headerTag       = Tag{'H', 'D'}
+	versionTag      = Tag{'V', 'N'}
+	sortOrderTag    = Tag{'S', 'O'}
+	groupOrderTag   = Tag{'G', 'O'}
+	refDictTag      = Tag{'S', 'Q'}
+	refNameTag      = Tag{'S', 'N'}
+	refLengthTag    = Tag{'L', 'N'}
+	assemblyIDTag   = Tag{'A', 'S'}
+	md5Tag          = Tag{'M', '5'}
+	speciesTag      = Tag{'S', 'P'}
+	uriTag          = Tag{'U', 'R'}
+	readGroupTag    = Tag{'R', 'G'}
+	centerTag       = Tag{'C', 'N'}
+	descriptionTag  = Tag{'D', 'S'}
+	dateTag         = Tag{'D', 'T'}
+	flowOrderTag    = Tag{'F', 'O'}
+	keySequenceTag  = Tag{'K', 'S'}
+	libraryTag      = Tag{'L', 'B'}
+	insertSizeTag   = Tag{'P', 'I'}
+	platformTag     = Tag{'P', 'L'}
+	platformUnitTag = Tag{'P', 'U'}
+	sampleTag       = Tag{'S', 'M'}
+	programTag      = Tag{'P', 'G'}
+	idTag           = Tag{'I', 'D'}
+	programNameTag  = Tag{'P', 'N'}
+	commandLineTag  = Tag{'C', 'L'}
+	previousProgTag = Tag{'P', 'P'}
+	commentTag      = Tag{'C', 'O'}
 )
 
 var bamMagic = [4]byte{'B', 'A', 'M', 0x1}
@@ -138,7 +136,7 @@ func readRefRecords(r io.Reader, n int32) ([]*Reference, error) {
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (bh *Header) UnmarshalText(text []byte) error {
-	var t tag
+	var t Tag
 	for i, l := range bytes.Split(text, []byte{'\n'}) {
 		if len(l) > 0 && l[len(l)-1] == '\r' {
 			l = l[:len(l)-1]
@@ -179,7 +177,7 @@ func headerLine(l []byte, bh *Header) error {
 		return badHeader
 	}
 
-	var t tag
+	var t Tag
 	for _, f := range fields[1:] {
 		if f[2] != ':' {
 			return badHeader
@@ -221,9 +219,9 @@ func referenceLine(l []byte, bh *Header) error {
 	}
 
 	var (
-		t        tag
+		t        Tag
 		rf       = &Reference{}
-		seen     = map[tag]struct{}{}
+		seen     = map[Tag]struct{}{}
 		nok, lok bool
 		dupID    int32
 		dup      bool
@@ -323,9 +321,9 @@ func readGroupLine(l []byte, bh *Header) error {
 	}
 
 	var (
-		t    tag
+		t    Tag
 		rg   = &ReadGroup{}
-		seen = map[tag]struct{}{}
+		seen = map[Tag]struct{}{}
 		idok bool
 	)
 
@@ -406,9 +404,9 @@ func programLine(l []byte, bh *Header) error {
 	}
 
 	var (
-		t    tag
+		t    Tag
 		p    = &Program{}
-		seen = map[tag]struct{}{}
+		seen = map[Tag]struct{}{}
 		idok bool
 	)
 

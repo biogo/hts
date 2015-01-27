@@ -432,3 +432,14 @@ func (a Aux) Value() interface{} {
 		return fmt.Errorf("%!(UNKNOWN type=%c)", t)
 	}
 }
+
+type AuxFields []Aux
+
+func (a AuxFields) Get(tag Tag) Aux {
+	for _, f := range a {
+		if f.Tag() == tag {
+			return f
+		}
+	}
+	return nil
+}
