@@ -51,7 +51,8 @@ func newDecompressor(r io.Reader) (*decompressor, error) {
 	if err != nil {
 		return nil, err
 	}
-	if expectedBlockSize(gz.Header) < 0 {
+	bs := expectedBlockSize(gz.Header)
+	if bs < 0 {
 		return nil, ErrNoBlockSize
 	}
 	return &decompressor{cr: cr, gz: gz}, nil
@@ -94,14 +95,6 @@ func (b *decompressor) reset() (gzip.Header, error) {
 		err := b.seek(b.owner.r.(io.ReadSeeker), b.owner.nextBase)
 		if err != nil {
 			return b.decompressed.header(), err
-		}
-	}
-
-	if needReset {
-		h := b.decompressed.header()
-		err := b.cr.readAhead(expectedBlockSize(h) - int(b.cr.deltaOffset()))
-		if err != nil {
-			return h, err
 		}
 	}
 
@@ -540,6 +533,12 @@ func (bg *Reader) Read(p []byte) (int, error) {
 	dec := bg.block.decompressed
 	if dec != nil {
 		dec.beginTx()
+	} else {
+		bs := expectedBlockSize(bg.Header)
+		bg.err = bg.block.cr.readAhead(bs - int(bg.block.cr.deltaOffset()))
+		if bg.err != nil {
+			return 0, bg.err
+		}
 	}
 
 	if dec == nil || dec.len() == 0 {
