@@ -264,6 +264,7 @@ func (bh *Header) Validate(r *Record) error {
 				return fmt.Errorf("bam: mismatched library for read group %s: %v != %v: %v", hg.Name(), rLibrary, hg.library)
 			}
 			found = true
+			break
 		}
 	}
 	if !found && len(bh.RGs()) != 0 {
