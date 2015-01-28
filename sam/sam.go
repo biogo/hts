@@ -2,6 +2,10 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// Package sam implements SAM file format reading and writing. The SAM format
+// is described in the SAM specification.
+//
+// http://samtools.github.io/hts-specs/SAMv1.pdf
 package sam
 
 import (
