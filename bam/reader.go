@@ -166,6 +166,10 @@ func (r *Reader) LastChunk() bgzf.Chunk {
 	return r.lastChunk
 }
 
+func (r *Reader) Close() error {
+	return r.r.Close()
+}
+
 func readCigarOps(br *binaryReader, n uint16) []sam.CigarOp {
 	co := make([]sam.CigarOp, n)
 	for i := range co {
