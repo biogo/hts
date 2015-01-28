@@ -200,7 +200,7 @@ r001	147	ref	37	30	9M	=	7	-39	CAGCGGCAT	*	NM:i:1
 			Seq:     NewSeq([]byte("GCCTAAGCTAA")),
 			Qual:    []uint8{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
 			AuxFields: []Aux{
-				mustAux(NewAux("SA", 'Z', "ref,29,-,6H5M,17,0;")),
+				mustAux(NewAux(NewTag("SA"), 'Z', "ref,29,-,6H5M,17,0;")),
 			},
 		},
 		{
@@ -231,7 +231,7 @@ r001	147	ref	37	30	9M	=	7	-39	CAGCGGCAT	*	NM:i:1
 			Seq:     NewSeq([]byte("TAGGC")),
 			Qual:    []uint8{0xff, 0xff, 0xff, 0xff, 0xff},
 			AuxFields: []Aux{
-				mustAux(NewAux("SA", 'Z', "ref,9,+,5S6M,30,1;")),
+				mustAux(NewAux(NewTag("SA"), 'Z', "ref,9,+,5S6M,30,1;")),
 			},
 		},
 		{
@@ -247,7 +247,7 @@ r001	147	ref	37	30	9M	=	7	-39	CAGCGGCAT	*	NM:i:1
 			Seq:     NewSeq([]byte("CAGCGGCAT")),
 			Qual:    []uint8{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
 			AuxFields: []Aux{
-				mustAux(NewAux("NM", 'i', uint(1))),
+				mustAux(NewAux(NewTag("NM"), 'i', uint(1))),
 			},
 		},
 	},
