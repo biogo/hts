@@ -155,6 +155,32 @@ func (br *Reader) Read() (*sam.Record, error) {
 	return &rec, nil
 }
 
+// SetChunk sets a limited range of the underlying BGZF file to read, after
+// seeking to the start of the given chunk. It may be used to iterate over
+// a defined genomic interval.
+//
+//  // Iterate over the indexed chunks for the inteval.
+//  for _, c := range bai.Chunks(rid, beg, end) {
+//  	// Set the chunk range.
+//  	err := r.SetChunk(&c)
+//  	if err != nil {
+//  		return err
+//  	}
+//  	// Read the records within the defined range.
+//  	for {
+//  		rec, err := r.Read()
+//  		if err == io.EOF {
+//  			break
+//  		}
+//  		if err != nil {
+//  			return err
+//  		}
+//  		fn(rec)
+//  	}
+//  }
+//  // Unset the chunk limit.
+//  r.SetChunk(nil)
+//
 func (r *Reader) SetChunk(c *bgzf.Chunk) error {
 	if c != nil {
 		err := r.r.Seek(c.Begin)
