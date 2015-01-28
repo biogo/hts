@@ -155,11 +155,15 @@ func (br *Reader) Read() (*sam.Record, error) {
 	return &rec, nil
 }
 
-func (r *Reader) SetChunk(c *bgzf.Chunk) {
+func (r *Reader) SetChunk(c *bgzf.Chunk) error {
 	if c != nil {
-		r.r.Seek(c.Begin)
+		err := r.r.Seek(c.Begin)
+		if err != nil {
+			return err
+		}
 	}
 	r.c = c
+	return nil
 }
 
 func (r *Reader) LastChunk() bgzf.Chunk {
