@@ -346,6 +346,37 @@ func (a Aux) String() string {
 // A Tag represents an auxilliary tag label.
 type Tag [2]byte
 
+var (
+	headerTag       = Tag{'H', 'D'}
+	versionTag      = Tag{'V', 'N'}
+	sortOrderTag    = Tag{'S', 'O'}
+	groupOrderTag   = Tag{'G', 'O'}
+	refDictTag      = Tag{'S', 'Q'}
+	refNameTag      = Tag{'S', 'N'}
+	refLengthTag    = Tag{'L', 'N'}
+	assemblyIDTag   = Tag{'A', 'S'}
+	md5Tag          = Tag{'M', '5'}
+	speciesTag      = Tag{'S', 'P'}
+	uriTag          = Tag{'U', 'R'}
+	readGroupTag    = Tag{'R', 'G'}
+	centerTag       = Tag{'C', 'N'}
+	descriptionTag  = Tag{'D', 'S'}
+	dateTag         = Tag{'D', 'T'}
+	flowOrderTag    = Tag{'F', 'O'}
+	keySequenceTag  = Tag{'K', 'S'}
+	libraryTag      = Tag{'L', 'B'}
+	insertSizeTag   = Tag{'P', 'I'}
+	platformTag     = Tag{'P', 'L'}
+	platformUnitTag = Tag{'P', 'U'}
+	sampleTag       = Tag{'S', 'M'}
+	programTag      = Tag{'P', 'G'}
+	idTag           = Tag{'I', 'D'}
+	programNameTag  = Tag{'P', 'N'}
+	commandLineTag  = Tag{'C', 'L'}
+	previousProgTag = Tag{'P', 'P'}
+	commentTag      = Tag{'C', 'O'}
+)
+
 // NewTag returns a Tag from the tag string. It panics is len(tag) != 2.
 func NewTag(tag string) Tag {
 	var t Tag

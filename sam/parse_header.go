@@ -21,37 +21,6 @@ var (
 	dupTag    = errors.New("bam: duplicate field")
 )
 
-var (
-	headerTag       = Tag{'H', 'D'}
-	versionTag      = Tag{'V', 'N'}
-	sortOrderTag    = Tag{'S', 'O'}
-	groupOrderTag   = Tag{'G', 'O'}
-	refDictTag      = Tag{'S', 'Q'}
-	refNameTag      = Tag{'S', 'N'}
-	refLengthTag    = Tag{'L', 'N'}
-	assemblyIDTag   = Tag{'A', 'S'}
-	md5Tag          = Tag{'M', '5'}
-	speciesTag      = Tag{'S', 'P'}
-	uriTag          = Tag{'U', 'R'}
-	readGroupTag    = Tag{'R', 'G'}
-	centerTag       = Tag{'C', 'N'}
-	descriptionTag  = Tag{'D', 'S'}
-	dateTag         = Tag{'D', 'T'}
-	flowOrderTag    = Tag{'F', 'O'}
-	keySequenceTag  = Tag{'K', 'S'}
-	libraryTag      = Tag{'L', 'B'}
-	insertSizeTag   = Tag{'P', 'I'}
-	platformTag     = Tag{'P', 'L'}
-	platformUnitTag = Tag{'P', 'U'}
-	sampleTag       = Tag{'S', 'M'}
-	programTag      = Tag{'P', 'G'}
-	idTag           = Tag{'I', 'D'}
-	programNameTag  = Tag{'P', 'N'}
-	commandLineTag  = Tag{'C', 'L'}
-	previousProgTag = Tag{'P', 'P'}
-	commentTag      = Tag{'C', 'O'}
-)
-
 var bamMagic = [4]byte{'B', 'A', 'M', 0x1}
 
 // UnmarshalBinary implements the encoding.BinaryUnmarshaler interface.
