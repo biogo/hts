@@ -1803,8 +1803,12 @@ func (s *S) TestConceptualBAI(c *check.C) {
 	bai, err := ReadIndex(gz)
 	c.Assert(err, check.Equals, nil)
 
+	var ref sam.Reference
+	var h sam.Header
+	h.AddReference(&ref)
+
 	for _, test := range chunkTests {
-		c.Check(bai.Chunks(0, test.beg, test.end), check.DeepEquals, test.expect,
+		c.Check(bai.Chunks(&ref, test.beg, test.end), check.DeepEquals, test.expect,
 			check.Commentf("Unexpected result for [%d,%d).", test.beg, test.end),
 		)
 	}

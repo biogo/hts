@@ -184,8 +184,9 @@ found:
 	return nil
 }
 
-func (i *Index) Chunks(rid, beg, end int) []bgzf.Chunk {
-	if rid >= len(i.References) {
+func (i *Index) Chunks(r *sam.Reference, beg, end int) []bgzf.Chunk {
+	rid := r.ID()
+	if rid < 0 || rid >= len(i.References) {
 		return nil
 	}
 	i.Sort()
