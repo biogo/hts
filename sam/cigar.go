@@ -182,6 +182,9 @@ func init() {
 
 // ParseCigar returns a Cigar parsed from the provided byte slice.
 func ParseCigar(b []byte) (Cigar, error) {
+	if len(b) == 1 && b[0] == '*' {
+		return nil, nil
+	}
 	var (
 		c   Cigar
 		op  CigarOpType
