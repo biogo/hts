@@ -158,29 +158,6 @@ func (br *Reader) Read() (*sam.Record, error) {
 // SetChunk sets a limited range of the underlying BGZF file to read, after
 // seeking to the start of the given chunk. It may be used to iterate over
 // a defined genomic interval.
-//
-//  // Iterate over the indexed chunks for the inteval.
-//  for _, c := range bai.Chunks(rid, beg, end) {
-//  	// Set the chunk range.
-//  	err := r.SetChunk(&c)
-//  	if err != nil {
-//  		return err
-//  	}
-//  	// Read the records within the defined range.
-//  	for {
-//  		rec, err := r.Read()
-//  		if err == io.EOF {
-//  			break
-//  		}
-//  		if err != nil {
-//  			return err
-//  		}
-//  		fn(rec)
-//  	}
-//  }
-//  // Unset the chunk limit.
-//  r.SetChunk(nil)
-//
 func (r *Reader) SetChunk(c *bgzf.Chunk) error {
 	if c != nil {
 		err := r.r.Seek(c.Begin)
@@ -198,6 +175,75 @@ func (r *Reader) LastChunk() bgzf.Chunk {
 
 func (r *Reader) Close() error {
 	return r.r.Close()
+}
+
+// Iterator wraps a Reader to provide a convenient loop interface for reading BAM data.
+// Successive calls to the Next method will step through the features of the provided
+// Reader. Iteration stops unrecoverably at EOF or the first error.
+type Iterator struct {
+	r *Reader
+
+	chunks []bgzf.Chunk
+
+	rec *sam.Record
+	err error
+}
+
+// NewIterator returns a Iterator to read from r, limiting the reads to the provided
+// chunks.
+//
+//  i, err := NewIterator(r, bai.Chunks(ref, beg, end))
+//  if err != nil {
+//  	return err
+//  }
+//  for i.Next() {
+//  	fn(i.Record())
+//  }
+//  return i.Close()
+//
+func NewIterator(r *Reader, chunks []bgzf.Chunk) (*Iterator, error) {
+	if len(chunks) != 0 {
+		err := r.SetChunk(&chunks[0])
+		if err != nil {
+			return nil, err
+		}
+		chunks = chunks[1:]
+	}
+	return &Iterator{r: r, chunks: chunks}, nil
+}
+
+// Next advances the Iterator past the next record, which will then be available through
+// the Record method. It returns false when the iteration stops, either by reaching the end of the
+// input or an error. After Next returns false, the Error method will return any error that
+// occurred during iteration, except that if it was io.EOF, Error will return nil.
+func (i *Iterator) Next() bool {
+	if i.err != nil {
+		return false
+	}
+	i.rec, i.err = i.r.Read()
+	if len(i.chunks) != 0 && i.err == io.EOF {
+		i.err = i.r.SetChunk(&i.chunks[0])
+		i.chunks = i.chunks[1:]
+		return i.Next()
+	}
+	return i.err == nil
+}
+
+// Error returns the first non-EOF error that was encountered by the Iterator.
+func (i *Iterator) Error() error {
+	if i.err == io.EOF {
+		return nil
+	}
+	return i.err
+}
+
+// Record returns the most recent record read by a call to Next.
+func (i *Iterator) Record() *sam.Record { return i.rec }
+
+// Close releases the underlying Reader.
+func (i *Iterator) Close() error {
+	i.r.SetChunk(nil)
+	return i.Error()
 }
 
 func readCigarOps(br *binaryReader, n uint16) []sam.CigarOp {

@@ -311,6 +311,20 @@ func (s *S) TestSpecExamples(c *check.C) {
 	}
 }
 
+func (s *S) TestSpecExamplesIterator(c *check.C) {
+	br, err := NewReader(bytes.NewReader(specExamples.data), *conc)
+	c.Assert(err, check.Equals, nil)
+	it, err := NewIterator(br, nil)
+	c.Assert(err, check.Equals, nil)
+	for i := 0; it.Next(); i++ {
+		expect := specExamples.records[i]
+		r := it.Record()
+		c.Check(r.Name, check.Equals, expect.Name)
+		c.Check(r.Pos, check.Equals, expect.Pos)
+	}
+	c.Assert(it.Error(), check.Equals, nil)
+}
+
 func mustAux(a sam.Aux, err error) sam.Aux {
 	if err != nil {
 		panic(err)

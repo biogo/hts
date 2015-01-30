@@ -120,6 +120,56 @@ func (r *Reader) Read() (*Record, error) {
 	return &rec, nil
 }
 
+// RecordReader wraps types that can read SAM Records.
+type RecordReader interface {
+	Read() (*Record, error)
+}
+
+// Iterator wraps a Reader to provide a convenient loop interface for reading SAM/BAM data.
+// Successive calls to the Next method will step through the features of the provided
+// Reader. Iteration stops unrecoverably at EOF or the first error.
+type Iterator struct {
+	r   RecordReader
+	rec *Record
+	err error
+}
+
+// NewIterator returns a Iterator to read from r.
+//
+//  i, err := NewIterator(r)
+//  if err != nil {
+//  	return err
+//  }
+//  for i.Next() {
+//  	fn(i.Record())
+//  }
+//  return i.Error()
+//
+func NewIterator(r RecordReader) *Iterator { return &Iterator{r: r} }
+
+// Next advances the Iterator past the next record, which will then be available through
+// the Record method. It returns false when the iteration stops, either by reaching the end of the
+// input or an error. After Next returns false, the Error method will return any error that
+// occurred during iteration, except that if it was io.EOF, Error will return nil.
+func (i *Iterator) Next() bool {
+	if i.err != nil {
+		return false
+	}
+	i.rec, i.err = i.r.Read()
+	return i.err == nil
+}
+
+// Error returns the first non-EOF error that was encountered by the Iterator.
+func (i *Iterator) Error() error {
+	if i.err == io.EOF {
+		return nil
+	}
+	return i.err
+}
+
+// Record returns the most recent record read by a call to Next.
+func (i *Iterator) Record() *Record { return i.rec }
+
 type Writer struct {
 	w     io.Writer
 	flags int
