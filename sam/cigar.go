@@ -40,6 +40,9 @@ func (c Cigar) IsValid(length int) bool {
 }
 
 func (c Cigar) String() string {
+	if len(c) == 0 {
+		return "*"
+	}
 	var b bytes.Buffer
 	for _, co := range c {
 		fmt.Fprint(&b, co)

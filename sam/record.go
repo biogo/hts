@@ -255,6 +255,9 @@ func (r *Record) UnmarshalSAM(h *Header, b []byte) error {
 	}
 	if !bytes.Equal(f[10], []byte{'*'}) {
 		r.Qual = append(r.Qual, f[10]...)
+		for i := range r.Qual {
+			r.Qual[i] -= 33
+		}
 	} else {
 		r.Qual = make([]byte, r.Seq.Length)
 		for i := range r.Qual {
@@ -380,7 +383,11 @@ func formatSeq(s Seq) []byte {
 func formatQual(q []byte) []byte {
 	for _, v := range q {
 		if v != 0xff {
-			return q
+			a := make([]byte, len(q))
+			for i, p := range q {
+				a[i] = p + 33
+			}
+			return a
 		}
 	}
 	return []byte{'*'}
