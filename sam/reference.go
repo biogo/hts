@@ -23,10 +23,10 @@ type Reference struct {
 
 func NewReference(name, assemID, species string, length int, md5 []byte, uri *url.URL) (*Reference, error) {
 	if !validLen(length) {
-		return nil, errors.New("bam: length out of range")
+		return nil, errors.New("sam: length out of range")
 	}
 	if name == "" {
-		return nil, errors.New("bam: no name provided")
+		return nil, errors.New("sam: no name provided")
 	}
 	var h *[16]byte
 	if md5 != nil {
@@ -88,7 +88,7 @@ func (r *Reference) Len() int {
 }
 func (r *Reference) SetLen(l int) error {
 	if !validLen(l) {
-		return errors.New("bam: length out of range")
+		return errors.New("sam: length out of range")
 	}
 	r.lRef = int32(l)
 	return nil

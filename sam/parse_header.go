@@ -17,8 +17,8 @@ import (
 )
 
 var (
-	badHeader = errors.New("bam: malformed header line")
-	dupTag    = errors.New("bam: duplicate field")
+	badHeader = errors.New("sam: malformed header line")
+	dupTag    = errors.New("sam: duplicate field")
 )
 
 var bamMagic = [4]byte{'B', 'A', 'M', 0x1}
@@ -39,7 +39,7 @@ func (bh *Header) DecodeBinary(r io.Reader) error {
 		return err
 	}
 	if magic != bamMagic {
-		return errors.New("bam: magic number mismatch")
+		return errors.New("sam: magic number mismatch")
 	}
 	err = binary.Read(r, binary.LittleEndian, &lText)
 	if err != nil {
@@ -51,7 +51,7 @@ func (bh *Header) DecodeBinary(r io.Reader) error {
 		return err
 	}
 	if n != int(lText) {
-		return errors.New("bam: truncated header")
+		return errors.New("sam: truncated header")
 	}
 	err = bh.UnmarshalText(text)
 	if err != nil {
@@ -92,7 +92,7 @@ func readRefRecords(r io.Reader, n int32) ([]*Reference, error) {
 			return nil, err
 		}
 		if n != int(lName) || name[n-1] != 0 {
-			return nil, errors.New("bam: truncated reference name")
+			return nil, errors.New("sam: truncated reference name")
 		}
 		rr[i].name = string(name[:n-1])
 		err = binary.Read(r, binary.LittleEndian, &rr[i].lRef)

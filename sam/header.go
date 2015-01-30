@@ -13,13 +13,13 @@ import (
 )
 
 var (
-	dupReference  = errors.New("bam: duplicate reference name")
-	dupReadGroup  = errors.New("bam: duplicate read group name")
-	dupProgram    = errors.New("bam: duplicate program name")
-	usedReference = errors.New("bam: reference already used")
-	usedReadGroup = errors.New("bam: read group already used")
-	usedProgram   = errors.New("bam: program already used")
-	badLen        = errors.New("bam: reference length out of range")
+	dupReference  = errors.New("sam: duplicate reference name")
+	dupReadGroup  = errors.New("sam: duplicate read group name")
+	dupProgram    = errors.New("sam: duplicate program name")
+	usedReference = errors.New("sam: reference already used")
+	usedReadGroup = errors.New("sam: read group already used")
+	usedProgram   = errors.New("sam: program already used")
+	badLen        = errors.New("sam: reference length out of range")
 )
 
 type SortOrder int
@@ -206,7 +206,7 @@ func (bh *Header) EncodeBinary(w io.Writer) error {
 	binary.Write(wb, binary.LittleEndian, int32(len(bh.refs)))
 
 	if !validInt32(len(bh.refs)) {
-		return errors.New("bam: value out of range")
+		return errors.New("sam: value out of range")
 	}
 	var name []byte
 	for _, r := range bh.refs {
@@ -248,7 +248,7 @@ func (bh *Header) Validate(r *Record) error {
 		}
 	}
 	if !found && len(bh.Progs()) != 0 {
-		return fmt.Errorf("bam: program uid not found: %v", rp.Value())
+		return fmt.Errorf("sam: program uid not found: %v", rp.Value())
 	}
 
 	rg := r.AuxFields.Get(readGroupTag)
@@ -257,18 +257,18 @@ func (bh *Header) Validate(r *Record) error {
 		if hg.Name() == rg.Value() {
 			rPlatformUnit := r.AuxFields.Get(platformUnitTag).Value()
 			if rPlatformUnit != hg.PlatformUnit() {
-				return fmt.Errorf("bam: mismatched platform for read group %s: %v != %v: %v", hg.Name(), rPlatformUnit, hg.platformUnit)
+				return fmt.Errorf("sam: mismatched platform for read group %s: %v != %v: %v", hg.Name(), rPlatformUnit, hg.platformUnit)
 			}
 			rLibrary := r.AuxFields.Get(libraryTag).Value()
 			if rLibrary != hg.Library() {
-				return fmt.Errorf("bam: mismatched library for read group %s: %v != %v: %v", hg.Name(), rLibrary, hg.library)
+				return fmt.Errorf("sam: mismatched library for read group %s: %v != %v: %v", hg.Name(), rLibrary, hg.library)
 			}
 			found = true
 			break
 		}
 	}
 	if !found && len(bh.RGs()) != 0 {
-		return fmt.Errorf("bam: read group not found: %v", rg.Value())
+		return fmt.Errorf("sam: read group not found: %v", rg.Value())
 	}
 
 	return nil

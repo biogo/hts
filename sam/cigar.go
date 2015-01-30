@@ -196,7 +196,7 @@ func ParseCigar(b []byte) (Cigar, error) {
 			if b[j] < '0' || '9' < b[j] {
 				n, err = strconv.Atoi(string(b[i:j]))
 				if err != nil {
-					return nil, fmt.Errorf("bam: failed to parse cigar string %q: %v", b, err)
+					return nil, fmt.Errorf("sam: failed to parse cigar string %q: %v", b, err)
 				}
 				op = cigarOpTypeLookup[b[j]]
 				i = j
@@ -204,7 +204,7 @@ func ParseCigar(b []byte) (Cigar, error) {
 			}
 		}
 		if op == lastCigar {
-			return nil, fmt.Errorf("bam: failed to parse cigar string %q: unknown operation %q", b, op)
+			return nil, fmt.Errorf("sam: failed to parse cigar string %q: unknown operation %q", b, op)
 		}
 		c = append(c, NewCigarOp(op, n))
 	}

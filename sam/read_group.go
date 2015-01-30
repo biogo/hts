@@ -29,7 +29,7 @@ type ReadGroup struct {
 
 func NewReadGroup(name, center, desc, lib, prog, plat, unit, sample string, date time.Time, size int, flow, key []byte) (*ReadGroup, error) {
 	if !validInt32(size) {
-		return nil, errors.New("bam: length overflow")
+		return nil, errors.New("sam: length overflow")
 	}
 	return &ReadGroup{
 		id:           -1, // This is altered by a Header when added.

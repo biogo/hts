@@ -31,30 +31,30 @@ type Record struct {
 // attributes.
 func NewRecord(name string, ref, mRef *Reference, p, mPos, tLen int, mapQ byte, co []CigarOp, seq, qual []byte, aux []Aux) (*Record, error) {
 	if !(validPos(p) && validPos(mPos) && validTmpltLen(tLen) && validLen(len(seq)) && (qual == nil || validLen(len(qual)))) {
-		return nil, errors.New("bam: value out of range")
+		return nil, errors.New("sam: value out of range")
 	}
 	if len(name) < 1 || len(name) > 255 {
-		return nil, errors.New("bam: name too long")
+		return nil, errors.New("sam: name too long")
 	}
 	if qual != nil && len(qual) != len(seq) {
-		return nil, errors.New("bam: sequence/quality length mismatch")
+		return nil, errors.New("sam: sequence/quality length mismatch")
 	}
 	if ref != nil {
 		if ref.id < 0 {
-			return nil, errors.New("bam: linking to invalid reference")
+			return nil, errors.New("sam: linking to invalid reference")
 		}
 	} else {
 		if p != -1 {
-			return nil, errors.New("bam: specified position != -1 without reference")
+			return nil, errors.New("sam: specified position != -1 without reference")
 		}
 	}
 	if mRef != nil {
 		if mRef.id < 0 {
-			return nil, errors.New("bam: linking to invalid mate reference")
+			return nil, errors.New("sam: linking to invalid mate reference")
 		}
 	} else {
 		if mPos != -1 {
-			return nil, errors.New("bam: specified mate position != -1 without mate reference")
+			return nil, errors.New("sam: specified mate position != -1 without mate reference")
 		}
 	}
 	r := &Record{
@@ -203,54 +203,54 @@ func (r *Record) UnmarshalText(b []byte) error {
 func (r *Record) UnmarshalSAM(h *Header, b []byte) error {
 	f := bytes.Split(b, []byte{'\t'})
 	if len(f) < 11 {
-		return errors.New("bam: missing SAM fields")
+		return errors.New("sam: missing SAM fields")
 	}
 	*r = Record{Name: string(f[0])}
 	// TODO(kortschak): Consider parsing string format flags.
 	flags, err := strconv.ParseUint(string(f[1]), 0, 16)
 	if err != nil {
-		return fmt.Errorf("bam: failed to parse flags: %v", err)
+		return fmt.Errorf("sam: failed to parse flags: %v", err)
 	}
 	r.Flags = Flags(flags)
 	r.Ref, err = referenceForName(h, string(f[2]))
 	if err != nil {
-		return fmt.Errorf("bam: failed to assign reference: %v", err)
+		return fmt.Errorf("sam: failed to assign reference: %v", err)
 	}
 	r.Pos, err = strconv.Atoi(string(f[3]))
 	r.Pos--
 	if err != nil {
-		return fmt.Errorf("bam: failed to parse position: %v", err)
+		return fmt.Errorf("sam: failed to parse position: %v", err)
 	}
 	mapQ, err := strconv.ParseUint(string(f[4]), 10, 8)
 	if err != nil {
-		return fmt.Errorf("bam: failed to parse map quality: %v", err)
+		return fmt.Errorf("sam: failed to parse map quality: %v", err)
 	}
 	r.MapQ = byte(mapQ)
 	r.Cigar, err = ParseCigar(f[5])
 	if err != nil {
-		return fmt.Errorf("bam: failed to parse cigar string: %v", err)
+		return fmt.Errorf("sam: failed to parse cigar string: %v", err)
 	}
 	if bytes.Equal(f[2], f[6]) || bytes.Equal(f[6], []byte{'='}) {
 		r.MateRef = r.Ref
 	} else {
 		r.MateRef, err = referenceForName(h, string(f[6]))
 		if err != nil {
-			return fmt.Errorf("bam: failed to assign mate reference: %v", err)
+			return fmt.Errorf("sam: failed to assign mate reference: %v", err)
 		}
 	}
 	r.MatePos, err = strconv.Atoi(string(f[7]))
 	r.MatePos--
 	if err != nil {
-		return fmt.Errorf("bam: failed to parse mate position: %v", err)
+		return fmt.Errorf("sam: failed to parse mate position: %v", err)
 	}
 	r.TempLen, err = strconv.Atoi(string(f[8]))
 	if err != nil {
-		return fmt.Errorf("bam: failed to parse template length: %v", err)
+		return fmt.Errorf("sam: failed to parse template length: %v", err)
 	}
 	if !bytes.Equal(f[9], []byte{'*'}) {
 		r.Seq = NewSeq(f[9])
 		if !r.Cigar.IsValid(r.Seq.Length) {
-			return errors.New("bam: sequence/CIGAR length mismatch")
+			return errors.New("sam: sequence/CIGAR length mismatch")
 		}
 	}
 	if !bytes.Equal(f[10], []byte{'*'}) {
@@ -265,7 +265,7 @@ func (r *Record) UnmarshalSAM(h *Header, b []byte) error {
 		}
 	}
 	if len(r.Qual) != 0 && len(r.Qual) != r.Seq.Length {
-		return errors.New("bam: sequence/quality length mismatch")
+		return errors.New("sam: sequence/quality length mismatch")
 	}
 	for _, aux := range f[11:] {
 		a, err := ParseAux(aux)
@@ -306,10 +306,10 @@ func (r *Record) MarshalText() ([]byte, error) {
 // formats are FlagDecimal, FlagHex and FlagString.
 func (r *Record) MarshalSAM(flags int) ([]byte, error) {
 	if flags < FlagDecimal || flags > FlagString {
-		return nil, errors.New("bam: flag format option out of range")
+		return nil, errors.New("sam: flag format option out of range")
 	}
 	if r.Qual != nil && len(r.Qual) != r.Seq.Length {
-		return nil, errors.New("bam: sequence/quality length mismatch")
+		return nil, errors.New("sam: sequence/quality length mismatch")
 	}
 	var buf bytes.Buffer
 	fmt.Fprintf(&buf, "%s\t%v\t%s\t%d\t%d\t%s\t%s\t%d\t%d\t%s\t%s",
@@ -362,7 +362,7 @@ func formatFlags(f Flags, format int) interface{} {
 
 		return string(b)
 	default:
-		panic("bam: invalid flag format")
+		panic("sam: invalid flag format")
 	}
 }
 
