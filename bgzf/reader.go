@@ -284,7 +284,6 @@ func (d *decompressor) fill(reset bool) (gzip.Header, error) {
 	dec.setHeader(d.gz.Header)
 	d.gz.Multistream(false)
 	_, err := dec.readFrom(d.gz)
-	d.owner.nextBase = dec.nextBase()
 	return d.gz.Header, err
 }
 
@@ -511,6 +510,7 @@ func (bg *Reader) Seek(off Offset) error {
 		return bg.err
 	}
 	bg.Header = h
+	bg.nextBase = bg.active.decompressed.nextBase()
 
 	bg.err = bg.active.decompressed.seek(int64(off.Block))
 	if bg.err == nil {
@@ -556,6 +556,7 @@ func (bg *Reader) Read(p []byte) (int, error) {
 		}
 		bg.Header = h
 		dec = bg.active.decompressed
+		bg.nextBase = dec.nextBase()
 	}
 
 	var n int
@@ -578,6 +579,7 @@ func (bg *Reader) Read(p []byte) (int, error) {
 			}
 			bg.Header = h
 			dec = bg.active.decompressed
+			bg.nextBase = dec.nextBase()
 		}
 	}
 
