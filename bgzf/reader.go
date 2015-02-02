@@ -55,6 +55,8 @@ type decompressor struct {
 
 	// Decompressed data.
 	decompressed Block
+
+	err error
 }
 
 func makeReader(r io.Reader) flate.Reader {
@@ -149,11 +151,11 @@ func (d *decompressor) ReadByte() (byte, error) {
 	return b, err
 }
 
-func (d *decompressor) reset() (gzip.Header, error) {
+func (d *decompressor) reset() {
 	needReset := d.lazyBlock()
 
 	if d.gotBlockFor(d.owner.nextBase) {
-		return d.decompressed.header(), nil
+		return
 	}
 
 	if needReset && d.offset != d.owner.nextBase {
@@ -161,32 +163,32 @@ func (d *decompressor) reset() (gzip.Header, error) {
 		// to be out of register with the count reader unless Seek
 		// has been called, so we know the base reader must be an
 		// io.ReadSeeker.
-		err := d.seek(d.owner.r.(io.ReadSeeker), d.owner.nextBase)
-		if err != nil {
-			return d.decompressed.header(), err
+		d.err = d.seek(d.owner.r.(io.ReadSeeker), d.owner.nextBase)
+		if d.err != nil {
+			return
 		}
 	}
 
-	return d.fill(needReset)
+	d.err = d.fill(needReset)
 }
 
-func (d *decompressor) seekRead(r io.ReadSeeker, off int64) (gzip.Header, error) {
+func (d *decompressor) seekRead(r io.ReadSeeker, off int64) {
 	d.lazyBlock()
 
 	if off == d.decompressed.Base() && d.decompressed.hasData() {
-		return d.decompressed.header(), nil
+		return
 	}
 
 	if d.gotBlockFor(off) {
-		return d.decompressed.header(), nil
+		return
 	}
 
-	err := d.seek(r, off)
-	if err != nil {
-		return d.decompressed.header(), err
+	d.err = d.seek(r, off)
+	if d.err != nil {
+		return
 	}
 
-	return d.fill(true)
+	d.err = d.fill(true)
 }
 
 func (d *decompressor) seek(r io.ReadSeeker, off int64) error {
@@ -225,7 +227,7 @@ func (d *decompressor) gotBlockFor(base int64) bool {
 				// Consider retaining these in a sync.Pool.
 				d.owner.Cache.Put(dec)
 			}
-			if blk.seek(0) == nil {
+			if d.err = blk.seek(0); d.err == nil {
 				d.decompressed = blk
 				d.owner.nextBase = blk.nextBase()
 				return true
@@ -260,7 +262,7 @@ func (d *decompressor) readAhead(n int) error {
 
 func (d *decompressor) deltaOffset() int64 { return d.offset - d.mark }
 
-func (d *decompressor) fill(reset bool) (gzip.Header, error) {
+func (d *decompressor) fill(reset bool) error {
 	dec := d.decompressed
 
 	if reset {
@@ -273,18 +275,18 @@ func (d *decompressor) fill(reset bool) (gzip.Header, error) {
 			err = ErrNoBlockSize
 		}
 		if err != nil {
-			return d.gz.Header, err
+			return err
 		}
 		err = d.readAhead(bs - int(d.deltaOffset()))
 		if err != nil {
-			return d.gz.Header, err
+			return err
 		}
 	}
 
 	dec.setHeader(d.gz.Header)
 	d.gz.Multistream(false)
 	_, err := dec.readFrom(d.gz)
-	return d.gz.Header, err
+	return err
 }
 
 func expectedBlockSize(h gzip.Header) int {
@@ -504,12 +506,12 @@ func (bg *Reader) Seek(off Offset) error {
 		return ErrNotASeeker
 	}
 
-	var h gzip.Header
-	h, bg.err = bg.active.seekRead(rs, off.File)
+	bg.active.seekRead(rs, off.File)
+	bg.err = bg.active.err
 	if bg.err != nil {
 		return bg.err
 	}
-	bg.Header = h
+	bg.Header = bg.active.header()
 	bg.nextBase = bg.active.decompressed.nextBase()
 
 	bg.err = bg.active.decompressed.seek(int64(off.Block))
@@ -580,11 +582,11 @@ func (bg *Reader) Read(p []byte) (int, error) {
 }
 
 func (bg *Reader) resetDecompressor() (Block, error) {
-	h, err := bg.active.reset()
-	if err != nil {
-		return nil, err
+	bg.active.reset()
+	if bg.active.err != nil {
+		return nil, bg.active.err
 	}
-	bg.Header = h
+	bg.Header = bg.active.header()
 	bg.nextBase = bg.active.decompressed.nextBase()
 	return bg.active.decompressed, nil
 }
