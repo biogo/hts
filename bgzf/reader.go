@@ -106,6 +106,7 @@ func (b *decompressor) header() gzip.Header {
 
 func (b *decompressor) isLimited() bool { return b.n != 0 }
 
+// Read provides the Read method for the decompressor's gzip.Reader.
 func (b *decompressor) Read(p []byte) (int, error) {
 	var (
 		n   int
@@ -127,6 +128,7 @@ func (b *decompressor) Read(p []byte) (int, error) {
 	return n, err
 }
 
+// ReadByte provides the ReadByte method for the decompressor's gzip.Reader.
 func (b *decompressor) ReadByte() (byte, error) {
 	var (
 		c   byte
