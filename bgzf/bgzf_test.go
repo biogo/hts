@@ -45,7 +45,7 @@ func TestEmpty(t *testing.T) {
 		t.Fatalf("Writer.Close: %v", err)
 	}
 
-	r, err := NewReader(buf, 1)
+	r, err := NewReader(buf, *conc)
 	if err != nil {
 		t.Fatalf("NewReader: %v", err)
 	}
