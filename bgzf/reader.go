@@ -536,7 +536,6 @@ func (bg *Reader) Read(p []byte) (int, error) {
 	if bg.err != nil {
 		return 0, bg.err
 	}
-	var h gzip.Header
 
 	dec := bg.active.decompressed
 	if dec != nil {
@@ -550,13 +549,10 @@ func (bg *Reader) Read(p []byte) (int, error) {
 	}
 
 	if dec == nil || dec.len() == 0 {
-		h, bg.err = bg.active.reset()
+		dec, bg.err = bg.resetDecompressor()
 		if bg.err != nil {
 			return 0, bg.err
 		}
-		bg.Header = h
-		dec = bg.active.decompressed
-		bg.nextBase = dec.nextBase()
 	}
 
 	var n int
@@ -573,15 +569,22 @@ func (bg *Reader) Read(p []byte) (int, error) {
 				break
 			}
 
-			h, bg.err = bg.active.reset()
+			dec, bg.err = bg.resetDecompressor()
 			if bg.err != nil {
 				break
 			}
-			bg.Header = h
-			dec = bg.active.decompressed
-			bg.nextBase = dec.nextBase()
 		}
 	}
 
 	return n, bg.err
+}
+
+func (bg *Reader) resetDecompressor() (Block, error) {
+	h, err := bg.active.reset()
+	if err != nil {
+		return nil, err
+	}
+	bg.Header = h
+	bg.nextBase = bg.active.decompressed.nextBase()
+	return bg.active.decompressed, nil
 }
