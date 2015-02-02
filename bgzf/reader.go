@@ -39,15 +39,38 @@ type Reader struct {
 type decompressor struct {
 	owner *Reader
 
-	cr *countReader
 	gz *gzip.Reader
 
+	// Underlying Reader.
+	r flate.Reader
+
+	// Positions within underlying data stream
+	offset int64 // Current offset in stream - possibly virtual.
+	mark   int64 // Offset at start of useUnderlying.
+
+	// Buffered compressed data from read ahead.
+	i   int // Current position in buffered data.
+	n   int // Total size of buffered data.
+	buf [MaxBlockSize]byte
+
+	// Decompressed data.
 	decompressed Block
 }
 
+func makeReader(r io.Reader) flate.Reader {
+	switch r := r.(type) {
+	case *decompressor:
+		panic("bgzf: illegal use of internal type")
+	case flate.Reader:
+		return r
+	default:
+		return bufio.NewReader(r)
+	}
+}
+
 func newDecompressor(r io.Reader) (*decompressor, error) {
-	cr := makeReader(r)
-	gz, err := gzip.NewReader(cr)
+	d := &decompressor{r: makeReader(r)}
+	gz, err := gzip.NewReader(d)
 	if err != nil {
 		return nil, err
 	}
@@ -55,11 +78,8 @@ func newDecompressor(r io.Reader) (*decompressor, error) {
 	if bs < 0 {
 		return nil, ErrNoBlockSize
 	}
-	return &decompressor{cr: cr, gz: gz}, nil
-}
-
-func (b *decompressor) header() gzip.Header {
-	return b.gz.Header
+	d.gz = gz
+	return d, nil
 }
 
 // lazyBlock conditionally creates a ready to use Block and returns whether
@@ -80,6 +100,53 @@ func (b *decompressor) lazyBlock() bool {
 	return true
 }
 
+func (b *decompressor) header() gzip.Header {
+	return b.gz.Header
+}
+
+func (b *decompressor) isLimited() bool { return b.n != 0 }
+
+func (b *decompressor) Read(p []byte) (int, error) {
+	var (
+		n   int
+		err error
+	)
+	if b.isLimited() {
+		if b.i >= b.n {
+			return 0, io.EOF
+		}
+		if n := b.n - b.i; len(p) > n {
+			p = p[:n]
+		}
+		n = copy(p, b.buf[b.i:])
+		b.i += n
+	} else {
+		n, err = b.r.Read(p)
+	}
+	b.offset += int64(n)
+	return n, err
+}
+
+func (b *decompressor) ReadByte() (byte, error) {
+	var (
+		c   byte
+		err error
+	)
+	if b.isLimited() {
+		if b.i == b.n {
+			return 0, io.EOF
+		}
+		c = b.buf[b.i]
+		b.i++
+	} else {
+		c, err = b.r.ReadByte()
+	}
+	if err == nil {
+		b.offset++
+	}
+	return c, err
+}
+
 func (b *decompressor) reset() (gzip.Header, error) {
 	needReset := b.lazyBlock()
 
@@ -87,7 +154,7 @@ func (b *decompressor) reset() (gzip.Header, error) {
 		return b.decompressed.header(), nil
 	}
 
-	if needReset && b.cr.offset != b.owner.nextBase {
+	if needReset && b.offset != b.owner.nextBase {
 		// It should not be possible for the expected next block base
 		// to be out of register with the count reader unless Seek
 		// has been called, so we know the base reader must be an
@@ -129,13 +196,13 @@ func (b *decompressor) seek(r io.ReadSeeker, off int64) error {
 	type reseter interface {
 		Reset(io.Reader)
 	}
-	switch cr := b.cr.r.(type) {
+	switch cr := b.r.(type) {
 	case reseter:
 		cr.Reset(r)
 	default:
-		b.cr = makeReader(r)
+		b.r = makeReader(r)
 	}
-	b.cr.offset = off
+	b.offset = off
 
 	return nil
 }
@@ -174,14 +241,28 @@ func (b *decompressor) gotBlockFor(base int64) bool {
 	return false
 }
 
+func (b *decompressor) useUnderlying() { b.n = 0; b.mark = b.offset }
+
+func (b *decompressor) readAhead(n int) error {
+	b.i, b.n = 0, n
+	var err error
+	lr := io.LimitedReader{R: b.r, N: int64(n)}
+	for i, _n := 0, 0; i < n && err == nil; i += _n {
+		_n, err = lr.Read(b.buf[i:])
+	}
+	return err
+}
+
+func (b *decompressor) deltaOffset() int64 { return b.offset - b.mark }
+
 func (b *decompressor) fill(reset bool) (gzip.Header, error) {
 	dec := b.decompressed
 
 	if reset {
-		dec.setBase(b.cr.offset)
+		dec.setBase(b.offset)
 
-		b.cr.useUnderlying()
-		err := b.gz.Reset(b.cr)
+		b.useUnderlying()
+		err := b.gz.Reset(b)
 		bs := expectedBlockSize(b.gz.Header)
 		if err == nil && bs < 0 {
 			err = ErrNoBlockSize
@@ -189,7 +270,7 @@ func (b *decompressor) fill(reset bool) (gzip.Header, error) {
 		if err != nil {
 			return b.gz.Header, err
 		}
-		err = b.cr.readAhead(bs - int(b.cr.deltaOffset()))
+		err = b.readAhead(bs - int(b.deltaOffset()))
 		if err != nil {
 			return b.gz.Header, err
 		}
@@ -382,84 +463,6 @@ func (b *block) beginTx() { b.chunk.Begin = b.chunk.End }
 
 func (b *block) endTx() Chunk { return b.chunk }
 
-func makeReader(r io.Reader) *countReader {
-	switch r := r.(type) {
-	case *countReader:
-		panic("bgzf: illegal use of internal type")
-	case flate.Reader:
-		return &countReader{r: r}
-	default:
-		return &countReader{r: bufio.NewReader(r)}
-	}
-}
-
-type countReader struct {
-	r flate.Reader
-
-	offset int64
-	mark   int64
-
-	i, n int
-	buf  [MaxBlockSize]byte
-}
-
-func (r *countReader) readAhead(n int) error {
-	r.i, r.n = 0, n
-	var err error
-	lr := io.LimitedReader{R: r.r, N: int64(n)}
-	for i, _n := 0, 0; i < n && err == nil; i += _n {
-		_n, err = lr.Read(r.buf[i:])
-	}
-	return err
-}
-
-func (r *countReader) useUnderlying() { r.n = 0; r.mark = r.offset }
-
-func (r *countReader) deltaOffset() int64 { return r.offset - r.mark }
-
-func (r *countReader) isLimited() bool { return r.n != 0 }
-
-func (r *countReader) Read(p []byte) (int, error) {
-	var (
-		n   int
-		err error
-	)
-	if r.isLimited() {
-		if r.i >= r.n {
-			return 0, io.EOF
-		}
-		if n := r.n - r.i; len(p) > n {
-			p = p[:n]
-		}
-		n = copy(p, r.buf[r.i:])
-		r.i += n
-	} else {
-		n, err = r.r.Read(p)
-	}
-	r.offset += int64(n)
-	return n, err
-}
-
-func (r *countReader) ReadByte() (byte, error) {
-	var (
-		b   byte
-		err error
-	)
-	if r.isLimited() {
-		if r.i == r.n {
-			return 0, io.EOF
-		}
-		b = r.buf[r.i]
-		r.i++
-	} else {
-		b, err = r.r.ReadByte()
-	}
-	if err == nil {
-		r.offset++
-	}
-	return b, err
-}
-
 // NewReader returns a new BGZF reader.
 //
 // The number of concurrent read decompressors is specified by
@@ -535,7 +538,7 @@ func (bg *Reader) Read(p []byte) (int, error) {
 		dec.beginTx()
 	} else {
 		bs := expectedBlockSize(bg.Header)
-		bg.err = bg.block.cr.readAhead(bs - int(bg.block.cr.deltaOffset()))
+		bg.err = bg.block.readAhead(bs - int(bg.block.deltaOffset()))
 		if bg.err != nil {
 			return 0, bg.err
 		}
