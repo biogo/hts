@@ -251,6 +251,9 @@ func (d *decompressor) readAhead(n int) error {
 	lr := io.LimitedReader{R: d.r, N: int64(n)}
 	for i, _n := 0, 0; i < n && err == nil; i += _n {
 		_n, err = lr.Read(d.buf[i:])
+		if err != nil {
+			break
+		}
 	}
 	return err
 }
