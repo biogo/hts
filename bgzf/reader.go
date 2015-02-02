@@ -106,7 +106,7 @@ func (d *decompressor) header() gzip.Header {
 	return d.gz.Header
 }
 
-func (d *decompressor) isLimited() bool { return d.n != 0 }
+func (d *decompressor) isBuffered() bool { return d.n != 0 }
 
 // Read provides the Read method for the decompressor's gzip.Reader.
 func (d *decompressor) Read(p []byte) (int, error) {
@@ -114,7 +114,7 @@ func (d *decompressor) Read(p []byte) (int, error) {
 		n   int
 		err error
 	)
-	if d.isLimited() {
+	if d.isBuffered() {
 		if d.i >= d.n {
 			return 0, io.EOF
 		}
@@ -136,7 +136,7 @@ func (d *decompressor) ReadByte() (byte, error) {
 		b   byte
 		err error
 	)
-	if d.isLimited() {
+	if d.isBuffered() {
 		if d.i == d.n {
 			return 0, io.EOF
 		}
