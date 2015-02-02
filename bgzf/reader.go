@@ -285,8 +285,7 @@ func (d *decompressor) fill(reset bool) error {
 
 	dec.setHeader(d.gz.Header)
 	d.gz.Multistream(false)
-	_, err := dec.readFrom(d.gz)
-	return err
+	return dec.readFrom(d.gz)
 }
 
 func expectedBlockSize(h gzip.Header) int {
