@@ -281,9 +281,6 @@ func (d *decompressor) readAhead() error {
 	lr := io.LimitedReader{R: d.r, N: int64(n)}
 	for i, _n := 0, 0; i < n && err == nil; i += _n {
 		_n, err = lr.Read(d.buf[i:])
-		if err != nil {
-			break
-		}
 	}
 	return err
 }
@@ -305,7 +302,6 @@ func (d *decompressor) fill(reset bool) error {
 		if err != nil {
 			return err
 		}
-
 		err = d.readAhead()
 		if err != nil {
 			return err
@@ -333,6 +329,10 @@ func expectedBlockSize(h gzip.Header) int {
 // rd (currently ignored).
 func NewReader(r io.Reader, rd int) (*Reader, error) {
 	d, err := newDecompressor().init(makeReader(r))
+	if err != nil {
+		return nil, err
+	}
+	err = d.readAhead()
 	if err != nil {
 		return nil, err
 	}
@@ -398,14 +398,6 @@ func (bg *Reader) Read(p []byte) (int, error) {
 	}
 
 	dec := bg.active.decompressed
-	if dec != nil {
-		dec.beginTx()
-	} else {
-		bg.err = bg.active.readAhead()
-		if bg.err != nil {
-			return 0, bg.err
-		}
-	}
 
 	if dec == nil || dec.len() == 0 {
 		dec, bg.err = bg.resetDecompressor()
@@ -413,6 +405,8 @@ func (bg *Reader) Read(p []byte) (int, error) {
 			return 0, bg.err
 		}
 	}
+
+	dec.beginTx()
 
 	var n int
 	for n < len(p) && bg.err == nil {
