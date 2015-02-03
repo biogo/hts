@@ -44,6 +44,9 @@ type decompressor struct {
 	// Underlying Reader.
 	r flate.Reader
 
+	// Current block size.
+	blockSize int
+
 	// Positions within underlying data stream
 	offset int64 // Current offset in stream - possibly virtual.
 	mark   int64 // Offset at start of useUnderlying.
@@ -72,16 +75,19 @@ func makeReader(r io.Reader) flate.Reader {
 
 func newDecompressor() *decompressor { return &decompressor{} }
 
-func (d *decompressor) init(r io.Reader) (*decompressor, error) {
-	d.r = makeReader(r)
-	d.err = d.gz.Reset(d)
-	if d.err != nil {
-		return d, d.err
+func (d *decompressor) init(r flate.Reader) (*decompressor, error) {
+	d.r = r
+	d.useUnderlying()
+	err := d.gz.Reset(d)
+	if err != nil {
+		d.blockSize = -1
+		return d, err
 	}
-	if expectedBlockSize(d.gz.Header) < 0 {
-		d.err = ErrNoBlockSize
+	d.blockSize = expectedBlockSize(d.gz.Header)
+	if d.blockSize < 0 {
+		err = ErrNoBlockSize
 	}
-	return d, d.err
+	return d, err
 }
 
 // lazyBlock conditionally creates a ready to use Block and returns whether
@@ -247,7 +253,9 @@ func (d *decompressor) gotBlockFor(base int64) bool {
 
 func (d *decompressor) useUnderlying() { d.n = 0; d.mark = d.offset }
 
-func (d *decompressor) readAhead(n int) error {
+func (d *decompressor) readAhead() error {
+	n := d.blockSize - d.deltaOffset()
+
 	d.i, d.n = 0, n
 	var err error
 	lr := io.LimitedReader{R: d.r, N: int64(n)}
@@ -260,7 +268,7 @@ func (d *decompressor) readAhead(n int) error {
 	return err
 }
 
-func (d *decompressor) deltaOffset() int64 { return d.offset - d.mark }
+func (d *decompressor) deltaOffset() int { return int(d.offset - d.mark) }
 
 func (d *decompressor) fill(reset bool) error {
 	dec := d.decompressed
@@ -268,16 +276,12 @@ func (d *decompressor) fill(reset bool) error {
 	if reset {
 		dec.setBase(d.offset)
 
-		d.useUnderlying()
-		err := d.gz.Reset(d)
-		bs := expectedBlockSize(d.gz.Header)
-		if err == nil && bs < 0 {
-			err = ErrNoBlockSize
-		}
+		_, err := d.init(d.r)
 		if err != nil {
 			return err
 		}
-		err = d.readAhead(bs - int(d.deltaOffset()))
+
+		err = d.readAhead()
 		if err != nil {
 			return err
 		}
@@ -301,7 +305,7 @@ func expectedBlockSize(h gzip.Header) int {
 // The number of concurrent read decompressors is specified by
 // rd (currently ignored).
 func NewReader(r io.Reader, rd int) (*Reader, error) {
-	d, err := newDecompressor().init(r)
+	d, err := newDecompressor().init(makeReader(r))
 	if err != nil {
 		return nil, err
 	}
@@ -370,8 +374,7 @@ func (bg *Reader) Read(p []byte) (int, error) {
 	if dec != nil {
 		dec.beginTx()
 	} else {
-		bs := expectedBlockSize(bg.Header)
-		bg.err = bg.active.readAhead(bs - int(bg.active.deltaOffset()))
+		bg.err = bg.active.readAhead()
 		if bg.err != nil {
 			return 0, bg.err
 		}
