@@ -39,7 +39,7 @@ type Reader struct {
 type decompressor struct {
 	owner *Reader
 
-	gz *gzip.Reader
+	gz gzip.Reader
 
 	// Underlying Reader.
 	r flate.Reader
@@ -70,18 +70,18 @@ func makeReader(r io.Reader) flate.Reader {
 	}
 }
 
-func newDecompressor(r io.Reader) (*decompressor, error) {
-	d := &decompressor{r: makeReader(r)}
-	gz, err := gzip.NewReader(d)
-	if err != nil {
-		return nil, err
+func newDecompressor() *decompressor { return &decompressor{} }
+
+func (d *decompressor) init(r io.Reader) (*decompressor, error) {
+	d.r = makeReader(r)
+	d.err = d.gz.Reset(d)
+	if d.err != nil {
+		return d, d.err
 	}
-	bs := expectedBlockSize(gz.Header)
-	if bs < 0 {
-		return nil, ErrNoBlockSize
+	if expectedBlockSize(d.gz.Header) < 0 {
+		d.err = ErrNoBlockSize
 	}
-	d.gz = gz
-	return d, nil
+	return d, d.err
 }
 
 // lazyBlock conditionally creates a ready to use Block and returns whether
@@ -285,7 +285,7 @@ func (d *decompressor) fill(reset bool) error {
 
 	dec.setHeader(d.gz.Header)
 	d.gz.Multistream(false)
-	return dec.readFrom(d.gz)
+	return dec.readFrom(&d.gz)
 }
 
 func expectedBlockSize(h gzip.Header) int {
@@ -301,7 +301,7 @@ func expectedBlockSize(h gzip.Header) int {
 // The number of concurrent read decompressors is specified by
 // rd (currently ignored).
 func NewReader(r io.Reader, rd int) (*Reader, error) {
-	d, err := newDecompressor(r)
+	d, err := newDecompressor().init(r)
 	if err != nil {
 		return nil, err
 	}
