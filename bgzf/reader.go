@@ -75,6 +75,7 @@ func makeReader(r io.Reader) flate.Reader {
 
 func newDecompressor() *decompressor { return &decompressor{} }
 
+// init initialises a decompressor to use the provided flate.Reader.
 func (d *decompressor) init(r flate.Reader) (*decompressor, error) {
 	d.r = r
 	d.useUnderlying()
@@ -108,10 +109,12 @@ func (d *decompressor) lazyBlock() bool {
 	return true
 }
 
+// header returns the current gzip header.
 func (d *decompressor) header() gzip.Header {
 	return d.gz.Header
 }
 
+// isBuffered returns whether the decompressor has buffered compressed data.
 func (d *decompressor) isBuffered() bool { return d.n != 0 }
 
 // Read provides the Read method for the decompressor's gzip.Reader.
@@ -157,6 +160,11 @@ func (d *decompressor) ReadByte() (byte, error) {
 	return b, err
 }
 
+// reset makes the decompressor ready for reading decompressed data
+// from its Block. It checks if there is a cached Block for the nextBase,
+// otherwise it seeks to the correct location if decompressor is not
+// correctly positioned, and then reads the compressed data and fills
+// the decompressed Block.
 func (d *decompressor) reset() {
 	needReset := d.lazyBlock()
 
@@ -178,6 +186,10 @@ func (d *decompressor) reset() {
 	d.err = d.fill(needReset)
 }
 
+// seekRead is the seeking equivalent of reset. It checks if the seek
+// is within the current Block and if not whether the seeked Block is
+// cached, returning successfully if either is true. Otherwise it seeks
+// to the offset and fills the decompressed Block.
 func (d *decompressor) seekRead(r io.ReadSeeker, off int64) {
 	d.lazyBlock()
 
@@ -197,6 +209,8 @@ func (d *decompressor) seekRead(r io.ReadSeeker, off int64) {
 	d.err = d.fill(true)
 }
 
+// seek moves the decompressor to the specified offset using r as the
+// underlying reader.
 func (d *decompressor) seek(r io.ReadSeeker, off int64) error {
 	_, err := r.Seek(off, 0)
 	if err != nil {
@@ -251,8 +265,14 @@ func (d *decompressor) gotBlockFor(base int64) bool {
 	return false
 }
 
+// useUnderlying set the decompressor to Read from the underlying flate.Reader.
+// It marks the offset at from where the underlying reader has been used.
 func (d *decompressor) useUnderlying() { d.n = 0; d.mark = d.offset }
 
+// readAhead reads compressed data into the decompressor buffer. It reads until
+// the underlying flate.Reader is positioned at the end of the gzip member in
+// which the readAhead call was made. readAhead should not be called unless the
+// decompressor has had init called successfully.
 func (d *decompressor) readAhead() error {
 	n := d.blockSize - d.deltaOffset()
 
@@ -268,8 +288,13 @@ func (d *decompressor) readAhead() error {
 	return err
 }
 
+// deltaOffset returns the number of bytes read since the last call to
+// useUnderlying.
 func (d *decompressor) deltaOffset() int { return int(d.offset - d.mark) }
 
+// fill decompresses data into the decompressor's Block. If reset is true
+// it first initialises the decompressor using its current flate.Reader
+// and buffers the compressed data.
 func (d *decompressor) fill(reset bool) error {
 	dec := d.decompressed
 
@@ -292,6 +317,8 @@ func (d *decompressor) fill(reset bool) error {
 	return dec.readFrom(&d.gz)
 }
 
+// expectedBlock size returns the size of the BGZF conformant gzip member.
+// It returns -1 if no BGZF block size field is found.
 func expectedBlockSize(h gzip.Header) int {
 	i := bytes.Index(h.Extra, bgzfExtraPrefix)
 	if i < 0 || i+5 >= len(h.Extra) {
