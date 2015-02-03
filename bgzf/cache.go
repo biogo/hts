@@ -84,13 +84,8 @@ type Block interface {
 	// member that the Block data was decompressed from.
 	setHeader(gzip.Header)
 
-	// beginTx marks the chunk beginning for a set
-	// of reads.
-	beginTx()
-
-	// endTx returns the Chunk describing the chunk
-	// the block read by a set of reads.
-	endTx() Chunk
+	// txOffset returns the current vitual offset.
+	txOffset() Offset
 }
 
 type block struct {
@@ -100,7 +95,7 @@ type block struct {
 	base int64
 	h    gzip.Header
 
-	chunk Chunk
+	offset Offset
 
 	buf  *bytes.Reader
 	data [MaxBlockSize]byte
@@ -112,7 +107,7 @@ func (b *block) Used() bool { return b.used }
 
 func (b *block) Read(p []byte) (int, error) {
 	n, err := b.buf.Read(p)
-	b.chunk.End.Block += uint16(n)
+	b.offset.Block += uint16(n)
 	if n > 0 {
 		b.used = true
 	}
@@ -135,8 +130,7 @@ func (b *block) readFrom(r io.Reader) error {
 func (b *block) seek(offset int64) error {
 	_, err := b.buf.Seek(offset, 0)
 	if err == nil {
-		b.chunk.Begin.Block = uint16(offset)
-		b.chunk.End.Block = uint16(offset)
+		b.offset.Block = uint16(offset)
 	}
 	return err
 }
@@ -150,7 +144,7 @@ func (b *block) len() int {
 
 func (b *block) setBase(n int64) {
 	b.base = n
-	b.chunk = Chunk{Begin: Offset{File: n}, End: Offset{File: n}}
+	b.offset = Offset{File: n}
 }
 
 func (b *block) nextBase() int64 {
@@ -170,7 +164,7 @@ func (b *block) setOwner(r *Reader) {
 	b.used = false
 	b.base = -1
 	b.h = gzip.Header{}
-	b.chunk = Chunk{}
+	b.offset = Offset{}
 	b.buf = nil
 }
 
@@ -178,6 +172,4 @@ func (b *block) ownedBy(r *Reader) bool { return b.owner == r }
 
 func (b *block) hasData() bool { return b.buf != nil }
 
-func (b *block) beginTx() { b.chunk.Begin = b.chunk.End }
-
-func (b *block) endTx() Chunk { return b.chunk }
+func (b *block) txOffset() Offset { return b.offset }

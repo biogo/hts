@@ -406,14 +406,14 @@ func (bg *Reader) Read(p []byte) (int, error) {
 		}
 	}
 
-	dec.beginTx()
+	bg.lastChunk.Begin = dec.txOffset()
 
 	var n int
 	for n < len(p) && bg.err == nil {
 		var _n int
 		_n, bg.err = dec.Read(p[n:])
 		if _n > 0 {
-			bg.lastChunk = dec.endTx()
+			bg.lastChunk.End = dec.txOffset()
 		}
 		n += _n
 		if bg.err == io.EOF {
