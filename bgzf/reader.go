@@ -41,15 +41,11 @@ type decompressor struct {
 
 	gz gzip.Reader
 
-	// Underlying Reader.
-	r flate.Reader
+	cr   *countReader
+	mark int64 // Offset at start of useUnderlying.
 
 	// Current block size.
 	blockSize int
-
-	// Positions within underlying data stream
-	offset int64 // Offset of last read in underlying reader.
-	mark   int64 // Offset at start of useUnderlying.
 
 	// Buffered compressed data from read ahead.
 	i   int // Current position in buffered data.
@@ -62,22 +58,73 @@ type decompressor struct {
 	err error
 }
 
-func makeReader(r io.Reader) flate.Reader {
+// countReader wraps flate.Reader, adding support for querying current offset.
+type countReader struct {
+	// Underlying Reader.
+	fr flate.Reader
+
+	// Offset within the underlying reader.
+	off int64
+}
+
+// newCountReader returns a new countReader.
+func newCountReader(r io.Reader) *countReader {
 	switch r := r.(type) {
-	case *decompressor:
+	case *countReader:
 		panic("bgzf: illegal use of internal type")
 	case flate.Reader:
-		return r
+		return &countReader{fr: r}
 	default:
-		return bufio.NewReader(r)
+		return &countReader{fr: bufio.NewReader(r)}
 	}
+}
+
+// Read is required to satisfy flate.Reader.
+func (r *countReader) Read(p []byte) (int, error) {
+	n, err := r.fr.Read(p)
+	r.off += int64(n)
+	return n, err
+}
+
+// ReadByte is required to satisfy flate.Reader.
+func (r *countReader) ReadByte() (byte, error) {
+	b, err := r.fr.ReadByte()
+	if err == nil {
+		r.off++
+	}
+	return b, err
+}
+
+// offset returns the current offset in the underlying reader.
+func (r *countReader) offset() int64 { return r.off }
+
+// seek moves the countReader to the specified offset using rs as the
+// underlying reader.
+func (r *countReader) seek(rs io.ReadSeeker, off int64) error {
+	_, err := rs.Seek(off, 0)
+	if err != nil {
+		return err
+	}
+
+	type reseter interface {
+		Reset(io.Reader)
+	}
+	switch cr := r.fr.(type) {
+	case reseter:
+		cr.Reset(rs)
+	default:
+		r.fr = newCountReader(rs)
+	}
+	r.off = off
+
+	return nil
 }
 
 func newDecompressor() *decompressor { return &decompressor{} }
 
 // init initialises a decompressor to use the provided flate.Reader.
-func (d *decompressor) init(r flate.Reader) (*decompressor, error) {
-	d.r = r
+func (d *decompressor) init(cr *countReader) (*decompressor, error) {
+	d.cr = cr
 	d.useUnderlying()
 	err := d.gz.Reset(d)
 	if err != nil {
@@ -133,8 +180,7 @@ func (d *decompressor) Read(p []byte) (int, error) {
 		n = copy(p, d.buf[d.i:])
 		d.i += n
 	} else {
-		n, err = d.r.Read(p)
-		d.offset += int64(n)
+		n, err = d.cr.Read(p)
 	}
 	return n, err
 }
@@ -152,10 +198,7 @@ func (d *decompressor) ReadByte() (byte, error) {
 		b = d.buf[d.i]
 		d.i++
 	} else {
-		b, err = d.r.ReadByte()
-		if err == nil {
-			d.offset++
-		}
+		b, err = d.cr.ReadByte()
 	}
 	return b, err
 }
@@ -172,12 +215,12 @@ func (d *decompressor) reset() {
 		return
 	}
 
-	if needReset && d.offset != d.owner.nextBase {
+	if needReset && d.cr.offset() != d.owner.nextBase {
 		// It should not be possible for the expected next block base
 		// to be out of register with the count reader unless Seek
 		// has been called, so we know the base reader must be an
 		// io.ReadSeeker.
-		d.err = d.seek(d.owner.r.(io.ReadSeeker), d.owner.nextBase)
+		d.err = d.cr.seek(d.owner.r.(io.ReadSeeker), d.owner.nextBase)
 		if d.err != nil {
 			return
 		}
@@ -201,34 +244,12 @@ func (d *decompressor) seekRead(r io.ReadSeeker, off int64) {
 		return
 	}
 
-	d.err = d.seek(r, off)
+	d.err = d.cr.seek(r, off)
 	if d.err != nil {
 		return
 	}
 
 	d.err = d.fill(true)
-}
-
-// seek moves the decompressor to the specified offset using r as the
-// underlying reader.
-func (d *decompressor) seek(r io.ReadSeeker, off int64) error {
-	_, err := r.Seek(off, 0)
-	if err != nil {
-		return err
-	}
-
-	type reseter interface {
-		Reset(io.Reader)
-	}
-	switch cr := d.r.(type) {
-	case reseter:
-		cr.Reset(r)
-	default:
-		d.r = makeReader(r)
-	}
-	d.offset = off
-
-	return nil
 }
 
 // gotBlockFor returns true if the decompressor has access to a cache
@@ -267,7 +288,7 @@ func (d *decompressor) gotBlockFor(base int64) bool {
 
 // useUnderlying set the decompressor to Read from the underlying flate.Reader.
 // It marks the offset at from where the underlying reader has been used.
-func (d *decompressor) useUnderlying() { d.n = 0; d.mark = d.offset }
+func (d *decompressor) useUnderlying() { d.n = 0; d.mark = d.cr.offset() }
 
 // readAhead reads compressed data into the decompressor buffer. It reads until
 // the underlying flate.Reader is positioned at the end of the gzip member in
@@ -276,14 +297,13 @@ func (d *decompressor) useUnderlying() { d.n = 0; d.mark = d.offset }
 func (d *decompressor) readAhead() error {
 	d.i = 0
 	var err error
-	d.n, err = io.ReadFull(d.r, d.buf[:d.blockSize-d.deltaOffset()])
-	d.offset += int64(d.n)
+	d.n, err = io.ReadFull(d.cr, d.buf[:d.blockSize-d.deltaOffset()])
 	return err
 }
 
 // deltaOffset returns the number of bytes read since the last call to
 // useUnderlying.
-func (d *decompressor) deltaOffset() int { return int(d.offset - d.mark) }
+func (d *decompressor) deltaOffset() int { return int(d.cr.offset() - d.mark) }
 
 // fill decompresses data into the decompressor's Block. If reset is true
 // it first initialises the decompressor using its current flate.Reader
@@ -292,9 +312,9 @@ func (d *decompressor) fill(reset bool) error {
 	dec := d.decompressed
 
 	if reset {
-		dec.setBase(d.offset)
+		dec.setBase(d.cr.offset())
 
-		_, err := d.init(d.r)
+		_, err := d.init(d.cr)
 		if err != nil {
 			return err
 		}
@@ -324,7 +344,7 @@ func expectedBlockSize(h gzip.Header) int {
 // The number of concurrent read decompressors is specified by
 // rd (currently ignored).
 func NewReader(r io.Reader, rd int) (*Reader, error) {
-	d, err := newDecompressor().init(makeReader(r))
+	d, err := newDecompressor().init(newCountReader(r))
 	if err != nil {
 		return nil, err
 	}
