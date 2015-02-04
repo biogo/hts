@@ -48,8 +48,9 @@ type decompressor struct {
 	blockSize int
 
 	// Positions within underlying data stream
-	offset int64 // Current offset in stream - possibly virtual.
-	mark   int64 // Offset at start of useUnderlying.
+	srcOffset int64 // Offset of last read in underlying reader.
+	offset    int64 // Current offset in stream - possibly virtual.
+	mark      int64 // Offset at start of useUnderlying.
 
 	// Buffered compressed data from read ahead.
 	i   int // Current position in buffered data.
@@ -134,6 +135,7 @@ func (d *decompressor) Read(p []byte) (int, error) {
 		d.i += n
 	} else {
 		n, err = d.r.Read(p)
+		d.srcOffset += int64(n)
 	}
 	d.offset += int64(n)
 	return n, err
@@ -153,6 +155,7 @@ func (d *decompressor) ReadByte() (byte, error) {
 		d.i++
 	} else {
 		b, err = d.r.ReadByte()
+		d.srcOffset++
 	}
 	if err == nil {
 		d.offset++
@@ -172,7 +175,7 @@ func (d *decompressor) reset() {
 		return
 	}
 
-	if needReset && d.offset != d.owner.nextBase {
+	if needReset && d.srcOffset != d.owner.nextBase {
 		// It should not be possible for the expected next block base
 		// to be out of register with the count reader unless Seek
 		// has been called, so we know the base reader must be an
@@ -227,6 +230,7 @@ func (d *decompressor) seek(r io.ReadSeeker, off int64) error {
 		d.r = makeReader(r)
 	}
 	d.offset = off
+	d.srcOffset = off
 
 	return nil
 }
@@ -279,7 +283,7 @@ func (d *decompressor) readAhead() error {
 	d.i, d.n = 0, n
 	var err error
 	lr := io.LimitedReader{R: d.r, N: int64(n)}
-	for i, _n := 0, 0; i < n && err == nil; i += _n {
+	for i, _n := 0, 0; i < n && err == nil; i, d.srcOffset = i+_n, d.srcOffset+int64(_n) {
 		_n, err = lr.Read(d.buf[i:])
 	}
 	return err
