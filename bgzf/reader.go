@@ -274,14 +274,10 @@ func (d *decompressor) useUnderlying() { d.n = 0; d.mark = d.offset }
 // which the readAhead call was made. readAhead should not be called unless the
 // decompressor has had init called successfully.
 func (d *decompressor) readAhead() error {
-	n := d.blockSize - d.deltaOffset()
-
-	d.i, d.n = 0, n
+	d.i = 0
 	var err error
-	lr := io.LimitedReader{R: d.r, N: int64(n)}
-	for i, _n := 0, 0; i < n && err == nil; i, d.offset = i+_n, d.offset+int64(_n) {
-		_n, err = lr.Read(d.buf[i:])
-	}
+	d.n, err = io.ReadFull(d.r, d.buf[:d.blockSize-d.deltaOffset()])
+	d.offset += int64(d.n)
 	return err
 }
 
