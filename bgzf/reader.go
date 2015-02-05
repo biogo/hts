@@ -427,13 +427,13 @@ func (bg *Reader) Read(p []byte) (int, error) {
 
 	if dec == nil {
 		bg.active.lazyBlock()
-		bg.err = bg.active.decompressed.readFrom(&bg.active.gz)
+		dec = bg.active.decompressed
+		bg.err = dec.readFrom(&bg.active.gz)
 		if bg.err != nil {
 			return 0, bg.err
 		}
-		bg.active.decompressed.setHeader(bg.active.gz.Header)
-		bg.nextBase = bg.active.decompressed.nextBase()
-		dec = bg.active.decompressed
+		dec.setHeader(bg.active.gz.Header)
+		bg.nextBase = dec.nextBase()
 	}
 
 	for dec.len() == 0 {
