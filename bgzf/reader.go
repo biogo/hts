@@ -157,22 +157,19 @@ func (d *decompressor) releaseHead() {
 	d.cr = nil // Defensively zero the reader.
 }
 
-// lazyBlock conditionally creates a ready to use Block and returns whether
-// the Block subsequently held by the decompressor needs to be reset before
-// being filled.
-func (d *decompressor) lazyBlock() bool {
+// lazyBlock conditionally creates a ready to use Block.
+func (d *decompressor) lazyBlock() {
 	if d.decompressed == nil {
 		if w, ok := d.owner.Cache.(Wrapper); ok {
 			d.decompressed = w.Wrap(&block{owner: d.owner})
 		} else {
 			d.decompressed = &block{owner: d.owner}
 		}
-		return false
+		return
 	}
 	if !d.decompressed.ownedBy(d.owner) {
 		d.decompressed.setOwner(d.owner)
 	}
-	return true
 }
 
 // isBuffered returns whether the decompressor has buffered compressed data.
@@ -223,14 +220,14 @@ func (d *decompressor) ReadByte() (byte, error) {
 // correctly positioned, and then reads the compressed data and fills
 // the decompressed Block.
 func (d *decompressor) reset() {
-	needReset := d.lazyBlock()
+	d.lazyBlock()
 
 	if d.gotBlockFor(d.owner.nextBase) {
 		return
 	}
 
 	d.acquireHead()
-	if needReset && d.cr.offset() != d.owner.nextBase {
+	if d.cr.offset() != d.owner.nextBase {
 		// It should not be possible for the expected next block base
 		// to be out of register with the count reader unless Seek
 		// has been called, so we know the base reader must be an
@@ -242,7 +239,7 @@ func (d *decompressor) reset() {
 		}
 	}
 
-	d.err = d.fill(needReset)
+	d.err = d.fill()
 }
 
 // seekRead is the seeking equivalent of reset. It checks if the seek
@@ -267,7 +264,7 @@ func (d *decompressor) seekRead(r io.ReadSeeker, off int64) {
 		return
 	}
 
-	d.err = d.fill(true)
+	d.err = d.fill()
 }
 
 // gotBlockFor returns true if the decompressor has access to a cache
@@ -323,20 +320,14 @@ func (d *decompressor) readAhead() error {
 // useUnderlying.
 func (d *decompressor) deltaOffset() int { return int(d.cr.offset() - d.mark) }
 
-// fill decompresses data into the decompressor's Block. If reset is true
-// it first initialises the decompressor using its current flate.Reader
-// and buffers the compressed data.
-func (d *decompressor) fill(reset bool) error {
+// fill decompresses data into the decompressor's Block.
+func (d *decompressor) fill() error {
 	dec := d.decompressed
 
-	if !reset {
-		d.releaseHead()
-	} else {
-		dec.setBase(d.cr.offset())
-		_, err := d.init(d.cr)
-		if err != nil {
-			return err
-		}
+	dec.setBase(d.cr.offset())
+	_, err := d.init(d.cr)
+	if err != nil {
+		return err
 	}
 
 	dec.setHeader(d.gz.Header)
