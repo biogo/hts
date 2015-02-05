@@ -17,6 +17,10 @@ type Reader struct {
 	gzip.Header
 	r io.Reader
 
+	// head serialises access to the underlying
+	// io.Reader.
+	head chan *countReader
+
 	// lastChunk is the virtual file offset
 	// interval of the last successful read
 	// or seek operation.
@@ -138,6 +142,17 @@ func (d *decompressor) init(cr *countReader) (*decompressor, error) {
 	return d, err
 }
 
+// acquireHead gains the read head from the decompressor's owner.
+func (d *decompressor) acquireHead() {
+	d.cr = <-d.owner.head
+}
+
+// releaseHead releases the read head back to the decompressor's owner.
+func (d *decompressor) releaseHead() {
+	d.owner.head <- d.cr
+	d.cr = nil // Defensively zero the reader.
+}
+
 // lazyBlock conditionally creates a ready to use Block and returns whether
 // the Block subsequently held by the decompressor needs to be reset before
 // being filled.
@@ -215,6 +230,7 @@ func (d *decompressor) reset() {
 		return
 	}
 
+	d.acquireHead()
 	if needReset && d.cr.offset() != d.owner.nextBase {
 		// It should not be possible for the expected next block base
 		// to be out of register with the count reader unless Seek
@@ -222,6 +238,7 @@ func (d *decompressor) reset() {
 		// io.ReadSeeker.
 		d.err = d.cr.seek(d.owner.r.(io.ReadSeeker), d.owner.nextBase)
 		if d.err != nil {
+			d.releaseHead()
 			return
 		}
 	}
@@ -244,8 +261,10 @@ func (d *decompressor) seekRead(r io.ReadSeeker, off int64) {
 		return
 	}
 
+	d.acquireHead()
 	d.err = d.cr.seek(r, off)
 	if d.err != nil {
+		d.releaseHead()
 		return
 	}
 
@@ -311,14 +330,18 @@ func (d *decompressor) deltaOffset() int { return int(d.cr.offset() - d.mark) }
 func (d *decompressor) fill(reset bool) error {
 	dec := d.decompressed
 
-	if reset {
+	if !reset {
+		d.releaseHead()
+	} else {
 		dec.setBase(d.cr.offset())
 
 		_, err := d.init(d.cr)
 		if err != nil {
+			d.releaseHead()
 			return err
 		}
 		err = d.readAhead()
+		d.releaseHead()
 		if err != nil {
 			return err
 		}
@@ -348,16 +371,19 @@ func NewReader(r io.Reader, rd int) (*Reader, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = d.readAhead()
-	if err != nil {
-		return nil, err
-	}
 	bg := &Reader{
 		Header: d.header(),
 		r:      r,
 		active: d,
+		head:   make(chan *countReader, 1),
 	}
 	d.owner = bg
+	err = d.readAhead()
+	d.releaseHead()
+	if err != nil {
+		return nil, err
+	}
+
 	return bg, nil
 }
 
@@ -415,7 +441,20 @@ func (bg *Reader) Read(p []byte) (int, error) {
 
 	dec := bg.active.decompressed
 
-	if dec == nil || dec.len() == 0 {
+	if dec == nil {
+		bg.active.lazyBlock()
+		bg.Header = bg.active.header()
+		bg.active.gz.Multistream(false)
+		bg.err = bg.active.decompressed.readFrom(&bg.active.gz)
+		if bg.err != nil {
+			return 0, bg.err
+		}
+		bg.active.decompressed.setHeader(bg.active.gz.Header)
+		bg.nextBase = bg.active.decompressed.nextBase()
+		dec = bg.active.decompressed
+	}
+
+	if dec.len() == 0 {
 		dec, bg.err = bg.resetDecompressor()
 		if bg.err != nil {
 			return 0, bg.err

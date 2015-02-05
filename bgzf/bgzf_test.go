@@ -598,20 +598,20 @@ func TestCache(t *testing.T) {
 			expectedStats: []cache.Stats{
 				{}, // nil cache.
 				{}, // nil cache: LRU(0)
-				{Gets: 8, Misses: 8, Puts: 7, Retains: 7, Evictions: 6}, // LRU(1)
-				{Gets: 8, Misses: 5, Puts: 7, Retains: 7, Evictions: 0}, // LRU(5)
-				{Gets: 8, Misses: 5, Puts: 7, Retains: 7, Evictions: 0}, // LRU(10)
-				{Gets: 8, Misses: 5, Puts: 7, Retains: 7, Evictions: 0}, // LRU(11)
+				{Gets: 7, Misses: 7, Puts: 7, Retains: 7, Evictions: 6}, // LRU(1)
+				{Gets: 7, Misses: 4, Puts: 7, Retains: 7, Evictions: 0}, // LRU(5)
+				{Gets: 7, Misses: 4, Puts: 7, Retains: 7, Evictions: 0}, // LRU(10)
+				{Gets: 7, Misses: 4, Puts: 7, Retains: 7, Evictions: 0}, // LRU(11)
 				{}, // nil cache: FIFO(0)
-				{Gets: 8, Misses: 8, Puts: 7, Retains: 7, Evictions: 6}, // FIFO(1)
-				{Gets: 8, Misses: 5, Puts: 7, Retains: 4, Evictions: 0}, // FIFO(5)
-				{Gets: 8, Misses: 5, Puts: 7, Retains: 4, Evictions: 0}, // FIFO(10)
-				{Gets: 8, Misses: 5, Puts: 7, Retains: 4, Evictions: 0}, // FIFO(11)
+				{Gets: 7, Misses: 7, Puts: 7, Retains: 7, Evictions: 6}, // FIFO(1)
+				{Gets: 7, Misses: 4, Puts: 7, Retains: 4, Evictions: 0}, // FIFO(5)
+				{Gets: 7, Misses: 4, Puts: 7, Retains: 4, Evictions: 0}, // FIFO(10)
+				{Gets: 7, Misses: 4, Puts: 7, Retains: 4, Evictions: 0}, // FIFO(11)
 				{}, // nil cache: Random(0)
-				{Gets: 8, Misses: 8, Puts: 7, Retains: 7, Evictions: 6}, // Random(1)
-				{Gets: 8, Misses: 5, Puts: 7, Retains: 7, Evictions: 0}, // Random(5)
-				{Gets: 8, Misses: 5, Puts: 7, Retains: 7, Evictions: 0}, // Random(10)
-				{Gets: 8, Misses: 5, Puts: 7, Retains: 7, Evictions: 0}, // Random(11)
+				{Gets: 7, Misses: 7, Puts: 7, Retains: 7, Evictions: 6}, // Random(1)
+				{Gets: 7, Misses: 4, Puts: 7, Retains: 7, Evictions: 0}, // Random(5)
+				{Gets: 7, Misses: 4, Puts: 7, Retains: 7, Evictions: 0}, // Random(10)
+				{Gets: 7, Misses: 4, Puts: 7, Retains: 7, Evictions: 0}, // Random(11)
 			},
 		},
 		{
@@ -628,20 +628,20 @@ func TestCache(t *testing.T) {
 			expectedStats: []cache.Stats{
 				{}, // nil cache.
 				{}, // nil cache.
-				{Gets: 8, Misses: 6, Puts: 7, Retains: 7, Evictions: 4}, // LRU(1)
-				{Gets: 8, Misses: 6, Puts: 7, Retains: 7, Evictions: 0}, // LRU(5)
-				{Gets: 8, Misses: 6, Puts: 7, Retains: 7, Evictions: 0}, // LRU(10)
-				{Gets: 8, Misses: 6, Puts: 7, Retains: 7, Evictions: 0}, // LRU(11)
+				{Gets: 7, Misses: 5, Puts: 7, Retains: 7, Evictions: 4}, // LRU(1)
+				{Gets: 7, Misses: 5, Puts: 7, Retains: 7, Evictions: 0}, // LRU(5)
+				{Gets: 7, Misses: 5, Puts: 7, Retains: 7, Evictions: 0}, // LRU(10)
+				{Gets: 7, Misses: 5, Puts: 7, Retains: 7, Evictions: 0}, // LRU(11)
 				{}, // nil cache: FIFO(0)
-				{Gets: 8, Misses: 6, Puts: 7, Retains: 7, Evictions: 6}, // FIFO(1)
-				{Gets: 8, Misses: 6, Puts: 7, Retains: 5, Evictions: 0}, // FIFO(5)
-				{Gets: 8, Misses: 6, Puts: 7, Retains: 5, Evictions: 0}, // FIFO(10)
-				{Gets: 8, Misses: 6, Puts: 7, Retains: 5, Evictions: 0}, // FIFO(11)
+				{Gets: 7, Misses: 5, Puts: 7, Retains: 7, Evictions: 6}, // FIFO(1)
+				{Gets: 7, Misses: 5, Puts: 7, Retains: 5, Evictions: 0}, // FIFO(5)
+				{Gets: 7, Misses: 5, Puts: 7, Retains: 5, Evictions: 0}, // FIFO(10)
+				{Gets: 7, Misses: 5, Puts: 7, Retains: 5, Evictions: 0}, // FIFO(11)
 				{}, // nil cache: Random(0)
-				{Gets: 8, Misses: 6, Puts: 7, Retains: 7, Evictions: 4}, // Random(1)
-				{Gets: 8, Misses: 6, Puts: 7, Retains: 7, Evictions: 0}, // Random(5)
-				{Gets: 8, Misses: 6, Puts: 7, Retains: 7, Evictions: 0}, // Random(10)
-				{Gets: 8, Misses: 6, Puts: 7, Retains: 7, Evictions: 0}, // Random(11)
+				{Gets: 7, Misses: 5, Puts: 7, Retains: 7, Evictions: 4}, // Random(1)
+				{Gets: 7, Misses: 5, Puts: 7, Retains: 7, Evictions: 0}, // Random(5)
+				{Gets: 7, Misses: 5, Puts: 7, Retains: 7, Evictions: 0}, // Random(10)
+				{Gets: 7, Misses: 5, Puts: 7, Retains: 7, Evictions: 0}, // Random(11)
 			},
 		},
 		{
@@ -659,20 +659,20 @@ func TestCache(t *testing.T) {
 			expectedStats: []cache.Stats{
 				{}, // nil cache.
 				{}, // nil cache.
-				{Gets: 7, Misses: 7, Puts: 6, Retains: 6, Evictions: 5}, // LRU(1)
-				{Gets: 7, Misses: 7, Puts: 6, Retains: 6, Evictions: 1}, // LRU(5)
-				{Gets: 7, Misses: 7, Puts: 6, Retains: 6, Evictions: 0}, // LRU(10)
-				{Gets: 7, Misses: 7, Puts: 6, Retains: 6, Evictions: 0}, // LRU(11)
+				{Gets: 6, Misses: 6, Puts: 6, Retains: 6, Evictions: 5}, // LRU(1)
+				{Gets: 6, Misses: 6, Puts: 6, Retains: 6, Evictions: 1}, // LRU(5)
+				{Gets: 6, Misses: 6, Puts: 6, Retains: 6, Evictions: 0}, // LRU(10)
+				{Gets: 6, Misses: 6, Puts: 6, Retains: 6, Evictions: 0}, // LRU(11)
 				{}, // nil cache: FIFO(0)
-				{Gets: 7, Misses: 7, Puts: 6, Retains: 6, Evictions: 5}, // FIFO(1)
-				{Gets: 7, Misses: 7, Puts: 6, Retains: 6, Evictions: 1}, // FIFO(5)
-				{Gets: 7, Misses: 7, Puts: 6, Retains: 6, Evictions: 0}, // FIFO(10)
-				{Gets: 7, Misses: 7, Puts: 6, Retains: 6, Evictions: 0}, // FIFO(11)
+				{Gets: 6, Misses: 6, Puts: 6, Retains: 6, Evictions: 5}, // FIFO(1)
+				{Gets: 6, Misses: 6, Puts: 6, Retains: 6, Evictions: 1}, // FIFO(5)
+				{Gets: 6, Misses: 6, Puts: 6, Retains: 6, Evictions: 0}, // FIFO(10)
+				{Gets: 6, Misses: 6, Puts: 6, Retains: 6, Evictions: 0}, // FIFO(11)
 				{}, // nil cache: Random(0)
-				{Gets: 7, Misses: 7, Puts: 6, Retains: 6, Evictions: 5}, // Random(1)
-				{Gets: 7, Misses: 7, Puts: 6, Retains: 6, Evictions: 1}, // Random(5)
-				{Gets: 7, Misses: 7, Puts: 6, Retains: 6, Evictions: 0}, // Random(10)
-				{Gets: 7, Misses: 7, Puts: 6, Retains: 6, Evictions: 0}, // Random(11)
+				{Gets: 6, Misses: 6, Puts: 6, Retains: 6, Evictions: 5}, // Random(1)
+				{Gets: 6, Misses: 6, Puts: 6, Retains: 6, Evictions: 1}, // Random(5)
+				{Gets: 6, Misses: 6, Puts: 6, Retains: 6, Evictions: 0}, // Random(10)
+				{Gets: 6, Misses: 6, Puts: 6, Retains: 6, Evictions: 0}, // Random(11)
 			},
 		},
 		{
@@ -689,20 +689,20 @@ func TestCache(t *testing.T) {
 			expectedStats: []cache.Stats{
 				{}, // nil cache.
 				{}, // nil cache.
-				{Gets: 8, Misses: 8, Puts: 7, Retains: 7, Evictions: 6}, // LRU(1)
-				{Gets: 8, Misses: 8, Puts: 7, Retains: 7, Evictions: 2}, // LRU(5)
-				{Gets: 8, Misses: 8, Puts: 7, Retains: 7, Evictions: 0}, // LRU(10)
-				{Gets: 8, Misses: 8, Puts: 7, Retains: 7, Evictions: 0}, // LRU(11)
+				{Gets: 7, Misses: 7, Puts: 7, Retains: 7, Evictions: 6}, // LRU(1)
+				{Gets: 7, Misses: 7, Puts: 7, Retains: 7, Evictions: 2}, // LRU(5)
+				{Gets: 7, Misses: 7, Puts: 7, Retains: 7, Evictions: 0}, // LRU(10)
+				{Gets: 7, Misses: 7, Puts: 7, Retains: 7, Evictions: 0}, // LRU(11)
 				{}, // nil cache: FIFO(0)
-				{Gets: 8, Misses: 8, Puts: 7, Retains: 7, Evictions: 6}, // FIFO(1)
-				{Gets: 8, Misses: 8, Puts: 7, Retains: 7, Evictions: 2}, // FIFO(5)
-				{Gets: 8, Misses: 8, Puts: 7, Retains: 7, Evictions: 0}, // FIFO(10)
-				{Gets: 8, Misses: 8, Puts: 7, Retains: 7, Evictions: 0}, // FIFO(11)
+				{Gets: 7, Misses: 7, Puts: 7, Retains: 7, Evictions: 6}, // FIFO(1)
+				{Gets: 7, Misses: 7, Puts: 7, Retains: 7, Evictions: 2}, // FIFO(5)
+				{Gets: 7, Misses: 7, Puts: 7, Retains: 7, Evictions: 0}, // FIFO(10)
+				{Gets: 7, Misses: 7, Puts: 7, Retains: 7, Evictions: 0}, // FIFO(11)
 				{}, // nil cache: Random(0)
-				{Gets: 8, Misses: 8, Puts: 7, Retains: 7, Evictions: 6}, // Random(1)
-				{Gets: 8, Misses: 8, Puts: 7, Retains: 7, Evictions: 2}, // Random(5)
-				{Gets: 8, Misses: 8, Puts: 7, Retains: 7, Evictions: 0}, // Random(10)
-				{Gets: 8, Misses: 8, Puts: 7, Retains: 7, Evictions: 0}, // Random(11)
+				{Gets: 7, Misses: 7, Puts: 7, Retains: 7, Evictions: 6}, // Random(1)
+				{Gets: 7, Misses: 7, Puts: 7, Retains: 7, Evictions: 2}, // Random(5)
+				{Gets: 7, Misses: 7, Puts: 7, Retains: 7, Evictions: 0}, // Random(10)
+				{Gets: 7, Misses: 7, Puts: 7, Retains: 7, Evictions: 0}, // Random(11)
 			},
 		},
 		{
@@ -719,20 +719,20 @@ func TestCache(t *testing.T) {
 			expectedStats: []cache.Stats{
 				{}, // nil cache.
 				{}, // nil cache.
-				{Gets: 8, Misses: 8, Puts: 7, Retains: 7, Evictions: 6}, // LRU(1)
-				{Gets: 8, Misses: 8, Puts: 7, Retains: 7, Evictions: 2}, // LRU(5)
-				{Gets: 8, Misses: 8, Puts: 7, Retains: 7, Evictions: 0}, // LRU(10)
-				{Gets: 8, Misses: 8, Puts: 7, Retains: 7, Evictions: 0}, // LRU(11)
+				{Gets: 7, Misses: 7, Puts: 7, Retains: 7, Evictions: 6}, // LRU(1)
+				{Gets: 7, Misses: 7, Puts: 7, Retains: 7, Evictions: 2}, // LRU(5)
+				{Gets: 7, Misses: 7, Puts: 7, Retains: 7, Evictions: 0}, // LRU(10)
+				{Gets: 7, Misses: 7, Puts: 7, Retains: 7, Evictions: 0}, // LRU(11)
 				{}, // nil cache: FIFO(0)
-				{Gets: 8, Misses: 8, Puts: 7, Retains: 7, Evictions: 6}, // FIFO(1)
-				{Gets: 8, Misses: 8, Puts: 7, Retains: 7, Evictions: 2}, // FIFO(5)
-				{Gets: 8, Misses: 8, Puts: 7, Retains: 7, Evictions: 0}, // FIFO(10)
-				{Gets: 8, Misses: 8, Puts: 7, Retains: 7, Evictions: 0}, // FIFO(11)
+				{Gets: 7, Misses: 7, Puts: 7, Retains: 7, Evictions: 6}, // FIFO(1)
+				{Gets: 7, Misses: 7, Puts: 7, Retains: 7, Evictions: 2}, // FIFO(5)
+				{Gets: 7, Misses: 7, Puts: 7, Retains: 7, Evictions: 0}, // FIFO(10)
+				{Gets: 7, Misses: 7, Puts: 7, Retains: 7, Evictions: 0}, // FIFO(11)
 				{}, // nil cache: Random(0)
-				{Gets: 8, Misses: 8, Puts: 7, Retains: 7, Evictions: 6}, // Random(1)
-				{Gets: 8, Misses: 8, Puts: 7, Retains: 7, Evictions: 2}, // Random(5)
-				{Gets: 8, Misses: 8, Puts: 7, Retains: 7, Evictions: 0}, // Random(10)
-				{Gets: 8, Misses: 8, Puts: 7, Retains: 7, Evictions: 0}, // Random(11)
+				{Gets: 7, Misses: 7, Puts: 7, Retains: 7, Evictions: 6}, // Random(1)
+				{Gets: 7, Misses: 7, Puts: 7, Retains: 7, Evictions: 2}, // Random(5)
+				{Gets: 7, Misses: 7, Puts: 7, Retains: 7, Evictions: 0}, // Random(10)
+				{Gets: 7, Misses: 7, Puts: 7, Retains: 7, Evictions: 0}, // Random(11)
 			},
 		},
 		{
@@ -752,20 +752,20 @@ func TestCache(t *testing.T) {
 			expectedStats: []cache.Stats{
 				{}, // nil cache.
 				{}, // nil cache.
-				{Gets: 10, Misses: 6, Puts: 9, Retains: 9, Evictions: 4}, // LRU(1)
-				{Gets: 10, Misses: 6, Puts: 9, Retains: 9, Evictions: 0}, // LRU(5)
-				{Gets: 10, Misses: 6, Puts: 9, Retains: 9, Evictions: 0}, // LRU(10)
-				{Gets: 10, Misses: 6, Puts: 9, Retains: 9, Evictions: 0}, // LRU(11)
+				{Gets: 9, Misses: 5, Puts: 9, Retains: 9, Evictions: 4}, // LRU(1)
+				{Gets: 9, Misses: 5, Puts: 9, Retains: 9, Evictions: 0}, // LRU(5)
+				{Gets: 9, Misses: 5, Puts: 9, Retains: 9, Evictions: 0}, // LRU(10)
+				{Gets: 9, Misses: 5, Puts: 9, Retains: 9, Evictions: 0}, // LRU(11)
 				{}, // nil cache: FIFO(0)
-				{Gets: 10, Misses: 6, Puts: 9, Retains: 9, Evictions: 8}, // FIFO(1)
-				{Gets: 10, Misses: 6, Puts: 9, Retains: 5, Evictions: 0}, // FIFO(5)
-				{Gets: 10, Misses: 6, Puts: 9, Retains: 5, Evictions: 0}, // FIFO(10)
-				{Gets: 10, Misses: 6, Puts: 9, Retains: 5, Evictions: 0}, // FIFO(11)
+				{Gets: 9, Misses: 5, Puts: 9, Retains: 9, Evictions: 8}, // FIFO(1)
+				{Gets: 9, Misses: 5, Puts: 9, Retains: 5, Evictions: 0}, // FIFO(5)
+				{Gets: 9, Misses: 5, Puts: 9, Retains: 5, Evictions: 0}, // FIFO(10)
+				{Gets: 9, Misses: 5, Puts: 9, Retains: 5, Evictions: 0}, // FIFO(11)
 				{}, // nil cache: Random(0)
-				{Gets: 10, Misses: 6, Puts: 9, Retains: 9, Evictions: 4}, // Random(1)
-				{Gets: 10, Misses: 6, Puts: 9, Retains: 9, Evictions: 0}, // Random(5)
-				{Gets: 10, Misses: 6, Puts: 9, Retains: 9, Evictions: 0}, // Random(10)
-				{Gets: 10, Misses: 6, Puts: 9, Retains: 9, Evictions: 0}, // Random(11)
+				{Gets: 9, Misses: 5, Puts: 9, Retains: 9, Evictions: 4}, // Random(1)
+				{Gets: 9, Misses: 5, Puts: 9, Retains: 9, Evictions: 0}, // Random(5)
+				{Gets: 9, Misses: 5, Puts: 9, Retains: 9, Evictions: 0}, // Random(10)
+				{Gets: 9, Misses: 5, Puts: 9, Retains: 9, Evictions: 0}, // Random(11)
 			},
 		},
 	}
