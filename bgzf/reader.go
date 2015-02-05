@@ -128,6 +128,8 @@ func newDecompressor() *decompressor { return &decompressor{} }
 
 // init initialises a decompressor to use the provided flate.Reader.
 func (d *decompressor) init(cr *countReader) (*decompressor, error) {
+	defer d.releaseHead()
+
 	d.cr = cr
 	d.useUnderlying()
 	err := d.gz.Reset(d)
@@ -137,9 +139,11 @@ func (d *decompressor) init(cr *countReader) (*decompressor, error) {
 	}
 	d.blockSize = expectedBlockSize(d.gz.Header)
 	if d.blockSize < 0 {
-		err = ErrNoBlockSize
+		return d, ErrNoBlockSize
 	}
-	return d, err
+	d.owner.Header = d.gz.Header
+
+	return d, d.readAhead()
 }
 
 // acquireHead gains the read head from the decompressor's owner.
@@ -169,11 +173,6 @@ func (d *decompressor) lazyBlock() bool {
 		d.decompressed.setOwner(d.owner)
 	}
 	return true
-}
-
-// header returns the current gzip header.
-func (d *decompressor) header() gzip.Header {
-	return d.gz.Header
 }
 
 // isBuffered returns whether the decompressor has buffered compressed data.
@@ -334,14 +333,7 @@ func (d *decompressor) fill(reset bool) error {
 		d.releaseHead()
 	} else {
 		dec.setBase(d.cr.offset())
-
 		_, err := d.init(d.cr)
-		if err != nil {
-			d.releaseHead()
-			return err
-		}
-		err = d.readAhead()
-		d.releaseHead()
 		if err != nil {
 			return err
 		}
@@ -367,19 +359,13 @@ func expectedBlockSize(h gzip.Header) int {
 // The number of concurrent read decompressors is specified by
 // rd (currently ignored).
 func NewReader(r io.Reader, rd int) (*Reader, error) {
-	d, err := newDecompressor().init(newCountReader(r))
-	if err != nil {
-		return nil, err
-	}
 	bg := &Reader{
-		Header: d.header(),
 		r:      r,
-		active: d,
+		active: newDecompressor(),
 		head:   make(chan *countReader, 1),
 	}
-	d.owner = bg
-	err = d.readAhead()
-	d.releaseHead()
+	bg.active.owner = bg
+	_, err := bg.active.init(newCountReader(r))
 	if err != nil {
 		return nil, err
 	}
@@ -411,7 +397,6 @@ func (bg *Reader) Seek(off Offset) error {
 	if bg.err != nil {
 		return bg.err
 	}
-	bg.Header = bg.active.header()
 	bg.nextBase = bg.active.decompressed.nextBase()
 
 	bg.err = bg.active.decompressed.seek(int64(off.Block))
@@ -443,7 +428,6 @@ func (bg *Reader) Read(p []byte) (int, error) {
 
 	if dec == nil {
 		bg.active.lazyBlock()
-		bg.Header = bg.active.header()
 		bg.active.gz.Multistream(false)
 		bg.err = bg.active.decompressed.readFrom(&bg.active.gz)
 		if bg.err != nil {
@@ -492,7 +476,6 @@ func (bg *Reader) resetDecompressor() (Block, error) {
 	if bg.active.err != nil {
 		return nil, bg.active.err
 	}
-	bg.Header = bg.active.header()
 	bg.nextBase = bg.active.decompressed.nextBase()
 	return bg.active.decompressed, nil
 }
