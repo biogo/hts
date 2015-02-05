@@ -340,7 +340,6 @@ func (d *decompressor) fill(reset bool) error {
 	}
 
 	dec.setHeader(d.gz.Header)
-	d.gz.Multistream(false)
 	return dec.readFrom(&d.gz)
 }
 
@@ -428,7 +427,6 @@ func (bg *Reader) Read(p []byte) (int, error) {
 
 	if dec == nil {
 		bg.active.lazyBlock()
-		bg.active.gz.Multistream(false)
 		bg.err = bg.active.decompressed.readFrom(&bg.active.gz)
 		if bg.err != nil {
 			return 0, bg.err
