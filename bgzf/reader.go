@@ -124,10 +124,8 @@ func (r *countReader) seek(rs io.ReadSeeker, off int64) error {
 	return nil
 }
 
-func newDecompressor() *decompressor { return &decompressor{} }
-
 // init initialises a decompressor to use the provided flate.Reader.
-func (d *decompressor) init(cr *countReader) (*decompressor, error) {
+func (d *decompressor) init(cr *countReader) error {
 	defer d.releaseHead()
 
 	d.cr = cr
@@ -136,14 +134,19 @@ func (d *decompressor) init(cr *countReader) (*decompressor, error) {
 	d.owner.Header = d.gz.Header
 	if err != nil {
 		d.blockSize = -1
-		return d, err
+		return err
 	}
 	d.blockSize = expectedBlockSize(d.gz.Header)
 	if d.blockSize < 0 {
-		return d, ErrNoBlockSize
+		return ErrNoBlockSize
 	}
 
-	return d, d.readAhead()
+	return d.readAhead()
+}
+
+// readMember reads the block starting the current decompressor offset.
+func (d *decompressor) readMember() error {
+	return d.init(d.cr)
 }
 
 // acquireHead gains the read head from the decompressor's owner.
@@ -308,7 +311,7 @@ func (d *decompressor) useUnderlying() { d.n = 0; d.mark = d.cr.offset() }
 // readAhead reads compressed data into the decompressor buffer. It reads until
 // the underlying flate.Reader is positioned at the end of the gzip member in
 // which the readAhead call was made. readAhead should not be called unless the
-// decompressor has had init called successfully.
+// decompressor has had readMember or init called successfully.
 func (d *decompressor) readAhead() error {
 	d.i = 0
 	var err error
@@ -325,7 +328,7 @@ func (d *decompressor) fill() error {
 	dec := d.decompressed
 
 	dec.setBase(d.cr.offset())
-	_, err := d.init(d.cr)
+	err := d.readMember()
 	if err != nil {
 		return err
 	}
@@ -351,11 +354,11 @@ func expectedBlockSize(h gzip.Header) int {
 func NewReader(r io.Reader, rd int) (*Reader, error) {
 	bg := &Reader{
 		r:      r,
-		active: newDecompressor(),
+		active: &decompressor{},
 		head:   make(chan *countReader, 1),
 	}
 	bg.active.owner = bg
-	_, err := bg.active.init(newCountReader(r))
+	err := bg.active.init(newCountReader(r))
 	if err != nil {
 		return nil, err
 	}
