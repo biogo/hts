@@ -454,7 +454,7 @@ func (bg *Reader) Read(p []byte) (int, error) {
 		dec = bg.active.decompressed
 	}
 
-	if dec.len() == 0 {
+	for dec.len() == 0 {
 		dec, bg.err = bg.resetDecompressor()
 		if bg.err != nil {
 			return 0, bg.err
