@@ -133,6 +133,7 @@ func (d *decompressor) init(cr *countReader) (*decompressor, error) {
 	d.cr = cr
 	d.useUnderlying()
 	err := d.gz.Reset(d)
+	d.owner.Header = d.gz.Header
 	if err != nil {
 		d.blockSize = -1
 		return d, err
@@ -141,7 +142,6 @@ func (d *decompressor) init(cr *countReader) (*decompressor, error) {
 	if d.blockSize < 0 {
 		return d, ErrNoBlockSize
 	}
-	d.owner.Header = d.gz.Header
 
 	return d, d.readAhead()
 }
