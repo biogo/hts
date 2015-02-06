@@ -168,8 +168,8 @@ func TestRoundTrip(t *testing.T) {
 	// Insert a HasEOF to ensure it does not corrupt subsequent reads.
 	HasEOF(bytes.NewReader(buf.Bytes()))
 
-	if bl := ExpectedBlockSize(r.Header); bl != wbl {
-		t.Errorf("expectedBlockSize() is %d, want %d", bl, wbl)
+	if bl := ExpectedMemberSize(r.Header); bl != wbl {
+		t.Errorf("expectedMemberSize is %d, want %d", bl, wbl)
 	}
 	blEnc := string([]byte{byte(wbl - 1), byte((wbl - 1) >> 8)})
 	if string(r.Extra) != "BC\x02\x00"+blEnc+"extra" {
@@ -185,8 +185,8 @@ func TestRoundTrip(t *testing.T) {
 	if r.Comment != "comment" {
 		t.Errorf("comment is %q, want %q", r.Comment, "comment")
 	}
-	if bl := ExpectedBlockSize(r.Header); bl != len(MagicBlock) {
-		t.Errorf("expectedBlockSize() is %d, want %d", bl, wbl)
+	if bl := ExpectedMemberSize(r.Header); bl != len(MagicBlock) {
+		t.Errorf("expectedMemberSize is %d, want %d", bl, wbl)
 	}
 	if string(r.Extra) != "BC\x02\x00\x1b\x00" {
 		t.Errorf("extra is %q, want %q", r.Extra, "BC\x02\x00\x1b\x00")
@@ -258,9 +258,9 @@ func TestRoundTripMulti(t *testing.T) {
 		t.Errorf("name is %q, want %q", r.Name, "name")
 	}
 
-	bl = ExpectedBlockSize(r.Header)
+	bl = ExpectedMemberSize(r.Header)
 	if bl != wbl[0] {
-		t.Errorf("expectedBlockSize() is %d, want %d", bl, wbl[0])
+		t.Errorf("expectedMemberSize is %d, want %d", bl, wbl[0])
 	}
 	b = make([]byte, len("payload1payloadTwo"))
 	n, err = r.Read(b)
@@ -271,9 +271,9 @@ func TestRoundTripMulti(t *testing.T) {
 		t.Errorf("Read: %v", err)
 	}
 
-	bl = ExpectedBlockSize(r.Header)
+	bl = ExpectedMemberSize(r.Header)
 	if bl != wbl[1] {
-		t.Errorf("expectedBlockSize() is %d, want %d", bl, wbl[1])
+		t.Errorf("expectedMemberSize is %d, want %d", bl, wbl[1])
 	}
 	b = make([]byte, 1)
 	n, err = r.Read(b)
@@ -353,17 +353,17 @@ func TestRoundTripMultiSeek(t *testing.T) {
 	if r.Name != "name" {
 		t.Errorf("name is %q, want %q", r.Name, "name")
 	}
-	bl = ExpectedBlockSize(r.Header)
+	bl = ExpectedMemberSize(r.Header)
 	if bl != wbl[0] {
-		t.Errorf("expectedBlockSize() is %d, want %d", bl, wbl[0])
+		t.Errorf("expectedMemberSize is %d, want %d", bl, wbl[0])
 	}
 	b = make([]byte, len("payload1payloadTwo")+1)
 	n, err = r.Read(b)
 	if err != io.EOF {
 		t.Errorf("Read: %v", err)
 	}
-	if bl := ExpectedBlockSize(r.Header); bl != len(MagicBlock) {
-		t.Errorf("expectedBlockSize() is %d, want %d", bl, len(MagicBlock))
+	if bl := ExpectedMemberSize(r.Header); bl != len(MagicBlock) {
+		t.Errorf("expectedMemberSize is %d, want %d", bl, len(MagicBlock))
 	}
 	if string(r.Extra) != "BC\x02\x00\x1b\x00" {
 		t.Errorf("extra is %q, want %q", r.Extra, "BC\x02\x00\x1b\x00")
@@ -384,9 +384,9 @@ func TestRoundTripMultiSeek(t *testing.T) {
 	if err := r.Seek(Offset{File: offset}); err != nil {
 		t.Fatalf("Seek: %v", err)
 	}
-	bl = ExpectedBlockSize(r.Header)
+	bl = ExpectedMemberSize(r.Header)
 	if bl != wbl[1] {
-		t.Errorf("expectedBlockSize() is %d, want %d", bl, wbl[1])
+		t.Errorf("expectedMemberSize is %d, want %d", bl, wbl[1])
 	}
 	b = make([]byte, bl+1)
 	n, err = r.Read(b)

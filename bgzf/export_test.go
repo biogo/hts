@@ -6,4 +6,4 @@ package bgzf
 
 const MagicBlock = magicBlock
 
-var ExpectedBlockSize = expectedBlockSize
+var ExpectedMemberSize = expectedMemberSize

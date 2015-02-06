@@ -65,7 +65,7 @@ type Block interface {
 	// the file origin offset case and does not
 	// return the new offset.
 	seek(offset int64) error
-	readFrom(io.Reader) error
+	readFrom(io.ReadCloser) error
 
 	// len returns the number of remaining
 	// bytes that can be read from the Block.
@@ -114,7 +114,7 @@ func (b *block) Read(p []byte) (int, error) {
 	return n, err
 }
 
-func (b *block) readFrom(r io.Reader) error {
+func (b *block) readFrom(r io.ReadCloser) error {
 	o := b.owner
 	b.owner = nil
 	buf := bytes.NewBuffer(b.data[:0])
@@ -124,7 +124,7 @@ func (b *block) readFrom(r io.Reader) error {
 	}
 	b.buf = bytes.NewReader(buf.Bytes())
 	b.owner = o
-	return nil
+	return r.Close()
 }
 
 func (b *block) seek(offset int64) error {
@@ -148,7 +148,7 @@ func (b *block) setBase(n int64) {
 }
 
 func (b *block) nextBase() int64 {
-	size := int64(expectedBlockSize(b.h))
+	size := int64(expectedMemberSize(b.h))
 	if size == -1 {
 		return -1
 	}
