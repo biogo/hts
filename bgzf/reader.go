@@ -231,11 +231,11 @@ func (d *decompressor) wait() error {
 // otherwise it seeks to the correct location if decompressor is not
 // correctly positioned, and then reads the compressed data and fills
 // the decompressed Block.
-func (d *decompressor) nextBlockAt(off int64, rs io.ReadSeeker) {
+func (d *decompressor) nextBlockAt(off int64, rs io.ReadSeeker) *decompressor {
 	d.lazyBlock()
 
 	if d.gotBlockFor(off) {
-		return
+		return d
 	}
 
 	d.acquireHead()
@@ -250,11 +250,13 @@ func (d *decompressor) nextBlockAt(off int64, rs io.ReadSeeker) {
 		d.err = d.cr.seek(rs, off)
 		if d.err != nil {
 			d.releaseHead()
-			return
+			return d
 		}
 	}
 
 	go d.fill()
+
+	return d
 }
 
 // expectedMemberSize returns the size of the BGZF conformant gzip member.
@@ -360,8 +362,7 @@ func NewReader(r io.Reader, rd int) (*Reader, error) {
 	// Read the first block now so we can fail before
 	// the first Read call if there is a problem.
 	bg.dec = &decompressor{owner: bg}
-	bg.dec.nextBlockAt(0, nil)
-	err := bg.dec.wait()
+	err := bg.dec.nextBlockAt(0, nil).wait()
 	if err != nil {
 		return nil, err
 	}
@@ -379,8 +380,7 @@ func (bg *Reader) Seek(off Offset) error {
 	}
 
 	if off.File != bg.dec.blk.Base() || !bg.dec.blk.hasData() {
-		bg.dec.nextBlockAt(off.File, rs)
-		bg.err = bg.dec.wait()
+		bg.err = bg.dec.nextBlockAt(off.File, rs).wait()
 		bg.Header = bg.dec.gz.Header
 		if bg.err != nil {
 			return bg.err
@@ -453,8 +453,7 @@ func (bg *Reader) Read(p []byte) (int, error) {
 }
 
 func (bg *Reader) nextBlock() (Block, error) {
-	bg.dec.nextBlockAt(bg.current.nextBase(), nil)
-	err := bg.dec.wait()
+	err := bg.dec.nextBlockAt(bg.current.nextBase(), nil).wait()
 	bg.Header = bg.dec.gz.Header
 	return bg.dec.blk, err
 }
