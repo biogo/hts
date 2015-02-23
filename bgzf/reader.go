@@ -220,10 +220,14 @@ func (d *decompressor) releaseHead() {
 
 // wait waits for the current member to be decompressed or fail, and returns
 // the resulting error state.
-func (d *decompressor) wait() error {
+func (d *decompressor) wait() (Block, error) {
 	d.wg.Wait()
-	return d.err
+	blk := d.blk
+	d.blk = nil
+	return blk, d.err
 }
+
+func (d *decompressor) using(b Block) *decompressor { d.blk = b; return d }
 
 // nextBlockAt makes the decompressor ready for reading decompressed data
 // from its Block. It checks if there is a cached Block for the nextBase,
@@ -361,12 +365,12 @@ func NewReader(r io.Reader, rd int) (*Reader, error) {
 	// Read the first block now so we can fail before
 	// the first Read call if there is a problem.
 	bg.dec = &decompressor{owner: bg}
-	err := bg.dec.nextBlockAt(0, nil).wait()
+	blk, err := bg.dec.nextBlockAt(0, nil).wait()
 	if err != nil {
 		return nil, err
 	}
-	bg.Header = bg.dec.gz.Header
-	bg.current = bg.dec.blk
+	bg.current = blk
+	bg.Header = bg.current.header()
 
 	return bg, nil
 }
@@ -379,8 +383,10 @@ func (bg *Reader) Seek(off Offset) error {
 	}
 
 	if off.File != bg.current.Base() || !bg.current.hasData() {
-		bg.err = bg.dec.nextBlockAt(off.File, rs).wait()
-		bg.current = bg.dec.blk
+		bg.current, bg.err = bg.dec.
+			using(bg.current).
+			nextBlockAt(off.File, rs).
+			wait()
 		bg.Header = bg.current.header()
 		if bg.err != nil {
 			return bg.err
@@ -454,6 +460,8 @@ func (bg *Reader) Read(p []byte) (int, error) {
 }
 
 func (bg *Reader) nextBlock() (Block, error) {
-	err := bg.dec.nextBlockAt(bg.current.nextBase(), nil).wait()
-	return bg.dec.blk, err
+	return bg.dec.
+		using(bg.current).
+		nextBlockAt(bg.current.nextBase(), nil).
+		wait()
 }
