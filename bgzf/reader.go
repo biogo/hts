@@ -379,13 +379,13 @@ func (bg *Reader) Seek(off Offset) error {
 		return ErrNotASeeker
 	}
 
-	if off.File != bg.dec.blk.Base() || !bg.dec.blk.hasData() {
+	if off.File != bg.current.Base() || !bg.current.hasData() {
 		bg.err = bg.dec.nextBlockAt(off.File, rs).wait()
-		bg.Header = bg.dec.gz.Header
+		bg.current = bg.dec.blk
+		bg.Header = bg.current.header()
 		if bg.err != nil {
 			return bg.err
 		}
-		bg.current = bg.dec.blk
 	}
 
 	bg.err = bg.current.seek(int64(off.Block))
@@ -421,6 +421,7 @@ func (bg *Reader) Read(p []byte) (int, error) {
 	// in a BAI/CSI.
 	for bg.current.len() == 0 {
 		bg.current, bg.err = bg.nextBlock()
+		bg.Header = bg.current.header()
 		if bg.err != nil {
 			return 0, bg.err
 		}
@@ -443,6 +444,7 @@ func (bg *Reader) Read(p []byte) (int, error) {
 			}
 
 			bg.current, bg.err = bg.nextBlock()
+			bg.Header = bg.current.header()
 			if bg.err != nil {
 				break
 			}
@@ -454,6 +456,5 @@ func (bg *Reader) Read(p []byte) (int, error) {
 
 func (bg *Reader) nextBlock() (Block, error) {
 	err := bg.dec.nextBlockAt(bg.current.nextBase(), nil).wait()
-	bg.Header = bg.dec.gz.Header
 	return bg.dec.blk, err
 }
