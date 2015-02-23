@@ -199,7 +199,6 @@ func (d *decompressor) gotBlockFor(base int64) bool {
 			blk, retained := d.owner.Cache.Put(d.blk)
 			if retained {
 				d.blk = blk
-				d.lazyBlock()
 			}
 		}
 	}
@@ -232,11 +231,11 @@ func (d *decompressor) wait() error {
 // correctly positioned, and then reads the compressed data and fills
 // the decompressed Block.
 func (d *decompressor) nextBlockAt(off int64, rs io.ReadSeeker) *decompressor {
-	d.lazyBlock()
-
 	if d.gotBlockFor(off) {
 		return d
 	}
+
+	d.lazyBlock()
 
 	d.acquireHead()
 	if d.cr.offset() != off {
