@@ -175,37 +175,6 @@ func (d *decompressor) lazyBlock() {
 	}
 }
 
-// gotBlockFor returns true if the decompressor has access to a cache
-// and that cache holds the block with given base and the correct
-// owner, otherwise it returns false.
-// gotBlockFor has side effects of recovering the block and putting
-// the currently active block into the cache. If the cache returns
-// a block owned by another reader, it is discarded.
-func (d *decompressor) gotBlockFor(base int64) bool {
-	if d.owner.Cache != nil {
-		if blk := d.owner.Cache.Get(base); blk != nil && blk.ownedBy(d.owner) {
-			if d.blk != nil && d.blk.hasData() {
-				// TODO(kortschak): Under some conditions, e.g. FIFO
-				// cache we will be discarding a non-nil evicted Block.
-				// Consider retaining these in a sync.Pool.
-				d.owner.Cache.Put(d.blk)
-			}
-			if d.err = blk.seek(0); d.err == nil {
-				d.blk = blk
-				return true
-			}
-		}
-		if d.blk != nil && d.blk.hasData() {
-			blk, retained := d.owner.Cache.Put(d.blk)
-			if retained {
-				d.blk = blk
-			}
-		}
-	}
-
-	return false
-}
-
 // acquireHead gains the read head from the decompressor's owner.
 func (d *decompressor) acquireHead() {
 	d.wg.Add(1)
@@ -235,8 +204,23 @@ func (d *decompressor) using(b Block) *decompressor { d.blk = b; return d }
 // correctly positioned, and then reads the compressed data and fills
 // the decompressed Block.
 func (d *decompressor) nextBlockAt(off int64, rs io.ReadSeeker) *decompressor {
-	if d.gotBlockFor(off) {
+	blk, err := d.owner.cachedBlockFor(off)
+	if err != nil {
+		d.err = err
 		return d
+	}
+	if blk != nil {
+		// TODO(kortschak): Under some conditions, e.g. FIFO
+		// cache we will be discarding a non-nil evicted Block.
+		// Consider retaining these in a sync.Pool.
+		d.owner.cachePut(d.blk)
+		d.blk = blk
+		return d
+	}
+	var retained bool
+	d.blk, retained = d.owner.cachePut(d.blk)
+	if retained {
+		d.blk = nil
 	}
 
 	d.lazyBlock()
@@ -342,6 +326,7 @@ type Reader struct {
 
 	current Block
 
+	cacheLock sync.Mutex
 	// Cache is the Reader block cache. If Cache is not nil,
 	// the cache is queried for blocks before an attempt to
 	// read from the underlying io.Reader.
@@ -464,4 +449,40 @@ func (bg *Reader) nextBlock() (Block, error) {
 		using(bg.current).
 		nextBlockAt(bg.current.nextBase(), nil).
 		wait()
+}
+
+// cachedBlockFor returns true if the Reader has access to a cache
+// and that cache holds the block with the given base and the correct
+// owner, otherwise it returns nil. If the Block's owner is not correct,
+// or the Block cannot seek to the start of its data, a non-nil error
+// is returned.
+func (bg *Reader) cachedBlockFor(base int64) (Block, error) {
+	if bg.Cache == nil {
+		return nil, nil
+	}
+	bg.cacheLock.Lock()
+	defer bg.cacheLock.Unlock()
+	blk := bg.Cache.Get(base)
+	if blk != nil {
+		if !blk.ownedBy(bg) {
+			return nil, ErrContaminatedCache
+		}
+		err := blk.seek(0)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return blk, nil
+}
+
+// cachePut puts the given Block into the cache if it exists, it returns
+// the Block that was evicted or b if it was not retained, and whether
+// the Block was retained by the cache.
+func (bg *Reader) cachePut(b Block) (evicted Block, retained bool) {
+	if bg.Cache == nil || b == nil || !b.hasData() {
+		return b, false
+	}
+	bg.cacheLock.Lock()
+	defer bg.cacheLock.Unlock()
+	return bg.Cache.Put(b)
 }

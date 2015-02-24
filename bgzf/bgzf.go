@@ -45,6 +45,7 @@ var (
 	ErrWrongFileType     = errors.New("bgzf: file is a directory")
 	ErrNoEnd             = errors.New("bgzf: cannot determine offset from end")
 	ErrNotASeeker        = errors.New("bgzf: not a seeker")
+	ErrContaminatedCache = errors.New("bgzf: cache owner mismatch")
 	ErrNoBlockSize       = errors.New("bgzf: could not determine block size")
 	ErrBlockSizeMismatch = errors.New("bgzf: unexpected block size")
 )
