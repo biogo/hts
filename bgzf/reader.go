@@ -240,6 +240,7 @@ func (d *decompressor) nextBlockAt(off int64, rs io.ReadSeeker) *decompressor {
 		}
 		d.err = d.cr.seek(rs, off)
 		if d.err != nil {
+			d.wg.Done()
 			return d
 		}
 	}

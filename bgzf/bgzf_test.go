@@ -11,6 +11,7 @@ package bgzf_test
 import (
 	. "code.google.com/p/biogo.bam/bgzf"
 	"code.google.com/p/biogo.bam/bgzf/cache"
+	"errors"
 
 	"bytes"
 	"compress/gzip"
@@ -397,6 +398,55 @@ func TestRoundTripMultiSeek(t *testing.T) {
 		t.Errorf("payload is %q, want %q", string(b[:n]), "payloadTwo")
 	}
 	os.Remove(fname)
+}
+
+type errorReadSeeker struct {
+	r   io.ReadSeeker
+	err error
+}
+
+func (r errorReadSeeker) Read(p []byte) (int, error) {
+	n, err := r.r.Read(p)
+	if err == nil && r.err != nil {
+		err = r.err
+	}
+	return n, err
+}
+
+func (r errorReadSeeker) Seek(offset int64, whence int) (int64, error) {
+	n, err := r.r.Seek(offset, whence)
+	if r.err != nil {
+		err = r.err
+	}
+	return n, err
+}
+
+func TestSeekErrorDeadlock(t *testing.T) {
+	buf := new(bytes.Buffer)
+
+	w := NewWriter(buf, *conc)
+	w.Comment = "comment"
+	w.Extra = []byte("extra")
+	w.ModTime = time.Unix(1e8, 0)
+	w.Name = "name"
+	if _, err := w.Write([]byte("payload")); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	if err := w.Close(); err != nil {
+		t.Fatalf("Writer.Close: %v", err)
+	}
+	e := &errorReadSeeker{r: bytes.NewReader(buf.Bytes())}
+	r, err := NewReader(e, *conc)
+	if err != nil {
+		t.Fatalf("NewReader: %v", err)
+	}
+	r.Seek(Offset{File: 0})
+	e.err = errors.New("bad seek error")
+	err = r.Seek(Offset{File: 1})
+	if err == nil {
+		t.Error("Expected error.", err)
+	}
+
 }
 
 type countReadSeeker struct {
