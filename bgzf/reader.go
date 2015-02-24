@@ -203,6 +203,8 @@ func (d *decompressor) using(b Block) *decompressor { d.blk = b; return d }
 // otherwise it seeks to the correct location if decompressor is not
 // correctly positioned, and then reads the compressed data and fills
 // the decompressed Block.
+// After nextBlockAt returns without error, the decompressor's Block
+// holds a valid gzip.Header and base offset.
 func (d *decompressor) nextBlockAt(off int64, rs io.ReadSeeker) *decompressor {
 	blk, err := d.owner.cachedBlockFor(off)
 	if err != nil {
@@ -226,6 +228,8 @@ func (d *decompressor) nextBlockAt(off int64, rs io.ReadSeeker) *decompressor {
 	d.lazyBlock()
 
 	d.acquireHead()
+	defer d.releaseHead()
+
 	if d.cr.offset() != off {
 		// It should not be possible for the expected next block base
 		// to be out of register with the count reader unless Seek
@@ -236,12 +240,23 @@ func (d *decompressor) nextBlockAt(off int64, rs io.ReadSeeker) *decompressor {
 		}
 		d.err = d.cr.seek(rs, off)
 		if d.err != nil {
-			d.releaseHead()
 			return d
 		}
 	}
 
-	go d.fill()
+	d.blk.setBase(d.cr.offset())
+	d.err = d.readMember()
+	if d.err != nil {
+		d.wg.Done()
+		return d
+	}
+	d.blk.setHeader(d.gz.Header)
+
+	// Decompress data into the decompressor's Block.
+	go func() {
+		d.err = d.blk.readFrom(&d.gz)
+		d.wg.Done()
+	}()
 
 	return d
 }
@@ -258,8 +273,6 @@ func expectedMemberSize(h gzip.Header) int {
 
 // readMember buffers the gzip member starting the current decompressor offset.
 func (d *decompressor) readMember() error {
-	defer d.releaseHead()
-
 	// Set the decompressor to Read from the underlying flate.Reader
 	// and mark the starting offset from which the underlying reader
 	// was used.
@@ -281,19 +294,6 @@ func (d *decompressor) readMember() error {
 	// underlying flate.Reader is positioned at the end of the gzip
 	// member in which the readMember call was made.
 	return d.buf.readLimited(d.blockSize-int(d.cr.offset()-mark), d.cr)
-}
-
-// fill decompresses data into the decompressor's Block.
-func (d *decompressor) fill() {
-	defer d.wg.Done()
-	d.blk.setBase(d.cr.offset())
-	d.err = d.readMember()
-	if d.err != nil {
-		return
-	}
-
-	d.blk.setHeader(d.gz.Header)
-	d.err = d.blk.readFrom(&d.gz)
 }
 
 // Offset is a BGZF virtual offset.
