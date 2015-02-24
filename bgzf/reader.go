@@ -231,11 +231,11 @@ func (d *decompressor) nextBlockAt(off int64, rs io.ReadSeeker) *decompressor {
 	defer d.releaseHead()
 
 	if d.cr.offset() != off {
-		// It should not be possible for the expected next block base
-		// to be out of register with the count reader unless Seek
-		// has been called, so we know the base reader must be an
-		// io.ReadSeeker.
 		if rs == nil {
+			// It should not be possible for the expected next block base
+			// to be out of register with the count reader unless Seek
+			// has been called, so we know the base reader must be an
+			// io.ReadSeeker.
 			rs = d.owner.r.(io.ReadSeeker)
 		}
 		d.err = d.cr.seek(rs, off)
