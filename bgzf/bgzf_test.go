@@ -192,7 +192,7 @@ func TestRoundTrip(t *testing.T) {
 	if string(r.Extra) != "BC\x02\x00\x1b\x00" {
 		t.Errorf("extra is %q, want %q", r.Extra, "BC\x02\x00\x1b\x00")
 	}
-	if r.ModTime.Unix() != 0 {
+	if r.ModTime.Unix() != 1e8 {
 		t.Errorf("mtime is %d, want %d", r.ModTime.Unix(), uint32(1e8))
 	}
 	if r.Name != "name" {
