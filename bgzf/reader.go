@@ -240,7 +240,11 @@ func (d *decompressor) nextBlockAt(off int64, rs io.ReadSeeker) *decompressor {
 			// to be out of register with the count reader unless Seek
 			// has been called, so we know the base reader must be an
 			// io.ReadSeeker.
-			rs = d.owner.r.(io.ReadSeeker)
+			var ok bool
+			rs, ok = d.owner.r.(io.ReadSeeker)
+			if !ok {
+				panic("bgzf: unexpected offset without seek")
+			}
 		}
 		d.err = d.cr.seek(rs, off)
 		if d.err != nil {
