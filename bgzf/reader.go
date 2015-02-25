@@ -469,11 +469,11 @@ func (bg *Reader) nextBlock() (Block, error) {
 		wait()
 }
 
-// cachedBlockFor returns true if the Reader has access to a cache
-// and that cache holds the block with the given base and the correct
-// owner, otherwise it returns nil. If the Block's owner is not correct,
-// or the Block cannot seek to the start of its data, a non-nil error
-// is returned.
+// cachedBlockFor returns a non-nil Block if the Reader has access to a
+// cache and the cache holds the block with the given base and the
+// correct owner, otherwise it returns nil. If the Block's owner is not
+// correct, or the Block cannot seek to the start of its data, a non-nil
+// error is returned.
 func (bg *Reader) cachedBlockFor(base int64) (Block, error) {
 	if bg.Cache == nil {
 		return nil, nil
