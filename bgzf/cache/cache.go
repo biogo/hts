@@ -143,7 +143,7 @@ func (c *LRU) Peek(base int64) (exist bool, next int64) {
 func (c *LRU) Put(b bgzf.Block) (evicted bgzf.Block, retained bool) {
 	var d bgzf.Block
 	if _, ok := c.table[b.Base()]; ok {
-		return nil, false
+		return b, false
 	}
 	used := b.Used()
 	if len(c.table) == c.cap {
@@ -239,7 +239,7 @@ func (c *FIFO) Peek(base int64) (exist bool, next int64) {
 func (c *FIFO) Put(b bgzf.Block) (evicted bgzf.Block, retained bool) {
 	var d bgzf.Block
 	if _, ok := c.table[b.Base()]; ok {
-		return nil, false
+		return b, false
 	}
 	used := b.Used()
 	if len(c.table) == c.cap {
@@ -344,7 +344,7 @@ func (c *Random) Peek(base int64) (exist bool, next int64) {
 func (c *Random) Put(b bgzf.Block) (evicted bgzf.Block, retained bool) {
 	var d bgzf.Block
 	if _, ok := c.table[b.Base()]; ok {
-		return nil, false
+		return b, false
 	}
 	if len(c.table) == c.cap {
 		if !b.Used() {
