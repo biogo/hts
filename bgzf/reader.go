@@ -426,7 +426,6 @@ func (bg *Reader) Read(p []byte) (int, error) {
 	// in a BAI/CSI.
 	for bg.current.len() == 0 {
 		bg.err = bg.nextBlock()
-		bg.Header = bg.current.header()
 		if bg.err != nil {
 			return 0, bg.err
 		}
@@ -449,7 +448,6 @@ func (bg *Reader) Read(p []byte) (int, error) {
 			}
 
 			bg.err = bg.nextBlock()
-			bg.Header = bg.current.header()
 			if bg.err != nil {
 				break
 			}
@@ -470,6 +468,7 @@ func (bg *Reader) nextBlock() error {
 		using(bg.current).
 		nextBlockAt(base, nil).
 		wait()
+	bg.Header = bg.current.header()
 	return err
 }
 
