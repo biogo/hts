@@ -13,6 +13,14 @@ import (
 	"sync"
 )
 
+const caching = cacheByReader
+
+const (
+	noCache = iota
+	cacheByWorker
+	cacheByReader
+)
+
 // countReader wraps flate.Reader, adding support for querying current offset.
 type countReader struct {
 	// Underlying Reader.
@@ -210,23 +218,36 @@ func (d *decompressor) using(b Block) *decompressor { d.blk = b; return d }
 // After nextBlockAt returns without error, the decompressor's Block
 // holds a valid gzip.Header and base offset.
 func (d *decompressor) nextBlockAt(off int64, rs io.ReadSeeker) *decompressor {
-	blk, err := d.owner.cachedBlockFor(off)
-	if err != nil {
-		d.err = err
-		return d
-	}
-	if blk != nil {
-		// TODO(kortschak): Under some conditions, e.g. FIFO
-		// cache we will be discarding a non-nil evicted Block.
-		// Consider retaining these in a sync.Pool.
-		d.owner.cachePut(d.blk)
-		d.blk = blk
-		return d
-	}
-	var retained bool
-	d.blk, retained = d.owner.cachePut(d.blk)
-	if retained {
-		d.blk = nil
+	switch caching {
+	case noCache:
+	case cacheByWorker:
+		blk, err := d.owner.cachedBlockFor(off)
+		if err != nil {
+			d.err = err
+			return d
+		}
+		if blk != nil {
+			// TODO(kortschak): Under some conditions, e.g. FIFO
+			// cache we will be discarding a non-nil evicted Block.
+			// Consider retaining these in a sync.Pool.
+			d.owner.cachePut(d.blk)
+			d.blk = blk
+			return d
+		}
+		var retained bool
+		d.blk, retained = d.owner.cachePut(d.blk)
+		if retained {
+			d.blk = nil
+		}
+	case cacheByReader:
+		d.err = nil
+		for {
+			exists, next := d.owner.cacheHasBlockFor(off)
+			if !exists {
+				break
+			}
+			off = next
+		}
 	}
 
 	d.lazyBlock()
@@ -390,6 +411,15 @@ func (bg *Reader) Seek(off Offset) error {
 	}
 
 	if off.File != bg.current.Base() || !bg.current.hasData() {
+		switch caching {
+		case noCache:
+		case cacheByWorker:
+		case cacheByReader:
+			ok := bg.cacheSwap(off.File)
+			if ok {
+				goto seekInBlock
+			}
+		}
 		bg.current, bg.err = bg.dec.
 			using(bg.current).
 			nextBlockAt(off.File, rs).
@@ -400,6 +430,7 @@ func (bg *Reader) Seek(off Offset) error {
 		}
 	}
 
+seekInBlock:
 	bg.err = bg.current.seek(int64(off.Block))
 	if bg.err == nil {
 		bg.lastChunk = Chunk{Begin: off, End: off}
@@ -432,7 +463,7 @@ func (bg *Reader) Read(p []byte) (int, error) {
 	// optimisation to avoid retaining useless members
 	// in a BAI/CSI.
 	for bg.current.len() == 0 {
-		bg.current, bg.err = bg.nextBlock()
+		bg.err = bg.nextBlock()
 		bg.Header = bg.current.header()
 		if bg.err != nil {
 			return 0, bg.err
@@ -455,7 +486,7 @@ func (bg *Reader) Read(p []byte) (int, error) {
 				break
 			}
 
-			bg.current, bg.err = bg.nextBlock()
+			bg.err = bg.nextBlock()
 			bg.Header = bg.current.header()
 			if bg.err != nil {
 				break
@@ -466,11 +497,62 @@ func (bg *Reader) Read(p []byte) (int, error) {
 	return n, bg.err
 }
 
-func (bg *Reader) nextBlock() (Block, error) {
-	return bg.dec.
+func (bg *Reader) nextBlock() error {
+	base := bg.current.NextBase()
+	switch caching {
+	case noCache:
+	case cacheByWorker:
+	case cacheByReader:
+		ok := bg.cacheSwap(base)
+		if ok {
+			return nil
+		}
+	}
+	var err error
+	bg.current, err = bg.dec.
 		using(bg.current).
-		nextBlockAt(bg.current.nextBase(), nil).
+		nextBlockAt(base, nil).
 		wait()
+	return err
+}
+
+// cacheSwap attempts to swap the current Block for a cached Block
+// for the given base offset. It returns true if successful.
+func (bg *Reader) cacheSwap(base int64) bool {
+	if bg.Cache == nil {
+		return false
+	}
+	blk, err := bg.cachedBlockFor(base)
+	if err != nil {
+		return false
+	}
+	if blk != nil {
+		// TODO(kortschak): Under some conditions, e.g. FIFO
+		// cache we will be discarding a non-nil evicted Block.
+		// Consider retaining these in a sync.Pool.
+		bg.cachePut(bg.current)
+		bg.current = blk
+		return true
+	}
+	var retained bool
+	bg.current, retained = bg.cachePut(bg.current)
+	if retained {
+		bg.current = nil
+	}
+	return false
+}
+
+// cacheHasBlockFor returns whether the Reader's cache has a block
+// for the given base offset. If the requested Block exists, the base
+// offset of the following Block is returned.
+func (bg *Reader) cacheHasBlockFor(base int64) (exists bool, next int64) {
+	if bg.Cache == nil {
+		return false, -1
+	}
+	bg.cacheLock.Lock()
+	exists, next = bg.Cache.Peek(base)
+	bg.cacheLock.Unlock()
+	return exists, next
 }
 
 // cachedBlockFor returns a non-nil Block if the Reader has access to a

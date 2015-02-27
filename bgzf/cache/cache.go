@@ -125,6 +125,18 @@ func (c *LRU) Get(base int64) bgzf.Block {
 	return n.b
 }
 
+// Peek returns a boolean indicating whether a Block exists in the Cache for
+// the given base offset and the expected offset for the subsequent Block in
+// the BGZF stream.
+func (c *LRU) Peek(base int64) (exist bool, next int64) {
+	n, exist := c.table[base]
+	if !exist {
+		return false, -1
+	}
+	next = n.b.NextBase()
+	return exist, next
+}
+
 // Put inserts a Block into the Cache, returning the Block that was evicted or
 // nil if no eviction was necessary and the Block was retained. Unused Blocks
 // are not retained but are returned if the Cache is full.
@@ -207,6 +219,18 @@ func (c *FIFO) Get(base int64) bgzf.Block {
 		remove(n, c.table)
 	}
 	return n.b
+}
+
+// Peek returns a boolean indicating whether a Block exists in the Cache for
+// the given base offset and the expected offset for the subsequent Block in
+// the BGZF stream.
+func (c *FIFO) Peek(base int64) (exist bool, next int64) {
+	n, exist := c.table[base]
+	if !exist {
+		return false, -1
+	}
+	next = n.b.NextBase()
+	return exist, next
 }
 
 // Put inserts a Block into the Cache, returning the Block that was evicted or
@@ -300,6 +324,18 @@ func (c *Random) Get(base int64) bgzf.Block {
 	}
 	delete(c.table, base)
 	return b
+}
+
+// Peek returns a boolean indicating whether a Block exists in the Cache for
+// the given base offset and the expected offset for the subsequent Block in
+// the BGZF stream.
+func (c *Random) Peek(base int64) (exist bool, next int64) {
+	n, exist := c.table[base]
+	if !exist {
+		return false, -1
+	}
+	next = n.NextBase()
+	return exist, next
 }
 
 // Put inserts a Block into the Cache, returning the Block that was evicted or

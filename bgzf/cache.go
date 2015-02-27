@@ -25,6 +25,12 @@ type Cache interface {
 	// a boolean indicating whether the put Block was retained
 	// by the Cache.
 	Put(Block) (evicted Block, retained bool)
+
+	// Peek returns whether a Block exists in the case for the
+	// given base. If a Block satisfies the request, exists is
+	// returned as true and the offset for the next Block in
+	// the stream is returned, otherwise false and -1.
+	Peek(base int64) (exists bool, next int64)
 }
 
 // Wrapper defines Cache types that need to modify a Block at its creation.
@@ -76,9 +82,9 @@ type Block interface {
 	// was decompressed from.
 	setBase(int64)
 
-	// nextBase returns the expected position of the next
+	// NextBase returns the expected position of the next
 	// BGZF block. It returns -1 if the block is not valid.
-	nextBase() int64
+	NextBase() int64
 
 	// setHeader sets the file header of of the gzip
 	// member that the Block data was decompressed from.
@@ -147,7 +153,7 @@ func (b *block) setBase(n int64) {
 	b.offset = Offset{File: n}
 }
 
-func (b *block) nextBase() int64 {
+func (b *block) NextBase() int64 {
 	size := int64(expectedMemberSize(b.h))
 	if size == -1 {
 		return -1

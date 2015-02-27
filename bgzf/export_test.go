@@ -4,6 +4,10 @@
 
 package bgzf
 
-const MagicBlock = magicBlock
+const (
+	MagicBlock = magicBlock
+	Caching    = caching
+	NoCache    = noCache
+)
 
 var ExpectedMemberSize = expectedMemberSize
