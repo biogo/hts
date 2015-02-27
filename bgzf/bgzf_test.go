@@ -284,6 +284,7 @@ func TestRoundTripMulti(t *testing.T) {
 	if err != io.EOF {
 		t.Errorf("Read: %v", err)
 	}
+	r.Close()
 }
 
 // TestRoundTripMultiSeek tests that bgzipping and then bgunzipping is the identity
@@ -394,6 +395,7 @@ func TestRoundTripMultiSeek(t *testing.T) {
 	if err != io.EOF {
 		t.Errorf("Read: %v", err)
 	}
+	r.Close()
 	if string(b[:n]) != "payloadTwo" {
 		t.Errorf("payload is %q, want %q", string(b[:n]), "payloadTwo")
 	}
@@ -446,7 +448,7 @@ func TestSeekErrorDeadlock(t *testing.T) {
 	if err == nil {
 		t.Error("Expected error.", err)
 	}
-
+	r.Close()
 }
 
 type countReadSeeker struct {
@@ -506,6 +508,7 @@ func TestSeekFast(t *testing.T) {
 			}
 			offsets = append(offsets, buf.Len())
 		}
+		w.Close()
 		offsets = offsets[:len(offsets)-1]
 
 		c := &countReadSeeker{r: bytes.NewReader(buf.Bytes())}
@@ -614,6 +617,7 @@ func TestSeekFast(t *testing.T) {
 				t.Fatalf("Unexpected result: got:%q want:%q", got, want)
 			}
 		}
+		r.Close()
 	}
 }
 
@@ -860,6 +864,7 @@ func TestCache(t *testing.T) {
 				}
 				offsets = append(offsets, buf.Len())
 			}
+			w.Close()
 			offsets = offsets[:len(offsets)-1]
 
 			r, err := NewReader(bytes.NewReader(buf.Bytes()), *conc)
@@ -900,6 +905,7 @@ func TestCache(t *testing.T) {
 			if stats != nil && stats.Stats() != pat.expectedStats[j] {
 				t.Errorf("Unexpected result for cache %d pattern %d: got:%+v want:%+v", j, k, stats.Stats(), pat.expectedStats[j])
 			}
+			r.Close()
 		}
 	}
 }
