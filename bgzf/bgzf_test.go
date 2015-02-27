@@ -618,9 +618,6 @@ func TestSeekFast(t *testing.T) {
 }
 
 func TestCache(t *testing.T) {
-	if Caching == NoCache {
-		return
-	}
 	const (
 		infix  = "payload"
 		blocks = 10

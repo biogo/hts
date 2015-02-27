@@ -13,14 +13,6 @@ import (
 	"sync"
 )
 
-const caching = cacheByReader
-
-const (
-	noCache = iota
-	cacheByWorker
-	cacheByReader
-)
-
 // countReader wraps flate.Reader, adding support for querying current offset.
 type countReader struct {
 	// Underlying Reader.
@@ -218,36 +210,13 @@ func (d *decompressor) using(b Block) *decompressor { d.blk = b; return d }
 // After nextBlockAt returns without error, the decompressor's Block
 // holds a valid gzip.Header and base offset.
 func (d *decompressor) nextBlockAt(off int64, rs io.ReadSeeker) *decompressor {
-	switch caching {
-	case noCache:
-	case cacheByWorker:
-		blk, err := d.owner.cachedBlockFor(off)
-		if err != nil {
-			d.err = err
-			return d
+	d.err = nil
+	for {
+		exists, next := d.owner.cacheHasBlockFor(off)
+		if !exists {
+			break
 		}
-		if blk != nil {
-			// TODO(kortschak): Under some conditions, e.g. FIFO
-			// cache we will be discarding a non-nil evicted Block.
-			// Consider retaining these in a sync.Pool.
-			d.owner.cachePut(d.blk)
-			d.blk = blk
-			return d
-		}
-		var retained bool
-		d.blk, retained = d.owner.cachePut(d.blk)
-		if retained {
-			d.blk = nil
-		}
-	case cacheByReader:
-		d.err = nil
-		for {
-			exists, next := d.owner.cacheHasBlockFor(off)
-			if !exists {
-				break
-			}
-			off = next
-		}
+		off = next
 	}
 
 	d.lazyBlock()
@@ -369,7 +338,7 @@ type Reader struct {
 
 	current Block
 
-	cacheLock sync.Mutex
+	cacheLock sync.RWMutex
 	// Cache is the Reader block cache. If Cache is not nil,
 	// the cache is queried for blocks before an attempt to
 	// read from the underlying io.Reader.
@@ -411,26 +380,19 @@ func (bg *Reader) Seek(off Offset) error {
 	}
 
 	if off.File != bg.current.Base() || !bg.current.hasData() {
-		switch caching {
-		case noCache:
-		case cacheByWorker:
-		case cacheByReader:
-			ok := bg.cacheSwap(off.File)
-			if ok {
-				goto seekInBlock
+		ok := bg.cacheSwap(off.File)
+		if !ok {
+			bg.current, bg.err = bg.dec.
+				using(bg.current).
+				nextBlockAt(off.File, rs).
+				wait()
+			bg.Header = bg.current.header()
+			if bg.err != nil {
+				return bg.err
 			}
-		}
-		bg.current, bg.err = bg.dec.
-			using(bg.current).
-			nextBlockAt(off.File, rs).
-			wait()
-		bg.Header = bg.current.header()
-		if bg.err != nil {
-			return bg.err
 		}
 	}
 
-seekInBlock:
 	bg.err = bg.current.seek(int64(off.Block))
 	if bg.err == nil {
 		bg.lastChunk = Chunk{Begin: off, End: off}
@@ -499,14 +461,9 @@ func (bg *Reader) Read(p []byte) (int, error) {
 
 func (bg *Reader) nextBlock() error {
 	base := bg.current.NextBase()
-	switch caching {
-	case noCache:
-	case cacheByWorker:
-	case cacheByReader:
-		ok := bg.cacheSwap(base)
-		if ok {
-			return nil
-		}
+	ok := bg.cacheSwap(base)
+	if ok {
+		return nil
 	}
 	var err error
 	bg.current, err = bg.dec.
@@ -522,6 +479,9 @@ func (bg *Reader) cacheSwap(base int64) bool {
 	if bg.Cache == nil {
 		return false
 	}
+	bg.cacheLock.Lock()
+	defer bg.cacheLock.Unlock()
+
 	blk, err := bg.cachedBlockFor(base)
 	if err != nil {
 		return false
@@ -549,9 +509,9 @@ func (bg *Reader) cacheHasBlockFor(base int64) (exists bool, next int64) {
 	if bg.Cache == nil {
 		return false, -1
 	}
-	bg.cacheLock.Lock()
+	bg.cacheLock.RLock()
 	exists, next = bg.Cache.Peek(base)
-	bg.cacheLock.Unlock()
+	bg.cacheLock.RUnlock()
 	return exists, next
 }
 
@@ -561,11 +521,6 @@ func (bg *Reader) cacheHasBlockFor(base int64) (exists bool, next int64) {
 // correct, or the Block cannot seek to the start of its data, a non-nil
 // error is returned.
 func (bg *Reader) cachedBlockFor(base int64) (Block, error) {
-	if bg.Cache == nil {
-		return nil, nil
-	}
-	bg.cacheLock.Lock()
-	defer bg.cacheLock.Unlock()
 	blk := bg.Cache.Get(base)
 	if blk != nil {
 		if !blk.ownedBy(bg) {
@@ -583,10 +538,8 @@ func (bg *Reader) cachedBlockFor(base int64) (Block, error) {
 // the Block that was evicted or b if it was not retained, and whether
 // the Block was retained by the cache.
 func (bg *Reader) cachePut(b Block) (evicted Block, retained bool) {
-	if bg.Cache == nil || b == nil || !b.hasData() {
+	if b == nil || !b.hasData() {
 		return b, false
 	}
-	bg.cacheLock.Lock()
-	defer bg.cacheLock.Unlock()
 	return bg.Cache.Put(b)
 }
