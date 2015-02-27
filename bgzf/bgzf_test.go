@@ -11,16 +11,18 @@ package bgzf_test
 import (
 	. "code.google.com/p/biogo.bam/bgzf"
 	"code.google.com/p/biogo.bam/bgzf/cache"
-	"errors"
 
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
+	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -166,9 +168,6 @@ func TestRoundTrip(t *testing.T) {
 		t.Fatalf("NewReader: %v", err)
 	}
 
-	// Insert a HasEOF to ensure it does not corrupt subsequent reads.
-	HasEOF(bytes.NewReader(buf.Bytes()))
-
 	if bl := ExpectedMemberSize(r.Header); bl != wbl {
 		t.Errorf("expectedMemberSize is %d, want %d", bl, wbl)
 	}
@@ -241,9 +240,6 @@ func TestRoundTripMulti(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewReader: %v", err)
 	}
-
-	// Insert a HasEOF to ensure it does not corrupt subsequent reads.
-	HasEOF(bytes.NewReader(buf.Bytes()))
 
 	if r.Comment != "comment" {
 		t.Errorf("comment is %q, want %q", r.Comment, "comment")
@@ -452,24 +448,50 @@ func TestSeekErrorDeadlock(t *testing.T) {
 }
 
 type countReadSeeker struct {
-	r       io.ReadSeeker
-	didSeek bool
-	n       int64
+	mu       sync.Mutex
+	r        io.ReadSeeker
+	_didSeek bool
+	n        int64
+}
+
+func (r *countReadSeeker) offset() int64 {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	return r.n
+}
+
+func (r *countReadSeeker) didSeek() bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	return r._didSeek
 }
 
 func (r *countReadSeeker) Read(p []byte) (int, error) {
-	r.didSeek = false
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r._didSeek = false
 	n, err := r.r.Read(p)
 	r.n += int64(n)
 	return n, err
 }
 
 func (r *countReadSeeker) Seek(offset int64, whence int) (int64, error) {
-	r.didSeek = true
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r._didSeek = true
 	return r.r.Seek(offset, whence)
 }
 
 func TestSeekFast(t *testing.T) {
+	// Under these conditions we cannot guarantee that a worker
+	// will not read bytes after a Seek call has been made.
+	if *conc != 1 && runtime.GOMAXPROCS(0) > 1 {
+		return
+	}
 	const (
 		infix  = "payload"
 		blocks = 10
@@ -512,15 +534,16 @@ func TestSeekFast(t *testing.T) {
 		offsets = offsets[:len(offsets)-1]
 
 		c := &countReadSeeker{r: bytes.NewReader(buf.Bytes())}
+
+		// Insert a HasEOF to ensure it does not corrupt subsequent reads.
+		HasEOF(bytes.NewReader(buf.Bytes()))
+
 		r, err := NewReader(c, *conc)
 		if err != nil {
 			t.Fatalf("NewReader: %v", err)
 		}
 
-		// Insert a HasEOF to ensure it does not corrupt subsequent reads.
-		HasEOF(bytes.NewReader(buf.Bytes()))
-
-		r.Cache = cache
+		r.SetCache(cache)
 		p := make([]byte, len(infix)+2)
 
 		func() {
@@ -592,14 +615,14 @@ func TestSeekFast(t *testing.T) {
 			}
 
 			// Check whether the underlying reader was seeked or read.
-			hasRead := c.n
+			hasRead := c.offset()
 			if err = r.Seek(Offset{File: int64(o), Block: 0}); err != nil {
 				t.Fatalf("Seek: %v", err)
 			}
-			if b := c.n - hasRead; b != 0 {
+			if b := c.offset() - hasRead; b != 0 {
 				t.Errorf("Seek performed unexpected read: %d bytes", b)
 			}
-			if c.didSeek {
+			if c.didSeek() {
 				t.Error("Seek caused underlying Seek.")
 			}
 
@@ -867,7 +890,11 @@ func TestCache(t *testing.T) {
 			w.Close()
 			offsets = offsets[:len(offsets)-1]
 
-			r, err := NewReader(bytes.NewReader(buf.Bytes()), *conc)
+			br := bytes.NewReader(buf.Bytes())
+			// Insert a HasEOF to ensure it does not corrupt subsequent reads.
+			HasEOF(br)
+
+			r, err := NewReader(br, *conc)
 			if err != nil {
 				t.Fatalf("NewReader: %v", err)
 			}
@@ -876,11 +903,8 @@ func TestCache(t *testing.T) {
 				stats = &cache.StatsRecorder{Cache: s}
 				s = stats
 			}
-			r.Cache = s
+			r.SetCache(s)
 			p := make([]byte, len(infix)+2)
-
-			// Insert a HasEOF to ensure it does not corrupt subsequent reads.
-			HasEOF(bytes.NewReader(buf.Bytes()))
 
 			for _, op := range pat.ops {
 				if op.seekBlock >= 0 {

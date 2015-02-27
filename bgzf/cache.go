@@ -11,7 +11,7 @@ import (
 )
 
 // Cache is a Block caching type. Basic cache implementations are provided
-// in the cache package.
+// in the cache package. A Cache must be safe for concurrent use.
 //
 // If a Cache is a Wrapper, its Wrap method is called on newly created blocks.
 type Cache interface {
@@ -54,6 +54,10 @@ type Block interface {
 	// header returns the gzip.Header of the gzip member
 	// from which the Block data was decompressed.
 	header() gzip.Header
+
+	// isMagicBlock returns whether the Block is a BGZF
+	// magic EOF marker block.
+	isMagicBlock() bool
 
 	// ownedBy returns whether the Block is owned by
 	// the given Reader.
@@ -98,8 +102,9 @@ type block struct {
 	owner *Reader
 	used  bool
 
-	base int64
-	h    gzip.Header
+	base  int64
+	h     gzip.Header
+	magic bool
 
 	offset Offset
 
@@ -130,6 +135,7 @@ func (b *block) readFrom(r io.ReadCloser) error {
 	}
 	b.buf = bytes.NewReader(buf.Bytes())
 	b.owner = o
+	b.magic = b.magic && b.len() == 0
 	return r.Close()
 }
 
@@ -161,9 +167,18 @@ func (b *block) NextBase() int64 {
 	return b.base + size
 }
 
-func (b *block) setHeader(h gzip.Header) { b.h = h }
+func (b *block) setHeader(h gzip.Header) {
+	b.h = h
+	b.magic = h.OS == 0xff &&
+		h.ModTime.Equal(unixEpoch) &&
+		h.Name == "" &&
+		h.Comment == "" &&
+		bytes.Equal(h.Extra, []byte("BC\x02\x00\x1b\x00"))
+}
 
 func (b *block) header() gzip.Header { return b.h }
+
+func (b *block) isMagicBlock() bool { return b.magic }
 
 func (b *block) setOwner(r *Reader) {
 	b.owner = r

@@ -12,6 +12,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"time"
 )
 
 const (
@@ -27,7 +28,10 @@ const (
 	magicBlock = "\x1f\x8b\x08\x04\x00\x00\x00\x00\x00\xff\x06\x00\x42\x43\x02\x00\x1b\x00\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00"
 )
 
-var bgzfExtraPrefix = []byte(bgzfExtra[:4])
+var (
+	bgzfExtraPrefix = []byte(bgzfExtra[:4])
+	unixEpoch       = time.Unix(0, 0)
+)
 
 func compressBound(srcLen int) int {
 	return srcLen + srcLen>>12 + srcLen>>14 + srcLen>>25 + 13 + minFrame

@@ -10,6 +10,7 @@ import (
 	"compress/flate"
 	"compress/gzip"
 	"io"
+	"runtime"
 	"sync"
 )
 
@@ -167,7 +168,7 @@ func (d *decompressor) ReadByte() (byte, error) {
 // lazyBlock conditionally creates a ready to use Block.
 func (d *decompressor) lazyBlock() {
 	if d.blk == nil {
-		if w, ok := d.owner.Cache.(Wrapper); ok {
+		if w, ok := d.owner.cache.(Wrapper); ok {
 			d.blk = w.Wrap(&block{owner: d.owner})
 		} else {
 			d.blk = &block{owner: d.owner}
@@ -200,6 +201,7 @@ func (d *decompressor) wait() (Block, error) {
 	return blk, d.err
 }
 
+// using sets the Block for the decompressor to work with.
 func (d *decompressor) using(b Block) *decompressor { d.blk = b; return d }
 
 // nextBlockAt makes the decompressor ready for reading decompressed data
@@ -244,23 +246,13 @@ func (d *decompressor) nextBlockAt(off int64, rs io.ReadSeeker) *decompressor {
 	}
 
 	d.blk.setBase(d.cr.offset())
-	var skipped int
-	skipped, d.err = d.readMember()
+	d.err = d.readMember()
 	if d.err != nil {
 		d.wg.Done()
 		return d
 	}
-	if skipped < len(magicBlock) && d.buf.equals([]byte(magicBlock)[skipped:]) {
-		// Special case for a magic block. This is done to preserve
-		// gzip header contents if a client has used ioutil.ReadAll.
-		// We need to copy over the extra data though to ensure that
-		// Block.nextBase returns the correct value.
-		h := d.blk.header()
-		h.Extra = d.gz.Header.Extra
-		d.blk.setHeader(h)
-	} else {
-		d.blk.setHeader(d.gz.Header)
-	}
+	d.blk.setHeader(d.gz.Header)
+	d.gz.Header = gzip.Header{} // Prevent retention of header field in next use.
 
 	// Decompress data into the decompressor's Block.
 	go func() {
@@ -281,31 +273,30 @@ func expectedMemberSize(h gzip.Header) int {
 	return (int(h.Extra[i+4]) | int(h.Extra[i+5])<<8) + 1
 }
 
-// readMember buffers the gzip member starting the current decompressor offset,
-// it returns the number of prefix bytes not read into the decompressor's buffer.
-func (d *decompressor) readMember() (skipped int, err error) {
+// readMember buffers the gzip member starting the current decompressor offset.
+func (d *decompressor) readMember() error {
 	// Set the decompressor to Read from the underlying flate.Reader
 	// and mark the starting offset from which the underlying reader
 	// was used.
 	d.buf.reset()
 	mark := d.cr.offset()
 
-	err = d.gz.Reset(d)
+	err := d.gz.Reset(d)
 	if err != nil {
 		d.blockSize = -1
-		return 0, err
+		return err
 	}
 
 	d.blockSize = expectedMemberSize(d.gz.Header)
 	if d.blockSize < 0 {
-		return 0, ErrNoBlockSize
+		return ErrNoBlockSize
 	}
-	skipped = int(d.cr.offset() - mark)
+	skipped := int(d.cr.offset() - mark)
 
 	// Read compressed data into the decompressor buffer until the
 	// underlying flate.Reader is positioned at the end of the gzip
 	// member in which the readMember call was made.
-	return skipped, d.buf.readLimited(d.blockSize-skipped, d.cr)
+	return d.buf.readLimited(d.blockSize-skipped, d.cr)
 }
 
 // Offset is a BGZF virtual offset.
@@ -334,30 +325,49 @@ type Reader struct {
 	// or seek operation.
 	lastChunk Chunk
 
+	// Non-concurrent work decompressor.
 	dec *decompressor
+
+	// Concurrent work fields.
+	waiting chan *decompressor
+	working chan *decompressor
+	control chan int64
 
 	current Block
 
-	cacheLock sync.RWMutex
-	// Cache is the Reader block cache. If Cache is not nil,
+	// cache is the Reader block cache. If Cache is not nil,
 	// the cache is queried for blocks before an attempt to
 	// read from the underlying io.Reader.
-	Cache Cache
+	mu    sync.RWMutex
+	cache Cache
 
 	err error
 }
 
 // NewReader returns a new BGZF reader.
 //
-// The number of concurrent read decompressors is specified by
-// rd (currently ignored).
+// The number of concurrent read decompressors is specified by rd.
+// If rd is 0, GOMAXPROCS concurrent will be created.
 func NewReader(r io.Reader, rd int) (*Reader, error) {
+	if rd == 0 {
+		rd = runtime.GOMAXPROCS(0)
+	}
 	bg := &Reader{
 		r: r,
 
 		head: make(chan *countReader, 1),
 	}
 	bg.head <- newCountReader(r)
+
+	// Make work loop control structures.
+	if rd > 1 {
+		bg.waiting = make(chan *decompressor, rd)
+		bg.working = make(chan *decompressor, rd)
+		bg.control = make(chan int64, 1)
+		for ; rd > 1; rd-- {
+			bg.waiting <- &decompressor{owner: bg}
+		}
+	}
 
 	// Read the first block now so we can fail before
 	// the first Read call if there is a problem.
@@ -369,7 +379,52 @@ func NewReader(r io.Reader, rd int) (*Reader, error) {
 	bg.current = blk
 	bg.Header = bg.current.header()
 
+	// Set up work loop if rd was > 1.
+	if bg.control != nil {
+		bg.waiting <- bg.dec
+		bg.dec = nil
+		next := blk.NextBase()
+		go func() {
+			defer func() {
+				bg.mu.Lock()
+				bg.cache = nil
+				bg.mu.Unlock()
+			}()
+			for dec := range bg.waiting {
+				var open bool
+				if next < 0 {
+					next, open = <-bg.control
+					if !open {
+						return
+					}
+				} else {
+					select {
+					case next, open = <-bg.control:
+						if !open {
+							return
+						}
+					default:
+					}
+				}
+				if next < 0 {
+					bg.waiting <- dec
+					continue
+				}
+				dec.nextBlockAt(next, nil)
+				next = dec.blk.NextBase()
+				bg.working <- dec
+			}
+		}()
+	}
+
 	return bg, nil
+}
+
+// SetCache sets the cache to be used by the Reader.
+func (bg *Reader) SetCache(c Cache) {
+	bg.mu.Lock()
+	bg.cache = c
+	bg.mu.Unlock()
 }
 
 // Seek performs a seek operation to the given virtual offset.
@@ -382,10 +437,26 @@ func (bg *Reader) Seek(off Offset) error {
 	if off.File != bg.current.Base() || !bg.current.hasData() {
 		ok := bg.cacheSwap(off.File)
 		if !ok {
-			bg.current, bg.err = bg.dec.
+			var (
+				dec  *decompressor
+				pool []*decompressor
+			)
+			if bg.dec != nil {
+				dec = bg.dec
+			} else {
+				pool = bg.resetWorkPool()
+				dec = pool[0]
+			}
+			bg.current, bg.err = dec.
 				using(bg.current).
 				nextBlockAt(off.File, rs).
 				wait()
+			if bg.dec == nil {
+				bg.control <- bg.current.NextBase()
+				for _, d := range pool {
+					bg.waiting <- d
+				}
+			}
 			bg.Header = bg.current.header()
 			if bg.err != nil {
 				return bg.err
@@ -401,6 +472,38 @@ func (bg *Reader) Seek(off Offset) error {
 	return bg.err
 }
 
+// resetWorkPool collects all waiting and working decompressors
+// and clears the state of the control channel. It returns
+// the decompressors ready to be re-injected into the worker
+// queue.
+func (bg *Reader) resetWorkPool() []*decompressor {
+	// Pull all active and waiting decompressors
+	// from the ring buffer and clear them.
+	pool := make([]*decompressor, cap(bg.working))
+	for i := 0; i < len(pool); {
+		var d *decompressor
+		select {
+		case d = <-bg.waiting:
+		case d = <-bg.working:
+			// TODO(kortschak): Put the block into the cache
+			// if it did not error and has non-zero data.
+			d.wait()
+		case bg.control <- -1:
+			continue
+		}
+		pool[i] = d
+		i++
+	}
+
+	// Reset the control channel.
+	select {
+	case <-bg.control:
+	default:
+	}
+
+	return pool
+}
+
 // LastChunk returns the region of the BGZF file read by the last read
 // operation or the resulting virtual offset of the last successful
 // seek operation.
@@ -408,7 +511,10 @@ func (bg *Reader) LastChunk() Chunk { return bg.lastChunk }
 
 // Close closes the reader and releases resources.
 func (bg *Reader) Close() error {
-	bg.Cache = nil
+	if bg.control != nil {
+		close(bg.control)
+		close(bg.waiting)
+	}
 	if bg.err == io.EOF {
 		return nil
 	}
@@ -457,29 +563,58 @@ func (bg *Reader) Read(p []byte) (int, error) {
 	return n, bg.err
 }
 
+// nextBlock swaps the current decompressed block for the next
+// in the stream. If the block is available from the cache
+// no additional work is done, otherwise a decompressor is
+// used or waited on.
 func (bg *Reader) nextBlock() error {
 	base := bg.current.NextBase()
 	ok := bg.cacheSwap(base)
 	if ok {
+		bg.Header = bg.current.header()
 		return nil
 	}
+
+	var dec *decompressor
+	if bg.dec != nil {
+		dec = bg.dec
+		dec.using(bg.current).nextBlockAt(base, nil)
+	} else {
+		dec = <-bg.working
+	}
 	var err error
-	bg.current, err = bg.dec.
-		using(bg.current).
-		nextBlockAt(base, nil).
-		wait()
-	bg.Header = bg.current.header()
-	return err
+	bg.current, err = dec.wait()
+	if bg.current.Base() != base {
+		panic("bgzf: unexpected block")
+	}
+	if bg.dec == nil {
+		bg.waiting <- dec
+	}
+
+	if err != nil {
+		return err
+	}
+
+	// Only set header if there was no error.
+	h := bg.current.header()
+	if bg.current.isMagicBlock() {
+		// TODO(kortschak): Do this more carefully. It may be that
+		// someone actually has extra data in this field that we are
+		// clobbering.
+		bg.Header.Extra = h.Extra
+	} else {
+		bg.Header = h
+	}
+
+	return nil
 }
 
 // cacheSwap attempts to swap the current Block for a cached Block
 // for the given base offset. It returns true if successful.
 func (bg *Reader) cacheSwap(base int64) bool {
-	if bg.Cache == nil {
+	if bg.cache == nil {
 		return false
 	}
-	bg.cacheLock.Lock()
-	defer bg.cacheLock.Unlock()
 
 	blk, err := bg.cachedBlockFor(base)
 	if err != nil {
@@ -505,13 +640,12 @@ func (bg *Reader) cacheSwap(base int64) bool {
 // for the given base offset. If the requested Block exists, the base
 // offset of the following Block is returned.
 func (bg *Reader) cacheHasBlockFor(base int64) (exists bool, next int64) {
-	if bg.Cache == nil {
+	bg.mu.RLock()
+	defer bg.mu.RUnlock()
+	if bg.cache == nil {
 		return false, -1
 	}
-	bg.cacheLock.RLock()
-	exists, next = bg.Cache.Peek(base)
-	bg.cacheLock.RUnlock()
-	return exists, next
+	return bg.cache.Peek(base)
 }
 
 // cachedBlockFor returns a non-nil Block if the Reader has access to a
@@ -520,7 +654,7 @@ func (bg *Reader) cacheHasBlockFor(base int64) (exists bool, next int64) {
 // correct, or the Block cannot seek to the start of its data, a non-nil
 // error is returned.
 func (bg *Reader) cachedBlockFor(base int64) (Block, error) {
-	blk := bg.Cache.Get(base)
+	blk := bg.cache.Get(base)
 	if blk != nil {
 		if !blk.ownedBy(bg) {
 			return nil, ErrContaminatedCache
@@ -540,5 +674,5 @@ func (bg *Reader) cachePut(b Block) (evicted Block, retained bool) {
 	if b == nil || !b.hasData() {
 		return b, false
 	}
-	return bg.Cache.Put(b)
+	return bg.cache.Put(b)
 }
