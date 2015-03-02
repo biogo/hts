@@ -26,10 +26,10 @@ type Cache interface {
 	// by the Cache.
 	Put(Block) (evicted Block, retained bool)
 
-	// Peek returns whether a Block exists in the case for the
-	// given base. If a Block satisfies the request, exists is
-	// returned as true and the offset for the next Block in
-	// the stream is returned, otherwise false and -1.
+	// Peek returns whether a Block exists in the cache for the
+	// given base. If a Block satisfies the request, then exists
+	// is returned as true with the offset for the next Block in
+	// the stream, otherwise false and -1.
 	Peek(base int64) (exists bool, next int64)
 }
 
@@ -87,7 +87,7 @@ type Block interface {
 	setBase(int64)
 
 	// NextBase returns the expected position of the next
-	// BGZF block. It returns -1 if the block is not valid.
+	// BGZF block. It returns -1 if the Block is not valid.
 	NextBase() int64
 
 	// setHeader sets the file header of of the gzip
