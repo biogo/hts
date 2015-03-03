@@ -645,6 +645,12 @@ func TestSeekFast(t *testing.T) {
 }
 
 func TestCache(t *testing.T) {
+	// Under these conditions we cannot guarantee that the order of
+	// blocks returned by nextBlock work will not result in additional
+	// cache puts.
+	if *conc != 1 {
+		return
+	}
 	const (
 		infix  = "payload"
 		blocks = 10

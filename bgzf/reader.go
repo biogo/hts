@@ -440,9 +440,10 @@ func (bg *Reader) Seek(off Offset) error {
 				select {
 				case dec = <-bg.waiting:
 				case dec = <-bg.working:
-					dec.wait()
-					// TODO(kortschak): If no error and cache
-					// is available retain the returned block.
+					blk, err := dec.wait()
+					if err == nil {
+						bg.keep(blk)
+					}
 				}
 			}
 			bg.current, bg.err = dec.
@@ -557,8 +558,10 @@ func (bg *Reader) nextBlock() error {
 				ok = true
 				break
 			}
-			// TODO(kortschak): If no error and cache
-			// is available retain the returned block.
+			if err == nil {
+				bg.keep(bg.current)
+				bg.current = nil
+			}
 		}
 		if !ok {
 			panic("bgzf: unexpected block")
@@ -648,4 +651,16 @@ func (bg *Reader) cachePut(b Block) (evicted Block, retained bool) {
 		return b, false
 	}
 	return bg.cache.Put(b)
+}
+
+// keep puts the given Block into the cache if it exists.
+func (bg *Reader) keep(b Block) {
+	if b == nil || !b.hasData() {
+		return
+	}
+	bg.mu.RLock()
+	defer bg.mu.RUnlock()
+	if bg.cache != nil {
+		bg.cache.Put(b)
+	}
 }
