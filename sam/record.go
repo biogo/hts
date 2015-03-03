@@ -111,6 +111,11 @@ func (r *Record) Tag(tag []byte) (v Aux, ok bool) {
 	return
 }
 
+// RefID returns the reference ID for the Record.
+func (r *Record) RefID() int {
+	return r.Ref.ID()
+}
+
 // Start returns the lower-coordinate end of the alignment.
 func (r *Record) Start() int {
 	return r.Pos
