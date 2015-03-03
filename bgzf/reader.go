@@ -406,10 +406,6 @@ func NewReader(r io.Reader, rd int) (*Reader, error) {
 					default:
 					}
 				}
-				if next < 0 {
-					bg.waiting <- dec
-					continue
-				}
 				dec.nextBlockAt(next, nil)
 				next = dec.blk.NextBase()
 				bg.working <- dec
@@ -437,25 +433,29 @@ func (bg *Reader) Seek(off Offset) error {
 	if off.File != bg.current.Base() || !bg.current.hasData() {
 		ok := bg.cacheSwap(off.File)
 		if !ok {
-			var (
-				dec  *decompressor
-				pool []*decompressor
-			)
+			var dec *decompressor
 			if bg.dec != nil {
 				dec = bg.dec
 			} else {
-				pool = bg.resetWorkPool()
-				dec = pool[0]
+				select {
+				case dec = <-bg.waiting:
+				case dec = <-bg.working:
+					dec.wait()
+					// TODO(kortschak): If no error and cache
+					// is available retain the returned block.
+				}
 			}
 			bg.current, bg.err = dec.
 				using(bg.current).
 				nextBlockAt(off.File, rs).
 				wait()
 			if bg.dec == nil {
-				bg.control <- bg.current.NextBase()
-				for _, d := range pool {
-					bg.waiting <- d
+				select {
+				case <-bg.control:
+				default:
 				}
+				bg.control <- bg.current.NextBase()
+				bg.waiting <- dec
 			}
 			bg.Header = bg.current.header()
 			if bg.err != nil {
@@ -470,38 +470,6 @@ func (bg *Reader) Seek(off Offset) error {
 	}
 
 	return bg.err
-}
-
-// resetWorkPool collects all waiting and working decompressors
-// and clears the state of the control channel. It returns
-// the decompressors ready to be re-injected into the worker
-// queue.
-func (bg *Reader) resetWorkPool() []*decompressor {
-	// Pull all active and waiting decompressors
-	// from the ring buffer and clear them.
-	pool := make([]*decompressor, cap(bg.working))
-	for i := 0; i < len(pool); {
-		var d *decompressor
-		select {
-		case d = <-bg.waiting:
-		case d = <-bg.working:
-			// TODO(kortschak): Put the block into the cache
-			// if it did not error and has non-zero data.
-			d.wait()
-		case bg.control <- -1:
-			continue
-		}
-		pool[i] = d
-		i++
-	}
-
-	// Reset the control channel.
-	select {
-	case <-bg.control:
-	default:
-	}
-
-	return pool
 }
 
 // LastChunk returns the region of the BGZF file read by the last read
@@ -575,22 +543,27 @@ func (bg *Reader) nextBlock() error {
 		return nil
 	}
 
-	var dec *decompressor
-	if bg.dec != nil {
-		dec = bg.dec
-		dec.using(bg.current).nextBlockAt(base, nil)
-	} else {
-		dec = <-bg.working
-	}
 	var err error
-	bg.current, err = dec.wait()
-	if bg.current.Base() != base {
-		panic("bgzf: unexpected block")
+	if bg.dec != nil {
+		bg.dec.using(bg.current).nextBlockAt(base, nil)
+		bg.current, err = bg.dec.wait()
+	} else {
+		var ok bool
+		for i := 0; i < cap(bg.working); i++ {
+			dec := <-bg.working
+			bg.current, err = dec.wait()
+			bg.waiting <- dec
+			if bg.current.Base() == base {
+				ok = true
+				break
+			}
+			// TODO(kortschak): If no error and cache
+			// is available retain the returned block.
+		}
+		if !ok {
+			panic("bgzf: unexpected block")
+		}
 	}
-	if bg.dec == nil {
-		bg.waiting <- dec
-	}
-
 	if err != nil {
 		return err
 	}
