@@ -19,43 +19,6 @@ const (
 	statsDummyBin = 0x924a
 )
 
-func makeOffset(vOff uint64) bgzf.Offset {
-	return bgzf.Offset{
-		File:  int64(vOff >> 16),
-		Block: uint16(vOff),
-	}
-}
-
-func isZero(o bgzf.Offset) bool {
-	return o == bgzf.Offset{}
-}
-
-func vOffset(o bgzf.Offset) int64 {
-	return o.File<<16 | int64(o.Block)
-}
-
-func isPlaced(r *sam.Record) bool {
-	return r.Ref != nil && r.Pos != -1
-}
-
-type byBinNumber []Bin
-
-func (b byBinNumber) Len() int           { return len(b) }
-func (b byBinNumber) Less(i, j int) bool { return b[i].Bin < b[j].Bin }
-func (b byBinNumber) Swap(i, j int)      { b[i], b[j] = b[j], b[i] }
-
-type byBeginOffset []bgzf.Chunk
-
-func (c byBeginOffset) Len() int           { return len(c) }
-func (c byBeginOffset) Less(i, j int) bool { return vOffset(c[i].Begin) < vOffset(c[j].Begin) }
-func (c byBeginOffset) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
-
-type byVirtOffset []bgzf.Offset
-
-func (o byVirtOffset) Len() int           { return len(o) }
-func (o byVirtOffset) Less(i, j int) bool { return vOffset(o[i]) < vOffset(o[j]) }
-func (o byVirtOffset) Swap(i, j int)      { o[i], o[j] = o[j], o[i] }
-
 type Index struct {
 	References []RefIndex
 	Unmapped   *uint64
@@ -78,19 +41,6 @@ type IndexStats struct {
 	Chunk    bgzf.Chunk
 	Mapped   uint64
 	Unmapped uint64
-}
-
-func (i *Index) Sort() {
-	if !i.isSorted {
-		for _, ref := range i.References {
-			sort.Sort(byBinNumber(ref.Bins))
-			for _, bin := range ref.Bins {
-				sort.Sort(byBeginOffset(bin.Chunks))
-			}
-			sort.Sort(byVirtOffset(ref.Intervals))
-		}
-		i.isSorted = true
-	}
 }
 
 func (i *Index) Add(r *sam.Record, c bgzf.Chunk) error {
@@ -235,6 +185,56 @@ func (i *Index) Chunks(r *sam.Reference, beg, end int) []bgzf.Chunk {
 
 	return adjacent(chunks)
 }
+
+func (i *Index) Sort() {
+	if !i.isSorted {
+		for _, ref := range i.References {
+			sort.Sort(byBinNumber(ref.Bins))
+			for _, bin := range ref.Bins {
+				sort.Sort(byBeginOffset(bin.Chunks))
+			}
+			sort.Sort(byVirtOffset(ref.Intervals))
+		}
+		i.isSorted = true
+	}
+}
+
+func makeOffset(vOff uint64) bgzf.Offset {
+	return bgzf.Offset{
+		File:  int64(vOff >> 16),
+		Block: uint16(vOff),
+	}
+}
+
+func isZero(o bgzf.Offset) bool {
+	return o == bgzf.Offset{}
+}
+
+func vOffset(o bgzf.Offset) int64 {
+	return o.File<<16 | int64(o.Block)
+}
+
+func isPlaced(r *sam.Record) bool {
+	return r.Ref != nil && r.Pos != -1
+}
+
+type byBinNumber []Bin
+
+func (b byBinNumber) Len() int           { return len(b) }
+func (b byBinNumber) Less(i, j int) bool { return b[i].Bin < b[j].Bin }
+func (b byBinNumber) Swap(i, j int)      { b[i], b[j] = b[j], b[i] }
+
+type byBeginOffset []bgzf.Chunk
+
+func (c byBeginOffset) Len() int           { return len(c) }
+func (c byBeginOffset) Less(i, j int) bool { return vOffset(c[i].Begin) < vOffset(c[j].Begin) }
+func (c byBeginOffset) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
+
+type byVirtOffset []bgzf.Offset
+
+func (o byVirtOffset) Len() int           { return len(o) }
+func (o byVirtOffset) Less(i, j int) bool { return vOffset(o[i]) < vOffset(o[j]) }
+func (o byVirtOffset) Swap(i, j int)      { o[i], o[j] = o[j], o[i] }
 
 type Strategy func([]bgzf.Chunk) []bgzf.Chunk
 
