@@ -588,6 +588,8 @@ func (bg *Reader) nextBlock() error {
 // cacheSwap attempts to swap the current Block for a cached Block
 // for the given base offset. It returns true if successful.
 func (bg *Reader) cacheSwap(base int64) bool {
+	bg.mu.RLock()
+	defer bg.mu.RUnlock()
 	if bg.cache == nil {
 		return false
 	}
