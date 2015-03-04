@@ -19,6 +19,7 @@ const (
 	statsDummyBin = 0x924a
 )
 
+// Index is a BAI index.
 type Index struct {
 	refs       []refIndex
 	unmapped   *uint64
@@ -37,31 +38,43 @@ type bin struct {
 	chunks []bgzf.Chunk
 }
 
+// ReferenceStats holds mapping statistics for a BAM reference
 type ReferenceStats struct {
-	Chunk    bgzf.Chunk
-	Mapped   uint64
+	// Chunk is the span of the BAM holding alignments
+	// to the reference.
+	Chunk bgzf.Chunk
+
+	// Mapped is the count of mapped reads.
+	Mapped uint64
+
+	// Unmapped is the count of unmapped reads.
 	Unmapped uint64
 }
 
-func (i *Index) Len() int {
+// NumRefs returns the number of references in the index.
+func (i *Index) NumRefs() int {
 	return len(i.refs)
 }
 
-func (i *Index) ReferenceStats(id int) (ReferenceStats, bool) {
-	stats := i.refs[id].stats
-	if stats == nil {
+// ReferenceStats returns the index statistics for the given reference and true
+// if the statistics are valid.
+func (i *Index) ReferenceStats(id int) (stats ReferenceStats, ok bool) {
+	s := i.refs[id].stats
+	if s == nil {
 		return ReferenceStats{}, false
 	}
-	return *stats, true
+	return *s, true
 }
 
-func (i *Index) Unmapped() (uint64, bool) {
+// Unmapped returns the number of unmapped reads and true if the count is valid.
+func (i *Index) Unmapped() (n uint64, ok bool) {
 	if i.unmapped == nil {
 		return 0, false
 	}
 	return *i.unmapped, true
 }
 
+// Add records the SAM record as having being located at the given chunk.
 func (i *Index) Add(r *sam.Record, c bgzf.Chunk) error {
 	if !validIndexPos(r.Start()) || !validIndexPos(r.End()) {
 		return errors.New("bam: attempt to add record outside indexable range")
@@ -153,12 +166,13 @@ found:
 	return nil
 }
 
-func (i *Index) chunks(r *sam.Reference, beg, end int) []bgzf.Chunk {
+// Chunks returns a []bgzf.Chunk that correspond to the given genomic interval.
+func (i *Index) Chunks(r *sam.Reference, beg, end int) []bgzf.Chunk {
 	rid := r.ID()
 	if rid < 0 || rid >= len(i.refs) {
 		return nil
 	}
-	i.Sort()
+	i.sort()
 	ref := i.refs[rid]
 
 	iv := beg / tileWidth
@@ -205,7 +219,7 @@ func (i *Index) chunks(r *sam.Reference, beg, end int) []bgzf.Chunk {
 	return adjacent(chunks)
 }
 
-func (i *Index) Sort() {
+func (i *Index) sort() {
 	if !i.isSorted {
 		for _, ref := range i.refs {
 			sort.Sort(byBinNumber(ref.bins))
@@ -255,14 +269,23 @@ func (o byVirtOffset) Len() int           { return len(o) }
 func (o byVirtOffset) Less(i, j int) bool { return vOffset(o[i]) < vOffset(o[j]) }
 func (o byVirtOffset) Swap(i, j int)      { o[i], o[j] = o[j], o[i] }
 
+// Strategy represents a chunk compression strategy.
 type Strategy func([]bgzf.Chunk) []bgzf.Chunk
 
 var (
+	// Identity leaves the []bgzf.Chunk unaltered.
 	Identity Strategy = identity
+
+	// Adjacent merges contiguous bgzf.Chunks.
 	Adjacent Strategy = adjacent
-	Squash   Strategy = squash
+
+	// Squash merges all bgzf.Chunks into a single bgzf.Chunk.
+	Squash Strategy = squash
 )
 
+// CompressorStrategy returns a Strategy that will merge bgzf.Chunks
+// that have a distance between BGZF block starts less than or equal
+// to near.
 func CompressorStrategy(near int64) Strategy {
 	return func(chunks []bgzf.Chunk) []bgzf.Chunk {
 		if len(chunks) == 0 {
@@ -320,6 +343,7 @@ func squash(chunks []bgzf.Chunk) []bgzf.Chunk {
 	return []bgzf.Chunk{{Begin: left, End: right}}
 }
 
+// MergeChunks applies the given Strategy to all bins in the Index.
 func (i *Index) MergeChunks(s Strategy) {
 	if s == nil {
 		return

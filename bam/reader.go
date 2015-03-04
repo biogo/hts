@@ -16,6 +16,7 @@ import (
 	"code.google.com/p/biogo.bam/sam"
 )
 
+// Reader implements BAM data reading.
 type Reader struct {
 	r *bgzf.Reader
 	h *sam.Header
@@ -24,6 +25,9 @@ type Reader struct {
 	lastChunk bgzf.Chunk
 }
 
+// NewReader returns a new Reader using the given io.Reader
+// and setting the read concurrency to rd. If rd is zero
+// concurrency is set to GOMAXPROCS.
 func NewReader(r io.Reader, rd int) (*Reader, error) {
 	bg, err := bgzf.NewReader(r, rd)
 	if err != nil {
@@ -43,6 +47,7 @@ func NewReader(r io.Reader, rd int) (*Reader, error) {
 	return br, nil
 }
 
+// Header returns the SAM Header held by the Reader.
 func (br *Reader) Header() *sam.Header {
 	return br.h
 }
@@ -158,23 +163,25 @@ func (br *Reader) Read() (*sam.Record, error) {
 // SetChunk sets a limited range of the underlying BGZF file to read, after
 // seeking to the start of the given chunk. It may be used to iterate over
 // a defined genomic interval.
-func (r *Reader) SetChunk(c *bgzf.Chunk) error {
+func (br *Reader) SetChunk(c *bgzf.Chunk) error {
 	if c != nil {
-		err := r.r.Seek(c.Begin)
+		err := br.r.Seek(c.Begin)
 		if err != nil {
 			return err
 		}
 	}
-	r.c = c
+	br.c = c
 	return nil
 }
 
-func (r *Reader) LastChunk() bgzf.Chunk {
-	return r.lastChunk
+// LastChunk returns the bgzf.Chunk corresponding to the last Read operation.
+func (br *Reader) LastChunk() bgzf.Chunk {
+	return br.lastChunk
 }
 
-func (r *Reader) Close() error {
-	return r.r.Close()
+// Close closes the Reader.
+func (br *Reader) Close() error {
+	return br.r.Close()
 }
 
 // Iterator wraps a Reader to provide a convenient loop interface for reading BAM data.

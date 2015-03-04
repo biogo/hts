@@ -1822,7 +1822,7 @@ func (s *S) TestConceptualBAI(c *check.C) {
 	h.AddReference(&ref)
 
 	for _, test := range chunkTests {
-		c.Check(bai.chunks(&ref, test.beg, test.end), check.DeepEquals, test.expect,
+		c.Check(bai.Chunks(&ref, test.beg, test.end), check.DeepEquals, test.expect,
 			check.Commentf("Unexpected result for [%d,%d).", test.beg, test.end),
 		)
 	}

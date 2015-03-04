@@ -14,6 +14,7 @@ import (
 	"sort"
 )
 
+// ReadIndex reads the BAI Index from the given io.Reader.
 func ReadIndex(r io.Reader) (*Index, error) {
 	var (
 		idx   Index

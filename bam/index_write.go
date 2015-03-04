@@ -12,8 +12,9 @@ import (
 	"io"
 )
 
+// WriteIndex writes the Index to the given io.Writer.
 func WriteIndex(w io.Writer, idx *Index) error {
-	idx.Sort()
+	idx.sort()
 	err := binary.Write(w, binary.LittleEndian, baiMagic)
 	if err != nil {
 		return err

@@ -15,6 +15,7 @@ import (
 	"code.google.com/p/biogo.bam/sam"
 )
 
+// Writer implements BAM data writing.
 type Writer struct {
 	h *sam.Header
 
@@ -22,6 +23,8 @@ type Writer struct {
 	buf bytes.Buffer
 }
 
+// NewWriter returns a new Writer using the given SAM header. Write
+// concurrency is set to wc.
 func NewWriter(w io.Writer, h *sam.Header, wc int) (*Writer, error) {
 	return NewWriterLevel(w, h, gzip.DefaultCompression, wc)
 }
@@ -33,6 +36,9 @@ func makeWriter(w io.Writer, level, wc int) (*bgzf.Writer, error) {
 	return bgzf.NewWriterLevel(w, level, wc)
 }
 
+// NewWriterLevel returns a new Writer using the given SAM header. Write
+// concurrency is set to wc and compression level is set to level. Valid
+// values for level are described in the compress/gzip documentation.
 func NewWriterLevel(w io.Writer, h *sam.Header, level, wc int) (*Writer, error) {
 	bg, err := makeWriter(w, level, wc)
 	if err != nil {
@@ -126,6 +132,7 @@ func writeCigarOps(bin *binaryWriter, co []sam.CigarOp) {
 	return
 }
 
+// Close closes the writer.
 func (bw *Writer) Close() error {
 	return bw.bg.Close()
 }
