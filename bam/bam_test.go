@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"code.google.com/p/biogo.bam/bgzf"
+	"code.google.com/p/biogo.bam/bgzf/index"
 	"code.google.com/p/biogo.bam/sam"
 
 	"gopkg.in/check.v1"
@@ -1937,7 +1938,7 @@ var chunkMergeTests = []struct {
 
 	expectSquash *Index
 
-	compStrat      Strategy
+	compStrat      index.MergeStrategy
 	expectCompress *Index
 }{
 	{
@@ -2165,7 +2166,7 @@ var chunkMergeTests = []struct {
 				},
 			}
 		},
-		compStrat: CompressorStrategy(0x20000),
+		compStrat: index.CompressorStrategy(0x20000),
 		expectCompress: &Index{
 			refs: []refIndex{
 				{
@@ -2204,13 +2205,13 @@ func (s *S) TestMergeChunks(c *check.C) {
 	for _, test := range chunkMergeTests {
 		if test.expectAdjacent != nil {
 			bai = test.index()
-			bai.MergeChunks(Adjacent)
+			bai.MergeChunks(index.Adjacent)
 			c.Check(bai, check.DeepEquals, test.expectAdjacent)
 		}
 
 		if test.expectSquash != nil {
 			bai = test.index()
-			bai.MergeChunks(Squash)
+			bai.MergeChunks(index.Squash)
 			c.Check(bai, check.DeepEquals, test.expectSquash)
 		}
 

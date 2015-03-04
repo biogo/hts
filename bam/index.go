@@ -6,6 +6,7 @@ package bam
 
 import (
 	"code.google.com/p/biogo.bam/bgzf"
+	"code.google.com/p/biogo.bam/bgzf/index"
 	"code.google.com/p/biogo.bam/sam"
 
 	"errors"
@@ -216,7 +217,7 @@ func (i *Index) Chunks(r *sam.Reference, beg, end int) []bgzf.Chunk {
 		sort.Sort(byBeginOffset(chunks))
 	}
 
-	return adjacent(chunks)
+	return index.Adjacent(chunks)
 }
 
 func (i *Index) sort() {
@@ -269,82 +270,8 @@ func (o byVirtOffset) Len() int           { return len(o) }
 func (o byVirtOffset) Less(i, j int) bool { return vOffset(o[i]) < vOffset(o[j]) }
 func (o byVirtOffset) Swap(i, j int)      { o[i], o[j] = o[j], o[i] }
 
-// Strategy represents a chunk compression strategy.
-type Strategy func([]bgzf.Chunk) []bgzf.Chunk
-
-var (
-	// Identity leaves the []bgzf.Chunk unaltered.
-	Identity Strategy = identity
-
-	// Adjacent merges contiguous bgzf.Chunks.
-	Adjacent Strategy = adjacent
-
-	// Squash merges all bgzf.Chunks into a single bgzf.Chunk.
-	Squash Strategy = squash
-)
-
-// CompressorStrategy returns a Strategy that will merge bgzf.Chunks
-// that have a distance between BGZF block starts less than or equal
-// to near.
-func CompressorStrategy(near int64) Strategy {
-	return func(chunks []bgzf.Chunk) []bgzf.Chunk {
-		if len(chunks) == 0 {
-			return nil
-		}
-		for c := 1; c < len(chunks); c++ {
-			leftChunk := chunks[c-1]
-			rightChunk := &chunks[c]
-			if leftChunk.End.File+near >= rightChunk.Begin.File {
-				rightChunk.Begin = leftChunk.Begin
-				if vOffset(leftChunk.End) > vOffset(rightChunk.End) {
-					rightChunk.End = leftChunk.End
-				}
-				chunks = append(chunks[:c-1], chunks[c:]...)
-				c--
-			}
-		}
-		return chunks
-	}
-}
-
-func identity(chunks []bgzf.Chunk) []bgzf.Chunk { return chunks }
-
-func adjacent(chunks []bgzf.Chunk) []bgzf.Chunk {
-	if len(chunks) == 0 {
-		return nil
-	}
-	for c := 1; c < len(chunks); c++ {
-		leftChunk := chunks[c-1]
-		rightChunk := &chunks[c]
-		leftEndOffset := vOffset(leftChunk.End)
-		if leftEndOffset >= vOffset(rightChunk.Begin) {
-			rightChunk.Begin = leftChunk.Begin
-			if leftEndOffset > vOffset(rightChunk.End) {
-				rightChunk.End = leftChunk.End
-			}
-			chunks = append(chunks[:c-1], chunks[c:]...)
-			c--
-		}
-	}
-	return chunks
-}
-
-func squash(chunks []bgzf.Chunk) []bgzf.Chunk {
-	if len(chunks) == 0 {
-		return nil
-	}
-	left := chunks[0].Begin
-	right := chunks[0].End
-	for _, c := range chunks[1:] {
-		if vOffset(c.End) > vOffset(right) {
-			right = c.End
-		}
-	}
-	return []bgzf.Chunk{{Begin: left, End: right}}
-}
-
-// MergeChunks applies the given Strategy to all bins in the Index.
-func (i *Index) MergeChunks(s Strategy) {
+// MergeChunks applies the given MergeStrategy to all bins in the Index.
+func (i *Index) MergeChunks(s index.MergeStrategy) {
 	if s == nil {
 		return
 	}
