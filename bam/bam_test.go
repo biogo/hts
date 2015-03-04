@@ -1239,24 +1239,24 @@ var baiTestData = []struct {
 			0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		},
 		expect: &Index{
-			References: []RefIndex{
+			refs: []refIndex{
 				{
-					Bins: []Bin{
+					bins: []bin{
 						{
-							Bin: 4681, Chunks: []bgzf.Chunk{
+							bin: 4681, chunks: []bgzf.Chunk{
 								{Begin: bgzf.Offset{File: 98, Block: 0}, End: bgzf.Offset{File: 401, Block: 0}},
 							},
 						},
 					},
-					Stats: &IndexStats{
+					stats: &ReferenceStats{
 						Chunk:    bgzf.Chunk{Begin: bgzf.Offset{File: 98, Block: 0}, End: bgzf.Offset{File: 401, Block: 0}},
 						Mapped:   8,
 						Unmapped: 1,
 					},
-					Intervals: []bgzf.Offset{{File: 98, Block: 0}},
+					intervals: []bgzf.Offset{{File: 98, Block: 0}},
 				},
 			},
-			Unmapped: uint64ptr(1),
+			unmapped: uint64ptr(1),
 			isSorted: true,
 		},
 		err: nil,
@@ -1301,24 +1301,24 @@ var baiTestData = []struct {
 			0x00, 0x00, 0x62, 0x00, 0x00, 0x00, 0x00, 0x00,
 		},
 		expect: &Index{
-			References: []RefIndex{
+			refs: []refIndex{
 				{
-					Bins: []Bin{
+					bins: []bin{
 						{
-							Bin: 4681, Chunks: []bgzf.Chunk{
+							bin: 4681, chunks: []bgzf.Chunk{
 								{Begin: bgzf.Offset{File: 98, Block: 0}, End: bgzf.Offset{File: 401, Block: 0}},
 							},
 						},
 					},
-					Stats: &IndexStats{
+					stats: &ReferenceStats{
 						Chunk:    bgzf.Chunk{Begin: bgzf.Offset{File: 98, Block: 0}, End: bgzf.Offset{File: 401, Block: 0}},
 						Mapped:   8,
 						Unmapped: 1,
 					},
-					Intervals: []bgzf.Offset{{File: 98, Block: 0}},
+					intervals: []bgzf.Offset{{File: 98, Block: 0}},
 				},
 			},
-			Unmapped: nil,
+			unmapped: nil,
 			isSorted: true,
 		},
 		err: nil,
@@ -1352,20 +1352,20 @@ var baiTestData = []struct {
 			0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		},
 		expect: &Index{
-			References: []RefIndex{
+			refs: []refIndex{
 				{
-					Bins: []Bin{
+					bins: []bin{
 						{
-							Bin: 4681, Chunks: []bgzf.Chunk{
+							bin: 4681, chunks: []bgzf.Chunk{
 								{Begin: bgzf.Offset{File: 98, Block: 0}, End: bgzf.Offset{File: 401, Block: 0}},
 							},
 						},
 					},
-					Stats:     nil,
-					Intervals: []bgzf.Offset{{File: 98, Block: 0}},
+					stats:     nil,
+					intervals: []bgzf.Offset{{File: 98, Block: 0}},
 				},
 			},
-			Unmapped: uint64ptr(1),
+			unmapped: uint64ptr(1),
 			isSorted: true,
 		},
 		err: nil,
@@ -1396,20 +1396,20 @@ var baiTestData = []struct {
 			0x00, 0x00, 0x62, 0x00, 0x00, 0x00, 0x00, 0x00,
 		},
 		expect: &Index{
-			References: []RefIndex{
+			refs: []refIndex{
 				{
-					Bins: []Bin{
+					bins: []bin{
 						{
-							Bin: 4681, Chunks: []bgzf.Chunk{
+							bin: 4681, chunks: []bgzf.Chunk{
 								{Begin: bgzf.Offset{File: 98, Block: 0}, End: bgzf.Offset{File: 401, Block: 0}},
 							},
 						},
 					},
-					Stats:     nil,
-					Intervals: []bgzf.Offset{{File: 98, Block: 0}},
+					stats:     nil,
+					intervals: []bgzf.Offset{{File: 98, Block: 0}},
 				},
 			},
-			Unmapped: nil,
+			unmapped: nil,
 			isSorted: true,
 		},
 		err: nil,
@@ -1593,13 +1593,13 @@ var baiTestData = []struct {
 			0xa4, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		},
 		expect: &Index{
-			References: func() []RefIndex {
-				idx := [86]RefIndex{
+			refs: func() []refIndex {
+				idx := [86]refIndex{
 					23: {
-						Bins: []Bin{
+						bins: []bin{
 							{
-								Bin: 0x2070,
-								Chunks: []bgzf.Chunk{
+								bin: 0x2070,
+								chunks: []bgzf.Chunk{
 									{
 										Begin: bgzf.Offset{File: 0x1246, Block: 0x0},
 										End:   bgzf.Offset{File: 0x1246, Block: 0x1cf9},
@@ -1607,20 +1607,20 @@ var baiTestData = []struct {
 								},
 							},
 						},
-						Stats: &IndexStats{
+						stats: &ReferenceStats{
 							Chunk: bgzf.Chunk{
 								Begin: bgzf.Offset{File: 0x1246, Block: 0x0},
 								End:   bgzf.Offset{File: 0x1246, Block: 0x1cf9},
 							},
 							Mapped: 0, Unmapped: 0x1d,
 						},
-						Intervals: nil,
+						intervals: nil,
 					},
 					24: {
-						Bins: []Bin{
+						bins: []bin{
 							{
-								Bin: 0x124a,
-								Chunks: []bgzf.Chunk{
+								bin: 0x124a,
+								chunks: []bgzf.Chunk{
 									{
 										Begin: bgzf.Offset{File: 0x1246, Block: 0x1cf9},
 										End:   bgzf.Offset{File: 0x1246, Block: 0x401d},
@@ -1628,20 +1628,20 @@ var baiTestData = []struct {
 								},
 							},
 						},
-						Stats: &IndexStats{
+						stats: &ReferenceStats{
 							Chunk: bgzf.Chunk{
 								Begin: bgzf.Offset{File: 0x1246, Block: 0x1cf9},
 								End:   bgzf.Offset{File: 0x1246, Block: 0x401d},
 							},
 							Mapped: 0, Unmapped: 0x25,
 						},
-						Intervals: nil,
+						intervals: nil,
 					},
 					72: {
-						Bins: []Bin{
+						bins: []bin{
 							{
-								Bin: 0x1253,
-								Chunks: []bgzf.Chunk{
+								bin: 0x1253,
+								chunks: []bgzf.Chunk{
 									{
 										Begin: bgzf.Offset{File: 0x1246, Block: 0x401d},
 										End:   bgzf.Offset{File: 0x1246, Block: 0x41f5},
@@ -1649,19 +1649,19 @@ var baiTestData = []struct {
 								},
 							},
 						},
-						Stats: &IndexStats{
+						stats: &ReferenceStats{
 							Chunk: bgzf.Chunk{
 								Begin: bgzf.Offset{File: 0x1246, Block: 0x401d},
 								End:   bgzf.Offset{File: 0x1246, Block: 0x41f5},
 							},
 							Mapped: 0, Unmapped: 0x2,
 						},
-						Intervals: nil,
+						intervals: nil,
 					},
 				}
 				return idx[:]
 			}(),
-			Unmapped: uint64ptr(932),
+			unmapped: uint64ptr(932),
 			isSorted: true,
 		},
 		err: nil,
@@ -1822,7 +1822,7 @@ func (s *S) TestConceptualBAI(c *check.C) {
 	h.AddReference(&ref)
 
 	for _, test := range chunkTests {
-		c.Check(bai.Chunks(&ref, test.beg, test.end), check.DeepEquals, test.expect,
+		c.Check(bai.chunks(&ref, test.beg, test.end), check.DeepEquals, test.expect,
 			check.Commentf("Unexpected result for [%d,%d).", test.beg, test.end),
 		)
 	}
@@ -1903,13 +1903,13 @@ func (s *S) TestAdd(c *check.C) {
 	gz, err := gzip.NewReader(bytes.NewReader(conceptualBAIdata))
 	c.Assert(err, check.Equals, nil)
 	expect, err := ReadIndex(gz)
-	c.Check(bai.References[0].Bins, check.DeepEquals, expect.References[0].Bins)
-	c.Check(bai.References[0].Stats, check.DeepEquals, expect.References[0].Stats)
-	c.Check(bai.Unmapped, check.DeepEquals, expect.Unmapped)
+	c.Check(bai.refs[0].bins, check.DeepEquals, expect.refs[0].bins)
+	c.Check(bai.refs[0].stats, check.DeepEquals, expect.refs[0].stats)
+	c.Check(bai.unmapped, check.DeepEquals, expect.unmapped)
 
 	// We check naively for overlap with tiles since we do not merge chunks in Add.
-	for i := range bai.References[0].Intervals {
-		got := bai.References[0].Intervals[i]
+	for i := range bai.refs[0].intervals {
+		got := bai.refs[0].intervals[i]
 		tbeg := i * tileWidth
 		tend := tbeg + tileWidth
 		hasOverlap := false
@@ -1943,12 +1943,12 @@ var chunkMergeTests = []struct {
 	{
 		index: func() *Index {
 			return &Index{
-				References: []RefIndex{
+				refs: []refIndex{
 					{
-						Bins: []Bin{
+						bins: []bin{
 							{
-								Bin: 0,
-								Chunks: []bgzf.Chunk{
+								bin: 0,
+								chunks: []bgzf.Chunk{
 									{
 										Begin: bgzf.Offset{File: 1, Block: 0},
 										End:   bgzf.Offset{File: 2, Block: 0},
@@ -1960,8 +1960,8 @@ var chunkMergeTests = []struct {
 								},
 							},
 							{
-								Bin: 1,
-								Chunks: []bgzf.Chunk{
+								bin: 1,
+								chunks: []bgzf.Chunk{
 									{
 										Begin: bgzf.Offset{File: 1, Block: 0},
 										End:   bgzf.Offset{File: 2, Block: 0},
@@ -1978,12 +1978,12 @@ var chunkMergeTests = []struct {
 			}
 		},
 		expectAdjacent: &Index{
-			References: []RefIndex{
+			refs: []refIndex{
 				{
-					Bins: []Bin{
+					bins: []bin{
 						{
-							Bin: 0,
-							Chunks: []bgzf.Chunk{
+							bin: 0,
+							chunks: []bgzf.Chunk{
 								{
 									Begin: bgzf.Offset{File: 1, Block: 0},
 									End:   bgzf.Offset{File: 3, Block: 0},
@@ -1991,8 +1991,8 @@ var chunkMergeTests = []struct {
 							},
 						},
 						{
-							Bin: 1,
-							Chunks: []bgzf.Chunk{
+							bin: 1,
+							chunks: []bgzf.Chunk{
 								{
 									Begin: bgzf.Offset{File: 1, Block: 0},
 									End:   bgzf.Offset{File: 3, Block: 0},
@@ -2004,12 +2004,12 @@ var chunkMergeTests = []struct {
 			},
 		},
 		expectSquash: &Index{
-			References: []RefIndex{
+			refs: []refIndex{
 				{
-					Bins: []Bin{
+					bins: []bin{
 						{
-							Bin: 0,
-							Chunks: []bgzf.Chunk{
+							bin: 0,
+							chunks: []bgzf.Chunk{
 								{
 									Begin: bgzf.Offset{File: 1, Block: 0},
 									End:   bgzf.Offset{File: 3, Block: 0},
@@ -2017,8 +2017,8 @@ var chunkMergeTests = []struct {
 							},
 						},
 						{
-							Bin: 1,
-							Chunks: []bgzf.Chunk{
+							bin: 1,
+							chunks: []bgzf.Chunk{
 								{
 									Begin: bgzf.Offset{File: 1, Block: 0},
 									End:   bgzf.Offset{File: 3, Block: 0},
@@ -2033,12 +2033,12 @@ var chunkMergeTests = []struct {
 	{
 		index: func() *Index {
 			return &Index{
-				References: []RefIndex{
+				refs: []refIndex{
 					{
-						Bins: []Bin{
+						bins: []bin{
 							{
-								Bin: 0,
-								Chunks: []bgzf.Chunk{
+								bin: 0,
+								chunks: []bgzf.Chunk{
 									{
 										Begin: bgzf.Offset{File: 1, Block: 0},
 										End:   bgzf.Offset{File: 2, Block: 0},
@@ -2050,8 +2050,8 @@ var chunkMergeTests = []struct {
 								},
 							},
 							{
-								Bin: 1,
-								Chunks: []bgzf.Chunk{
+								bin: 1,
+								chunks: []bgzf.Chunk{
 									{
 										Begin: bgzf.Offset{File: 1, Block: 0},
 										End:   bgzf.Offset{File: 2, Block: 0},
@@ -2068,12 +2068,12 @@ var chunkMergeTests = []struct {
 			}
 		},
 		expectAdjacent: &Index{
-			References: []RefIndex{
+			refs: []refIndex{
 				{
-					Bins: []Bin{
+					bins: []bin{
 						{
-							Bin: 0,
-							Chunks: []bgzf.Chunk{
+							bin: 0,
+							chunks: []bgzf.Chunk{
 								{
 									Begin: bgzf.Offset{File: 1, Block: 0},
 									End:   bgzf.Offset{File: 2, Block: 0},
@@ -2085,8 +2085,8 @@ var chunkMergeTests = []struct {
 							},
 						},
 						{
-							Bin: 1,
-							Chunks: []bgzf.Chunk{
+							bin: 1,
+							chunks: []bgzf.Chunk{
 								{
 									Begin: bgzf.Offset{File: 1, Block: 0},
 									End:   bgzf.Offset{File: 2, Block: 0},
@@ -2102,12 +2102,12 @@ var chunkMergeTests = []struct {
 			},
 		},
 		expectSquash: &Index{
-			References: []RefIndex{
+			refs: []refIndex{
 				{
-					Bins: []Bin{
+					bins: []bin{
 						{
-							Bin: 0,
-							Chunks: []bgzf.Chunk{
+							bin: 0,
+							chunks: []bgzf.Chunk{
 								{
 									Begin: bgzf.Offset{File: 1, Block: 0},
 									End:   bgzf.Offset{File: 4, Block: 0},
@@ -2115,8 +2115,8 @@ var chunkMergeTests = []struct {
 							},
 						},
 						{
-							Bin: 1,
-							Chunks: []bgzf.Chunk{
+							bin: 1,
+							chunks: []bgzf.Chunk{
 								{
 									Begin: bgzf.Offset{File: 1, Block: 0},
 									End:   bgzf.Offset{File: 4, Block: 0},
@@ -2131,12 +2131,12 @@ var chunkMergeTests = []struct {
 	{
 		index: func() *Index {
 			return &Index{
-				References: []RefIndex{
+				refs: []refIndex{
 					{
-						Bins: []Bin{
+						bins: []bin{
 							{
-								Bin: 0,
-								Chunks: []bgzf.Chunk{
+								bin: 0,
+								chunks: []bgzf.Chunk{
 									{
 										Begin: bgzf.Offset{File: 1, Block: 0},
 										End:   bgzf.Offset{File: 2, Block: 0},
@@ -2148,8 +2148,8 @@ var chunkMergeTests = []struct {
 								},
 							},
 							{
-								Bin: 1,
-								Chunks: []bgzf.Chunk{
+								bin: 1,
+								chunks: []bgzf.Chunk{
 									{
 										Begin: bgzf.Offset{File: 1, Block: 0},
 										End:   bgzf.Offset{File: 2, Block: 0},
@@ -2167,12 +2167,12 @@ var chunkMergeTests = []struct {
 		},
 		compStrat: CompressorStrategy(0x20000),
 		expectCompress: &Index{
-			References: []RefIndex{
+			refs: []refIndex{
 				{
-					Bins: []Bin{
+					bins: []bin{
 						{
-							Bin: 0,
-							Chunks: []bgzf.Chunk{
+							bin: 0,
+							chunks: []bgzf.Chunk{
 								{
 									Begin: bgzf.Offset{File: 1, Block: 0},
 									End:   bgzf.Offset{File: 0x10000, Block: 0},
@@ -2180,8 +2180,8 @@ var chunkMergeTests = []struct {
 							},
 						},
 						{
-							Bin: 1,
-							Chunks: []bgzf.Chunk{
+							bin: 1,
+							chunks: []bgzf.Chunk{
 								{
 									Begin: bgzf.Offset{File: 1, Block: 0},
 									End:   bgzf.Offset{File: 2, Block: 0},

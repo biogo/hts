@@ -20,27 +20,46 @@ const (
 )
 
 type Index struct {
-	References []RefIndex
-	Unmapped   *uint64
+	refs       []refIndex
+	unmapped   *uint64
 	isSorted   bool
 	lastRecord int
 }
 
-type RefIndex struct {
-	Bins      []Bin
-	Stats     *IndexStats
-	Intervals []bgzf.Offset
+type refIndex struct {
+	bins      []bin
+	stats     *ReferenceStats
+	intervals []bgzf.Offset
 }
 
-type Bin struct {
-	Bin    uint32
-	Chunks []bgzf.Chunk
+type bin struct {
+	bin    uint32
+	chunks []bgzf.Chunk
 }
 
-type IndexStats struct {
+type ReferenceStats struct {
 	Chunk    bgzf.Chunk
 	Mapped   uint64
 	Unmapped uint64
+}
+
+func (i *Index) Len() int {
+	return len(i.refs)
+}
+
+func (i *Index) ReferenceStats(id int) (ReferenceStats, bool) {
+	stats := i.refs[id].stats
+	if stats == nil {
+		return ReferenceStats{}, false
+	}
+	return *stats, true
+}
+
+func (i *Index) Unmapped() (uint64, bool) {
+	if i.unmapped == nil {
+		return 0, false
+	}
+	return *i.unmapped, true
 }
 
 func (i *Index) Add(r *sam.Record, c bgzf.Chunk) error {
@@ -48,45 +67,45 @@ func (i *Index) Add(r *sam.Record, c bgzf.Chunk) error {
 		return errors.New("bam: attempt to add record outside indexable range")
 	}
 
-	if i.Unmapped == nil {
-		i.Unmapped = new(uint64)
+	if i.unmapped == nil {
+		i.unmapped = new(uint64)
 	}
 	if !isPlaced(r) {
-		*i.Unmapped++
+		*i.unmapped++
 		return nil
 	}
 
 	rid := r.Ref.ID()
-	if rid < len(i.References)-1 {
+	if rid < len(i.refs)-1 {
 		return errors.New("bam: attempt to add record out of reference ID sort order")
 	}
-	if rid == len(i.References) {
-		i.References = append(i.References, RefIndex{})
+	if rid == len(i.refs) {
+		i.refs = append(i.refs, refIndex{})
 	} else {
-		refs := make([]RefIndex, rid+1)
-		copy(refs, i.References)
-		i.References = refs
+		refs := make([]refIndex, rid+1)
+		copy(refs, i.refs)
+		i.refs = refs
 	}
-	ref := &i.References[rid]
+	ref := &i.refs[rid]
 
 	// Record bin information.
 	b := uint32(r.Bin())
-	for i, bin := range ref.Bins {
-		if bin.Bin == b {
-			for j, chunk := range ref.Bins[i].Chunks {
+	for i, bin := range ref.bins {
+		if bin.bin == b {
+			for j, chunk := range ref.bins[i].chunks {
 				if vOffset(chunk.End) > vOffset(c.Begin) {
-					ref.Bins[i].Chunks[j].End = c.End
+					ref.bins[i].chunks[j].End = c.End
 					goto found
 				}
 			}
-			ref.Bins[i].Chunks = append(ref.Bins[i].Chunks, c)
+			ref.bins[i].chunks = append(ref.bins[i].chunks, c)
 			goto found
 		}
 	}
 	i.isSorted = false // TODO(kortschak) Consider making use of this more effectively for bin search.
-	ref.Bins = append(ref.Bins, Bin{
-		Bin:    b,
-		Chunks: []bgzf.Chunk{c},
+	ref.bins = append(ref.bins, bin{
+		bin:    b,
+		chunks: []bgzf.Chunk{c},
 	})
 found:
 
@@ -97,15 +116,15 @@ found:
 	}
 	i.lastRecord = r.Start()
 	eiv := r.End() / tileWidth
-	if eiv == len(ref.Intervals) {
+	if eiv == len(ref.intervals) {
 		if eiv > biv {
 			panic("bam: unexpected alignment length")
 		}
-		ref.Intervals = append(ref.Intervals, c.Begin)
-	} else if eiv > len(ref.Intervals) {
+		ref.intervals = append(ref.intervals, c.Begin)
+	} else if eiv > len(ref.intervals) {
 		intvs := make([]bgzf.Offset, eiv)
-		if len(ref.Intervals) > biv {
-			biv = len(ref.Intervals)
+		if len(ref.intervals) > biv {
+			biv = len(ref.intervals)
 		}
 		for iv, offset := range intvs[biv:eiv] {
 			if !isZero(offset) {
@@ -113,37 +132,37 @@ found:
 			}
 			intvs[iv+biv] = c.Begin
 		}
-		copy(intvs, ref.Intervals)
-		ref.Intervals = intvs
+		copy(intvs, ref.intervals)
+		ref.intervals = intvs
 	}
 
 	// Record index stats.
-	if ref.Stats == nil {
-		ref.Stats = &IndexStats{
+	if ref.stats == nil {
+		ref.stats = &ReferenceStats{
 			Chunk: c,
 		}
 	} else {
-		ref.Stats.Chunk.End = c.End
+		ref.stats.Chunk.End = c.End
 	}
 	if r.Flags&sam.Unmapped == 0 {
-		ref.Stats.Mapped++
+		ref.stats.Mapped++
 	} else {
-		ref.Stats.Unmapped++
+		ref.stats.Unmapped++
 	}
 
 	return nil
 }
 
-func (i *Index) Chunks(r *sam.Reference, beg, end int) []bgzf.Chunk {
+func (i *Index) chunks(r *sam.Reference, beg, end int) []bgzf.Chunk {
 	rid := r.ID()
-	if rid < 0 || rid >= len(i.References) {
+	if rid < 0 || rid >= len(i.refs) {
 		return nil
 	}
 	i.Sort()
-	ref := i.References[rid]
+	ref := i.refs[rid]
 
 	iv := beg / tileWidth
-	if iv >= len(ref.Intervals) {
+	if iv >= len(ref.intervals) {
 		return nil
 	}
 
@@ -152,15 +171,15 @@ func (i *Index) Chunks(r *sam.Reference, beg, end int) []bgzf.Chunk {
 	var chunks []bgzf.Chunk
 	for _, bin := range reg2bins(beg, end) {
 		b := uint32(bin)
-		c := sort.Search(len(ref.Bins), func(i int) bool { return ref.Bins[i].Bin >= b })
-		if c < len(ref.Bins) && ref.Bins[c].Bin == b {
-			for _, chunk := range ref.Bins[c].Chunks {
+		c := sort.Search(len(ref.bins), func(i int) bool { return ref.bins[i].bin >= b })
+		if c < len(ref.bins) && ref.bins[c].bin == b {
+			for _, chunk := range ref.bins[c].chunks {
 				// Here we check all tiles starting from the left end of the
 				// query region until we get a non-zero offset. The spec states
 				// that we only need to check tiles that contain beg. That is
 				// not correct since we may have no alignments at the left end
 				// of the query region.
-				for j, tile := range ref.Intervals[iv:] {
+				for j, tile := range ref.intervals[iv:] {
 					if isZero(tile) {
 						continue
 					}
@@ -188,12 +207,12 @@ func (i *Index) Chunks(r *sam.Reference, beg, end int) []bgzf.Chunk {
 
 func (i *Index) Sort() {
 	if !i.isSorted {
-		for _, ref := range i.References {
-			sort.Sort(byBinNumber(ref.Bins))
-			for _, bin := range ref.Bins {
-				sort.Sort(byBeginOffset(bin.Chunks))
+		for _, ref := range i.refs {
+			sort.Sort(byBinNumber(ref.bins))
+			for _, bin := range ref.bins {
+				sort.Sort(byBeginOffset(bin.chunks))
 			}
-			sort.Sort(byVirtOffset(ref.Intervals))
+			sort.Sort(byVirtOffset(ref.intervals))
 		}
 		i.isSorted = true
 	}
@@ -218,10 +237,10 @@ func isPlaced(r *sam.Record) bool {
 	return r.Ref != nil && r.Pos != -1
 }
 
-type byBinNumber []Bin
+type byBinNumber []bin
 
 func (b byBinNumber) Len() int           { return len(b) }
-func (b byBinNumber) Less(i, j int) bool { return b[i].Bin < b[j].Bin }
+func (b byBinNumber) Less(i, j int) bool { return b[i].bin < b[j].bin }
 func (b byBinNumber) Swap(i, j int)      { b[i], b[j] = b[j], b[i] }
 
 type byBeginOffset []bgzf.Chunk
@@ -305,14 +324,14 @@ func (i *Index) MergeChunks(s Strategy) {
 	if s == nil {
 		return
 	}
-	for _, ref := range i.References {
-		for b, bin := range ref.Bins {
-			if !sort.IsSorted(byBeginOffset(bin.Chunks)) {
-				sort.Sort(byBeginOffset(bin.Chunks))
+	for _, ref := range i.refs {
+		for b, bin := range ref.bins {
+			if !sort.IsSorted(byBeginOffset(bin.chunks)) {
+				sort.Sort(byBeginOffset(bin.chunks))
 			}
-			ref.Bins[b].Chunks = s(bin.Chunks)
-			if !sort.IsSorted(byBeginOffset(bin.Chunks)) {
-				sort.Sort(byBeginOffset(bin.Chunks))
+			ref.bins[b].chunks = s(bin.chunks)
+			if !sort.IsSorted(byBeginOffset(bin.chunks)) {
+				sort.Sort(byBeginOffset(bin.chunks))
 			}
 		}
 	}

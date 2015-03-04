@@ -18,27 +18,27 @@ func WriteIndex(w io.Writer, idx *Index) error {
 	if err != nil {
 		return err
 	}
-	err = writeIndices(w, idx.References)
+	err = writeIndices(w, idx.refs)
 	if err != nil {
 		return err
 	}
-	if idx.Unmapped != nil {
-		err = binary.Write(w, binary.LittleEndian, idx.Unmapped)
+	if idx.unmapped != nil {
+		err = binary.Write(w, binary.LittleEndian, idx.unmapped)
 	}
 	return err
 }
 
-func writeIndices(w io.Writer, idx []RefIndex) error {
+func writeIndices(w io.Writer, idx []refIndex) error {
 	err := binary.Write(w, binary.LittleEndian, int32(len(idx)))
 	if err != nil {
 		return err
 	}
 	for i := range idx {
-		err = writeBins(w, idx[i].Bins, idx[i].Stats)
+		err = writeBins(w, idx[i].bins, idx[i].stats)
 		if err != nil {
 			return err
 		}
-		err = writeIntervals(w, idx[i].Intervals)
+		err = writeIntervals(w, idx[i].intervals)
 		if err != nil {
 			return err
 		}
@@ -46,9 +46,9 @@ func writeIndices(w io.Writer, idx []RefIndex) error {
 	return nil
 }
 
-func writeBins(w io.Writer, bins []Bin, idxStats *IndexStats) error {
+func writeBins(w io.Writer, bins []bin, stats *ReferenceStats) error {
 	n := int32(len(bins))
-	if idxStats != nil {
+	if stats != nil {
 		n++
 	}
 	err := binary.Write(w, binary.LittleEndian, &n)
@@ -56,17 +56,17 @@ func writeBins(w io.Writer, bins []Bin, idxStats *IndexStats) error {
 		return err
 	}
 	for _, b := range bins {
-		err = binary.Write(w, binary.LittleEndian, b.Bin)
+		err = binary.Write(w, binary.LittleEndian, b.bin)
 		if err != nil {
 			return fmt.Errorf("bam: failed to write bin number: %v", err)
 		}
-		err = writeChunks(w, b.Chunks)
+		err = writeChunks(w, b.chunks)
 		if err != nil {
 			return err
 		}
 	}
-	if idxStats != nil {
-		return writeStats(w, idxStats)
+	if stats != nil {
+		return writeStats(w, stats)
 	}
 	return nil
 }
@@ -89,25 +89,25 @@ func writeChunks(w io.Writer, chunks []bgzf.Chunk) error {
 	return nil
 }
 
-func writeStats(w io.Writer, idxStats *IndexStats) error {
+func writeStats(w io.Writer, stats *ReferenceStats) error {
 	var err error
 	err = binary.Write(w, binary.LittleEndian, [2]uint32{statsDummyBin, 2})
 	if err != nil {
 		return fmt.Errorf("bam: failed to write stats bin header: %v", err)
 	}
-	err = binary.Write(w, binary.LittleEndian, vOffset(idxStats.Chunk.Begin))
+	err = binary.Write(w, binary.LittleEndian, vOffset(stats.Chunk.Begin))
 	if err != nil {
 		return fmt.Errorf("bam: failed to write index stats chunk begin virtual offset: %v", err)
 	}
-	err = binary.Write(w, binary.LittleEndian, vOffset(idxStats.Chunk.End))
+	err = binary.Write(w, binary.LittleEndian, vOffset(stats.Chunk.End))
 	if err != nil {
 		return fmt.Errorf("bam: failed to write index stats chunk end virtual offset: %v", err)
 	}
-	err = binary.Write(w, binary.LittleEndian, idxStats.Mapped)
+	err = binary.Write(w, binary.LittleEndian, stats.Mapped)
 	if err != nil {
 		return fmt.Errorf("bam: failed to write index stats mapped count: %v", err)
 	}
-	err = binary.Write(w, binary.LittleEndian, idxStats.Unmapped)
+	err = binary.Write(w, binary.LittleEndian, stats.Unmapped)
 	if err != nil {
 		return fmt.Errorf("bam: failed to write index stats unmapped count: %v", err)
 	}

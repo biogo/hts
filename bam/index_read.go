@@ -27,14 +27,14 @@ func ReadIndex(r io.Reader) (*Index, error) {
 	if magic != baiMagic {
 		return nil, errors.New("bam: magic number mismatch")
 	}
-	idx.References, err = readIndices(r)
+	idx.refs, err = readIndices(r)
 	if err != nil {
 		return nil, err
 	}
 	var nUnmapped uint64
 	err = binary.Read(r, binary.LittleEndian, &nUnmapped)
 	if err == nil {
-		idx.Unmapped = &nUnmapped
+		idx.unmapped = &nUnmapped
 	} else if err != io.EOF {
 		return nil, err
 	}
@@ -42,7 +42,7 @@ func ReadIndex(r io.Reader) (*Index, error) {
 	return &idx, nil
 }
 
-func readIndices(r io.Reader) ([]RefIndex, error) {
+func readIndices(r io.Reader) ([]refIndex, error) {
 	var n int32
 	err := binary.Read(r, binary.LittleEndian, &n)
 	if err != nil {
@@ -51,13 +51,13 @@ func readIndices(r io.Reader) ([]RefIndex, error) {
 	if n == 0 {
 		return nil, nil
 	}
-	idx := make([]RefIndex, n)
+	idx := make([]refIndex, n)
 	for i := range idx {
-		idx[i].Bins, idx[i].Stats, err = readBins(r)
+		idx[i].bins, idx[i].stats, err = readBins(r)
 		if err != nil {
 			return nil, err
 		}
-		idx[i].Intervals, err = readIntervals(r)
+		idx[i].intervals, err = readIntervals(r)
 		if err != nil {
 			return nil, err
 		}
@@ -65,7 +65,7 @@ func readIndices(r io.Reader) ([]RefIndex, error) {
 	return idx, nil
 }
 
-func readBins(r io.Reader) ([]Bin, *IndexStats, error) {
+func readBins(r io.Reader) ([]bin, *ReferenceStats, error) {
 	var n int32
 	err := binary.Read(r, binary.LittleEndian, &n)
 	if err != nil {
@@ -74,10 +74,10 @@ func readBins(r io.Reader) ([]Bin, *IndexStats, error) {
 	if n == 0 {
 		return nil, nil, nil
 	}
-	var idxStats *IndexStats
-	bins := make([]Bin, n)
+	var stats *ReferenceStats
+	bins := make([]bin, n)
 	for i := 0; i < len(bins); i++ {
-		err = binary.Read(r, binary.LittleEndian, &bins[i].Bin)
+		err = binary.Read(r, binary.LittleEndian, &bins[i].bin)
 		if err != nil {
 			return nil, nil, fmt.Errorf("bam: failed to read bin number: %v", err)
 		}
@@ -85,11 +85,11 @@ func readBins(r io.Reader) ([]Bin, *IndexStats, error) {
 		if err != nil {
 			return nil, nil, fmt.Errorf("bam: failed to read bin count: %v", err)
 		}
-		if bins[i].Bin == statsDummyBin {
+		if bins[i].bin == statsDummyBin {
 			if n != 2 {
 				return nil, nil, errors.New("bam: malformed dummy bin header")
 			}
-			idxStats, err = readStats(r)
+			stats, err = readStats(r)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -97,7 +97,7 @@ func readBins(r io.Reader) ([]Bin, *IndexStats, error) {
 			i--
 			continue
 		}
-		bins[i].Chunks, err = readChunks(r, n)
+		bins[i].chunks, err = readChunks(r, n)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -105,7 +105,7 @@ func readBins(r io.Reader) ([]Bin, *IndexStats, error) {
 	if !sort.IsSorted(byBinNumber(bins)) {
 		sort.Sort(byBinNumber(bins))
 	}
-	return bins, idxStats, nil
+	return bins, stats, nil
 }
 
 func readChunks(r io.Reader, n int32) ([]bgzf.Chunk, error) {
@@ -135,31 +135,31 @@ func readChunks(r io.Reader, n int32) ([]bgzf.Chunk, error) {
 	return chunks, nil
 }
 
-func readStats(r io.Reader) (*IndexStats, error) {
+func readStats(r io.Reader) (*ReferenceStats, error) {
 	var (
-		vOff     uint64
-		idxStats IndexStats
-		err      error
+		vOff  uint64
+		stats ReferenceStats
+		err   error
 	)
 	err = binary.Read(r, binary.LittleEndian, &vOff)
 	if err != nil {
 		return nil, fmt.Errorf("bam: failed to read index stats chunk begin virtual offset: %v", err)
 	}
-	idxStats.Chunk.Begin = makeOffset(vOff)
+	stats.Chunk.Begin = makeOffset(vOff)
 	err = binary.Read(r, binary.LittleEndian, &vOff)
 	if err != nil {
 		return nil, fmt.Errorf("bam: failed to read index stats chunk end virtual offset: %v", err)
 	}
-	idxStats.Chunk.End = makeOffset(vOff)
-	err = binary.Read(r, binary.LittleEndian, &idxStats.Mapped)
+	stats.Chunk.End = makeOffset(vOff)
+	err = binary.Read(r, binary.LittleEndian, &stats.Mapped)
 	if err != nil {
 		return nil, fmt.Errorf("bam: failed to read index stats mapped count: %v", err)
 	}
-	err = binary.Read(r, binary.LittleEndian, &idxStats.Unmapped)
+	err = binary.Read(r, binary.LittleEndian, &stats.Unmapped)
 	if err != nil {
 		return nil, fmt.Errorf("bam: failed to read index stats unmapped count: %v", err)
 	}
-	return &idxStats, nil
+	return &stats, nil
 }
 
 func readIntervals(r io.Reader) ([]bgzf.Offset, error) {
