@@ -6,10 +6,11 @@ package sam
 
 import (
 	"bytes"
-	"code.google.com/p/biogo.bam/internal"
 	"errors"
 	"fmt"
 	"strconv"
+
+	"code.google.com/p/biogo.bam/internal"
 )
 
 // Record represents a SAM/BAM record.

@@ -1,9 +1,10 @@
 package bam
 
 import (
-	"code.google.com/p/biogo.bam/sam"
 	"net/url"
 	"time"
+
+	"code.google.com/p/biogo.bam/sam"
 )
 
 var headerHG00096_1000 *sam.Header

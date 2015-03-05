@@ -7,9 +7,10 @@
 package bam
 
 import (
-	"code.google.com/p/biogo.boom"
 	"os"
 	"testing"
+
+	"code.google.com/p/biogo.boom"
 )
 
 func BenchmarkReadBoom(b *testing.B) {
