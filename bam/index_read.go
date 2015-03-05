@@ -6,6 +6,7 @@ package bam
 
 import (
 	"code.google.com/p/biogo.bam/bgzf"
+	"code.google.com/p/biogo.bam/bgzf/index"
 
 	"encoding/binary"
 	"errors"
@@ -66,7 +67,7 @@ func readIndices(r io.Reader) ([]refIndex, error) {
 	return idx, nil
 }
 
-func readBins(r io.Reader) ([]bin, *ReferenceStats, error) {
+func readBins(r io.Reader) ([]bin, *index.ReferenceStats, error) {
 	var n int32
 	err := binary.Read(r, binary.LittleEndian, &n)
 	if err != nil {
@@ -75,7 +76,7 @@ func readBins(r io.Reader) ([]bin, *ReferenceStats, error) {
 	if n == 0 {
 		return nil, nil, nil
 	}
-	var stats *ReferenceStats
+	var stats *index.ReferenceStats
 	bins := make([]bin, n)
 	for i := 0; i < len(bins); i++ {
 		err = binary.Read(r, binary.LittleEndian, &bins[i].bin)
@@ -136,10 +137,10 @@ func readChunks(r io.Reader, n int32) ([]bgzf.Chunk, error) {
 	return chunks, nil
 }
 
-func readStats(r io.Reader) (*ReferenceStats, error) {
+func readStats(r io.Reader) (*index.ReferenceStats, error) {
 	var (
 		vOff  uint64
-		stats ReferenceStats
+		stats index.ReferenceStats
 		err   error
 	)
 	err = binary.Read(r, binary.LittleEndian, &vOff)

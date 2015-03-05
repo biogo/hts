@@ -6,6 +6,7 @@ package bam
 
 import (
 	"code.google.com/p/biogo.bam/bgzf"
+	"code.google.com/p/biogo.bam/bgzf/index"
 
 	"encoding/binary"
 	"fmt"
@@ -47,7 +48,7 @@ func writeIndices(w io.Writer, idx []refIndex) error {
 	return nil
 }
 
-func writeBins(w io.Writer, bins []bin, stats *ReferenceStats) error {
+func writeBins(w io.Writer, bins []bin, stats *index.ReferenceStats) error {
 	n := int32(len(bins))
 	if stats != nil {
 		n++
@@ -90,7 +91,7 @@ func writeChunks(w io.Writer, chunks []bgzf.Chunk) error {
 	return nil
 }
 
-func writeStats(w io.Writer, stats *ReferenceStats) error {
+func writeStats(w io.Writer, stats *index.ReferenceStats) error {
 	var err error
 	err = binary.Write(w, binary.LittleEndian, [2]uint32{statsDummyBin, 2})
 	if err != nil {

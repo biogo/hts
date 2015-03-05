@@ -1249,7 +1249,7 @@ var baiTestData = []struct {
 							},
 						},
 					},
-					stats: &ReferenceStats{
+					stats: &index.ReferenceStats{
 						Chunk:    bgzf.Chunk{Begin: bgzf.Offset{File: 98, Block: 0}, End: bgzf.Offset{File: 401, Block: 0}},
 						Mapped:   8,
 						Unmapped: 1,
@@ -1311,7 +1311,7 @@ var baiTestData = []struct {
 							},
 						},
 					},
-					stats: &ReferenceStats{
+					stats: &index.ReferenceStats{
 						Chunk:    bgzf.Chunk{Begin: bgzf.Offset{File: 98, Block: 0}, End: bgzf.Offset{File: 401, Block: 0}},
 						Mapped:   8,
 						Unmapped: 1,
@@ -1608,7 +1608,7 @@ var baiTestData = []struct {
 								},
 							},
 						},
-						stats: &ReferenceStats{
+						stats: &index.ReferenceStats{
 							Chunk: bgzf.Chunk{
 								Begin: bgzf.Offset{File: 0x1246, Block: 0x0},
 								End:   bgzf.Offset{File: 0x1246, Block: 0x1cf9},
@@ -1629,7 +1629,7 @@ var baiTestData = []struct {
 								},
 							},
 						},
-						stats: &ReferenceStats{
+						stats: &index.ReferenceStats{
 							Chunk: bgzf.Chunk{
 								Begin: bgzf.Offset{File: 0x1246, Block: 0x1cf9},
 								End:   bgzf.Offset{File: 0x1246, Block: 0x401d},
@@ -1650,7 +1650,7 @@ var baiTestData = []struct {
 								},
 							},
 						},
-						stats: &ReferenceStats{
+						stats: &index.ReferenceStats{
 							Chunk: bgzf.Chunk{
 								Begin: bgzf.Offset{File: 0x1246, Block: 0x401d},
 								End:   bgzf.Offset{File: 0x1246, Block: 0x41f5},

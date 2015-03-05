@@ -30,26 +30,13 @@ type Index struct {
 
 type refIndex struct {
 	bins      []bin
-	stats     *ReferenceStats
+	stats     *index.ReferenceStats
 	intervals []bgzf.Offset
 }
 
 type bin struct {
 	bin    uint32
 	chunks []bgzf.Chunk
-}
-
-// ReferenceStats holds mapping statistics for a BAM reference.
-type ReferenceStats struct {
-	// Chunk is the span of the indexed BAM
-	// holding alignments to the reference.
-	Chunk bgzf.Chunk
-
-	// Mapped is the count of mapped reads.
-	Mapped uint64
-
-	// Unmapped is the count of unmapped reads.
-	Unmapped uint64
 }
 
 // NumRefs returns the number of references in the index.
@@ -59,10 +46,10 @@ func (i *Index) NumRefs() int {
 
 // ReferenceStats returns the index statistics for the given reference and true
 // if the statistics are valid.
-func (i *Index) ReferenceStats(id int) (stats ReferenceStats, ok bool) {
+func (i *Index) ReferenceStats(id int) (stats index.ReferenceStats, ok bool) {
 	s := i.refs[id].stats
 	if s == nil {
-		return ReferenceStats{}, false
+		return index.ReferenceStats{}, false
 	}
 	return *s, true
 }
@@ -154,7 +141,7 @@ found:
 
 	// Record index stats.
 	if ref.stats == nil {
-		ref.stats = &ReferenceStats{
+		ref.stats = &index.ReferenceStats{
 			Chunk: c,
 		}
 	} else {
