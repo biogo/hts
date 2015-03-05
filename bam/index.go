@@ -235,6 +235,24 @@ func (i *Index) sort() {
 	}
 }
 
+// MergeChunks applies the given MergeStrategy to all bins in the Index.
+func (i *Index) MergeChunks(s index.MergeStrategy) {
+	if s == nil {
+		return
+	}
+	for _, ref := range i.refs {
+		for b, bin := range ref.bins {
+			if !sort.IsSorted(byBeginOffset(bin.chunks)) {
+				sort.Sort(byBeginOffset(bin.chunks))
+			}
+			ref.bins[b].chunks = s(bin.chunks)
+			if !sort.IsSorted(byBeginOffset(bin.chunks)) {
+				sort.Sort(byBeginOffset(bin.chunks))
+			}
+		}
+	}
+}
+
 func makeOffset(vOff uint64) bgzf.Offset {
 	return bgzf.Offset{
 		File:  int64(vOff >> 16),
@@ -271,21 +289,3 @@ type byVirtOffset []bgzf.Offset
 func (o byVirtOffset) Len() int           { return len(o) }
 func (o byVirtOffset) Less(i, j int) bool { return vOffset(o[i]) < vOffset(o[j]) }
 func (o byVirtOffset) Swap(i, j int)      { o[i], o[j] = o[j], o[i] }
-
-// MergeChunks applies the given MergeStrategy to all bins in the Index.
-func (i *Index) MergeChunks(s index.MergeStrategy) {
-	if s == nil {
-		return
-	}
-	for _, ref := range i.refs {
-		for b, bin := range ref.bins {
-			if !sort.IsSorted(byBeginOffset(bin.chunks)) {
-				sort.Sort(byBeginOffset(bin.chunks))
-			}
-			ref.bins[b].chunks = s(bin.chunks)
-			if !sort.IsSorted(byBeginOffset(bin.chunks)) {
-				sort.Sort(byBeginOffset(bin.chunks))
-			}
-		}
-	}
-}
