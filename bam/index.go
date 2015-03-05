@@ -95,7 +95,7 @@ func (i *Index) Add(r *sam.Record, c bgzf.Chunk) error {
 	}
 	if rid == len(i.refs) {
 		i.refs = append(i.refs, refIndex{})
-	} else {
+	} else if rid > len(i.refs) {
 		refs := make([]refIndex, rid+1)
 		copy(refs, i.refs)
 		i.refs = refs
