@@ -25,7 +25,7 @@ var (
 				id:      0,
 				name:    "1",
 				lRef:    249250621,
-				md5:     &[16]uint8{0x1b, 0x22, 0xb9, 0x8c, 0xde, 0xb4, 0xa9, 0x30, 0x4c, 0xb5, 0xd4, 0x80, 0x26, 0xa8, 0x51, 0x28},
+				md5:     "\x1b\x22\xb9\x8c\xde\xb4\xa9\x30\x4c\xb5\xd4\x80\x26\xa8\x51\x28",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -38,7 +38,7 @@ var (
 				id:      1,
 				name:    "2",
 				lRef:    243199373,
-				md5:     &[16]uint8{0xa0, 0xd9, 0x85, 0x1d, 0xa0, 0x04, 0x00, 0xde, 0xc1, 0x09, 0x8a, 0x92, 0x55, 0xac, 0x71, 0x2e},
+				md5:     "\xa0\xd9\x85\x1d\xa0\x04\x00\xde\xc1\x09\x8a\x92\x55\xac\x71\x2e",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -51,7 +51,7 @@ var (
 				id:      2,
 				name:    "3",
 				lRef:    198022430,
-				md5:     &[16]uint8{0xfd, 0xfd, 0x81, 0x18, 0x49, 0xcc, 0x2f, 0xad, 0xeb, 0xc9, 0x29, 0xbb, 0x92, 0x59, 0x02, 0xe5},
+				md5:     "\xfd\xfd\x81\x18\x49\xcc\x2f\xad\xeb\xc9\x29\xbb\x92\x59\x02\xe5",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -64,7 +64,7 @@ var (
 				id:      3,
 				name:    "4",
 				lRef:    191154276,
-				md5:     &[16]uint8{0x23, 0xdc, 0xcd, 0x10, 0x68, 0x97, 0x54, 0x2a, 0xd8, 0x7d, 0x27, 0x65, 0xd2, 0x8a, 0x19, 0xa1},
+				md5:     "\x23\xdc\xcd\x10\x68\x97\x54\x2a\xd8\x7d\x27\x65\xd2\x8a\x19\xa1",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -74,11 +74,10 @@ var (
 				},
 			},
 			{
-				id:   4,
-				name: "5",
-				lRef: 180915260,
-				md5: &[16]uint8{
-					0x07, 0x40, 0x17, 0x3d, 0xb9, 0xff, 0xd2, 0x64, 0xd7, 0x28, 0xf3, 0x27, 0x84, 0x84, 0x5c, 0xd7},
+				id:      4,
+				name:    "5",
+				lRef:    180915260,
+				md5:     "\x07\x40\x17\x3d\xb9\xff\xd2\x64\xd7\x28\xf3\x27\x84\x84\x5c\xd7",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -91,7 +90,7 @@ var (
 				id:      5,
 				name:    "6",
 				lRef:    171115067,
-				md5:     &[16]uint8{0x1d, 0x3a, 0x93, 0xa2, 0x48, 0xd9, 0x2a, 0x72, 0x9e, 0xe7, 0x64, 0x82, 0x3a, 0xcb, 0xbc, 0x6b},
+				md5:     "\x1d\x3a\x93\xa2\x48\xd9\x2a\x72\x9e\xe7\x64\x82\x3a\xcb\xbc\x6b",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -104,7 +103,7 @@ var (
 				id:      6,
 				name:    "7",
 				lRef:    159138663,
-				md5:     &[16]uint8{0x61, 0x83, 0x66, 0xe9, 0x53, 0xd6, 0xaa, 0xad, 0x97, 0xdb, 0xe4, 0x77, 0x7c, 0x29, 0x37, 0x5e},
+				md5:     "\x61\x83\x66\xe9\x53\xd6\xaa\xad\x97\xdb\xe4\x77\x7c\x29\x37\x5e",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -117,7 +116,7 @@ var (
 				id:      7,
 				name:    "8",
 				lRef:    146364022,
-				md5:     &[16]uint8{0x96, 0xf5, 0x14, 0xa9, 0x92, 0x9e, 0x41, 0x0c, 0x66, 0x51, 0x69, 0x7b, 0xde, 0xd5, 0x9a, 0xec},
+				md5:     "\x96\xf5\x14\xa9\x92\x9e\x41\x0c\x66\x51\x69\x7b\xde\xd5\x9a\xec",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -130,7 +129,7 @@ var (
 				id:      8,
 				name:    "9",
 				lRef:    141213431,
-				md5:     &[16]uint8{0x3e, 0x27, 0x31, 0x17, 0xf1, 0x5e, 0x0a, 0x40, 0x0f, 0x01, 0x05, 0x5d, 0x9f, 0x39, 0x37, 0x68},
+				md5:     "\x3e\x27\x31\x17\xf1\x5e\x0a\x40\x0f\x01\x05\x5d\x9f\x39\x37\x68",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -143,7 +142,7 @@ var (
 				id:      9,
 				name:    "10",
 				lRef:    135534747,
-				md5:     &[16]uint8{0x98, 0x8c, 0x28, 0xe0, 0x00, 0xe8, 0x4c, 0x26, 0xd5, 0x52, 0x35, 0x9a, 0xf1, 0xea, 0x2e, 0x1d},
+				md5:     "\x98\x8c\x28\xe0\x00\xe8\x4c\x26\xd5\x52\x35\x9a\xf1\xea\x2e\x1d",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -156,7 +155,7 @@ var (
 				id:      10,
 				name:    "11",
 				lRef:    135006516,
-				md5:     &[16]uint8{0x98, 0xc5, 0x90, 0x49, 0xa2, 0xdf, 0x28, 0x5c, 0x76, 0xff, 0xb1, 0xc6, 0xdb, 0x8f, 0x8b, 0x96},
+				md5:     "\x98\xc5\x90\x49\xa2\xdf\x28\x5c\x76\xff\xb1\xc6\xdb\x8f\x8b\x96",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -169,7 +168,7 @@ var (
 				id:      11,
 				name:    "12",
 				lRef:    133851895,
-				md5:     &[16]uint8{0x51, 0x85, 0x1a, 0xc0, 0xe1, 0xa1, 0x15, 0x84, 0x7a, 0xd3, 0x64, 0x49, 0xb0, 0x01, 0x58, 0x64},
+				md5:     "\x51\x85\x1a\xc0\xe1\xa1\x15\x84\x7a\xd3\x64\x49\xb0\x01\x58\x64",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -182,7 +181,7 @@ var (
 				id:      12,
 				name:    "13",
 				lRef:    115169878,
-				md5:     &[16]uint8{0x28, 0x3f, 0x8d, 0x78, 0x92, 0xba, 0xa8, 0x1b, 0x51, 0x0a, 0x01, 0x57, 0x19, 0xca, 0x7b, 0x0b},
+				md5:     "\x28\x3f\x8d\x78\x92\xba\xa8\x1b\x51\x0a\x01\x57\x19\xca\x7b\x0b",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -195,7 +194,7 @@ var (
 				id:      13,
 				name:    "14",
 				lRef:    107349540,
-				md5:     &[16]uint8{0x98, 0xf3, 0xca, 0xe3, 0x2b, 0x2a, 0x2e, 0x95, 0x24, 0xbc, 0x19, 0x81, 0x39, 0x27, 0x54, 0x2e},
+				md5:     "\x98\xf3\xca\xe3\x2b\x2a\x2e\x95\x24\xbc\x19\x81\x39\x27\x54\x2e",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -208,7 +207,7 @@ var (
 				id:      14,
 				name:    "15",
 				lRef:    102531392,
-				md5:     &[16]uint8{0xe5, 0x64, 0x5a, 0x79, 0x4a, 0x82, 0x38, 0x21, 0x5b, 0x2c, 0xd7, 0x7a, 0xcb, 0x95, 0xa0, 0x78},
+				md5:     "\xe5\x64\x5a\x79\x4a\x82\x38\x21\x5b\x2c\xd7\x7a\xcb\x95\xa0\x78",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -221,7 +220,7 @@ var (
 				id:      15,
 				name:    "16",
 				lRef:    90354753,
-				md5:     &[16]uint8{0xfc, 0x9b, 0x1a, 0x7b, 0x42, 0xb9, 0x7a, 0x86, 0x4f, 0x56, 0xb3, 0x48, 0xb0, 0x60, 0x95, 0xe6},
+				md5:     "\xfc\x9b\x1a\x7b\x42\xb9\x7a\x86\x4f\x56\xb3\x48\xb0\x60\x95\xe6",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -234,7 +233,7 @@ var (
 				id:      16,
 				name:    "17",
 				lRef:    81195210,
-				md5:     &[16]uint8{0x35, 0x1f, 0x64, 0xd4, 0xf4, 0xf9, 0xdd, 0xd4, 0x5b, 0x35, 0x33, 0x6a, 0xd9, 0x7a, 0xa6, 0xde},
+				md5:     "\x35\x1f\x64\xd4\xf4\xf9\xdd\xd4\x5b\x35\x33\x6a\xd9\x7a\xa6\xde",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -247,7 +246,7 @@ var (
 				id:      17,
 				name:    "18",
 				lRef:    78077248,
-				md5:     &[16]uint8{0xb1, 0x5d, 0x4b, 0x2d, 0x29, 0xdd, 0xe9, 0xd3, 0xe4, 0xf9, 0x3d, 0x1d, 0x0f, 0x2c, 0xbc, 0x9c},
+				md5:     "\xb1\x5d\x4b\x2d\x29\xdd\xe9\xd3\xe4\xf9\x3d\x1d\x0f\x2c\xbc\x9c",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -260,7 +259,7 @@ var (
 				id:      18,
 				name:    "19",
 				lRef:    59128983,
-				md5:     &[16]uint8{0x1a, 0xac, 0xd7, 0x1f, 0x30, 0xdb, 0x8e, 0x56, 0x18, 0x10, 0x91, 0x3e, 0x0b, 0x72, 0x63, 0x6d},
+				md5:     "\x1a\xac\xd7\x1f\x30\xdb\x8e\x56\x18\x10\x91\x3e\x0b\x72\x63\x6d",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -273,7 +272,7 @@ var (
 				id:      19,
 				name:    "20",
 				lRef:    63025520,
-				md5:     &[16]uint8{0x0d, 0xec, 0x96, 0x60, 0xec, 0x1e, 0xfa, 0xaf, 0x33, 0x28, 0x1c, 0x0d, 0x5e, 0xa2, 0x56, 0x0f},
+				md5:     "\x0d\xec\x96\x60\xec\x1e\xfa\xaf\x33\x28\x1c\x0d\x5e\xa2\x56\x0f",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -286,7 +285,7 @@ var (
 				id:      20,
 				name:    "21",
 				lRef:    48129895,
-				md5:     &[16]uint8{0x29, 0x79, 0xa6, 0x08, 0x5b, 0xfe, 0x28, 0xe3, 0xad, 0x6f, 0x55, 0x2f, 0x36, 0x1e, 0xd7, 0x4d},
+				md5:     "\x29\x79\xa6\x08\x5b\xfe\x28\xe3\xad\x6f\x55\x2f\x36\x1e\xd7\x4d",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -299,7 +298,7 @@ var (
 				id:      21,
 				name:    "22",
 				lRef:    51304566,
-				md5:     &[16]uint8{0xa7, 0x18, 0xac, 0xaa, 0x61, 0x35, 0xfd, 0xca, 0x83, 0x57, 0xd5, 0xbf, 0xe9, 0x42, 0x11, 0xdd},
+				md5:     "\xa7\x18\xac\xaa\x61\x35\xfd\xca\x83\x57\xd5\xbf\xe9\x42\x11\xdd",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -312,7 +311,7 @@ var (
 				id:      22,
 				name:    "X",
 				lRef:    155270560,
-				md5:     &[16]uint8{0x7e, 0x0e, 0x2e, 0x58, 0x02, 0x97, 0xb7, 0x76, 0x4e, 0x31, 0xdb, 0xc8, 0x0c, 0x25, 0x40, 0xdd},
+				md5:     "\x7e\x0e\x2e\x58\x02\x97\xb7\x76\x4e\x31\xdb\xc8\x0c\x25\x40\xdd",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -325,7 +324,7 @@ var (
 				id:      23,
 				name:    "Y",
 				lRef:    59373566,
-				md5:     &[16]uint8{0x1f, 0xa3, 0x47, 0x47, 0x50, 0xaf, 0x09, 0x48, 0xbd, 0xf9, 0x7d, 0x5a, 0x0e, 0xe5, 0x2e, 0x51},
+				md5:     "\x1f\xa3\x47\x47\x50\xaf\x09\x48\xbd\xf9\x7d\x5a\x0e\xe5\x2e\x51",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -338,7 +337,7 @@ var (
 				id:      24,
 				name:    "MT",
 				lRef:    16569,
-				md5:     &[16]uint8{0xc6, 0x8f, 0x52, 0x67, 0x4c, 0x9f, 0xb3, 0x3a, 0xef, 0x52, 0xdc, 0xf3, 0x99, 0x75, 0x55, 0x19},
+				md5:     "\xc6\x8f\x52\x67\x4c\x9f\xb3\x3a\xef\x52\xdc\xf3\x99\x75\x55\x19",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -351,7 +350,7 @@ var (
 				id:      25,
 				name:    "GL000207.1",
 				lRef:    4262,
-				md5:     &[16]uint8{0xf3, 0x81, 0x48, 0x41, 0xf1, 0x93, 0x9d, 0x3c, 0xa1, 0x90, 0x72, 0xd9, 0xe8, 0x9f, 0x3f, 0xd7},
+				md5:     "\xf3\x81\x48\x41\xf1\x93\x9d\x3c\xa1\x90\x72\xd9\xe8\x9f\x3f\xd7",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -364,7 +363,7 @@ var (
 				id:      26,
 				name:    "GL000226.1",
 				lRef:    15008,
-				md5:     &[16]uint8{0x1c, 0x1b, 0x2c, 0xd1, 0xfc, 0xcb, 0xc0, 0xa9, 0x9b, 0x6a, 0x44, 0x7f, 0xa2, 0x4d, 0x15, 0x04},
+				md5:     "\x1c\x1b\x2c\xd1\xfc\xcb\xc0\xa9\x9b\x6a\x44\x7f\xa2\x4d\x15\x04",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -377,7 +376,7 @@ var (
 				id:      27,
 				name:    "GL000229.1",
 				lRef:    19913,
-				md5:     &[16]uint8{0xd0, 0xf4, 0x0e, 0xc8, 0x7d, 0xe3, 0x11, 0xd8, 0xe7, 0x15, 0xb5, 0x2e, 0x4c, 0x70, 0x62, 0xe1},
+				md5:     "\xd0\xf4\x0e\xc8\x7d\xe3\x11\xd8\xe7\x15\xb5\x2e\x4c\x70\x62\xe1",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -390,7 +389,7 @@ var (
 				id:      28,
 				name:    "GL000231.1",
 				lRef:    27386,
-				md5:     &[16]uint8{0xba, 0x88, 0x82, 0xce, 0x3a, 0x1e, 0xfa, 0x20, 0x80, 0xe5, 0xd2, 0x9b, 0x95, 0x65, 0x68, 0xa4},
+				md5:     "\xba\x88\x82\xce\x3a\x1e\xfa\x20\x80\xe5\xd2\x9b\x95\x65\x68\xa4",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -403,7 +402,7 @@ var (
 				id:      29,
 				name:    "GL000210.1",
 				lRef:    27682,
-				md5:     &[16]uint8{0x85, 0x11, 0x06, 0xa7, 0x42, 0x38, 0x04, 0x41, 0x26, 0x13, 0x1c, 0xe2, 0xa8, 0xe5, 0x84, 0x7c},
+				md5:     "\x85\x11\x06\xa7\x42\x38\x04\x41\x26\x13\x1c\xe2\xa8\xe5\x84\x7c",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -416,7 +415,7 @@ var (
 				id:      30,
 				name:    "GL000239.1",
 				lRef:    33824,
-				md5:     &[16]uint8{0x99, 0x79, 0x5f, 0x15, 0x70, 0x2c, 0xae, 0xc4, 0xfa, 0x1c, 0x4e, 0x15, 0xf8, 0xa2, 0x9c, 0x07},
+				md5:     "\x99\x79\x5f\x15\x70\x2c\xae\xc4\xfa\x1c\x4e\x15\xf8\xa2\x9c\x07",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -429,7 +428,7 @@ var (
 				id:      31,
 				name:    "GL000235.1",
 				lRef:    34474,
-				md5:     &[16]uint8{0x11, 0x8a, 0x25, 0xca, 0x21, 0x0c, 0xfb, 0xcd, 0xfb, 0x6c, 0x2e, 0xbb, 0x24, 0x9f, 0x96, 0x80},
+				md5:     "\x11\x8a\x25\xca\x21\x0c\xfb\xcd\xfb\x6c\x2e\xbb\x24\x9f\x96\x80",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -442,7 +441,7 @@ var (
 				id:      32,
 				name:    "GL000201.1",
 				lRef:    36148,
-				md5:     &[16]uint8{0xdf, 0xb7, 0xe7, 0xec, 0x60, 0xff, 0xdc, 0xb8, 0x5c, 0xb3, 0x59, 0xea, 0x28, 0x45, 0x4e, 0xe9},
+				md5:     "\xdf\xb7\xe7\xec\x60\xff\xdc\xb8\x5c\xb3\x59\xea\x28\x45\x4e\xe9",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -455,7 +454,7 @@ var (
 				id:      33,
 				name:    "GL000247.1",
 				lRef:    36422,
-				md5:     &[16]uint8{0x7d, 0xe0, 0x02, 0x26, 0xbb, 0x7d, 0xf1, 0xc5, 0x72, 0x76, 0xca, 0x6b, 0xaa, 0xba, 0xfd, 0x15},
+				md5:     "\x7d\xe0\x02\x26\xbb\x7d\xf1\xc5\x72\x76\xca\x6b\xaa\xba\xfd\x15",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -468,7 +467,7 @@ var (
 				id:      34,
 				name:    "GL000245.1",
 				lRef:    36651,
-				md5:     &[16]uint8{0x89, 0xbc, 0x61, 0x96, 0x0f, 0x37, 0xd9, 0x4a, 0xbf, 0x0d, 0xf2, 0xd4, 0x81, 0xad, 0xa0, 0xec},
+				md5:     "\x89\xbc\x61\x96\x0f\x37\xd9\x4a\xbf\x0d\xf2\xd4\x81\xad\xa0\xec",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -481,7 +480,7 @@ var (
 				id:      35,
 				name:    "GL000197.1",
 				lRef:    37175,
-				md5:     &[16]uint8{0x6f, 0x5e, 0xfd, 0xd3, 0x66, 0x43, 0xa9, 0xb8, 0xc8, 0xcc, 0xad, 0x6f, 0x2f, 0x1e, 0xdc, 0x7b},
+				md5:     "\x6f\x5e\xfd\xd3\x66\x43\xa9\xb8\xc8\xcc\xad\x6f\x2f\x1e\xdc\x7b",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -494,7 +493,7 @@ var (
 				id:      36,
 				name:    "GL000203.1",
 				lRef:    37498,
-				md5:     &[16]uint8{0x96, 0x35, 0x8c, 0x32, 0x5f, 0xe0, 0xe7, 0x0b, 0xee, 0x73, 0x43, 0x6e, 0x8b, 0xb1, 0x4d, 0xbd},
+				md5:     "\x96\x35\x8c\x32\x5f\xe0\xe7\x0b\xee\x73\x43\x6e\x8b\xb1\x4d\xbd",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -507,7 +506,7 @@ var (
 				id:      37,
 				name:    "GL000246.1",
 				lRef:    38154,
-				md5:     &[16]uint8{0xe4, 0xaf, 0xcd, 0x31, 0x91, 0x2a, 0xf9, 0xd9, 0xc2, 0x54, 0x6a, 0xcf, 0x1c, 0xb2, 0x3a, 0xf2},
+				md5:     "\xe4\xaf\xcd\x31\x91\x2a\xf9\xd9\xc2\x54\x6a\xcf\x1c\xb2\x3a\xf2",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -520,7 +519,7 @@ var (
 				id:      38,
 				name:    "GL000249.1",
 				lRef:    38502,
-				md5:     &[16]uint8{0x1d, 0x78, 0xab, 0xec, 0x37, 0xc1, 0x5f, 0xe2, 0x9a, 0x27, 0x5e, 0xb0, 0x8d, 0x5a, 0xf2, 0x36},
+				md5:     "\x1d\x78\xab\xec\x37\xc1\x5f\xe2\x9a\x27\x5e\xb0\x8d\x5a\xf2\x36",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -533,7 +532,7 @@ var (
 				id:      39,
 				name:    "GL000196.1",
 				lRef:    38914,
-				md5:     &[16]uint8{0xd9, 0x22, 0x06, 0xd1, 0xbb, 0x4c, 0x3b, 0x40, 0x19, 0xc4, 0x3c, 0x08, 0x75, 0xc0, 0x6d, 0xc0},
+				md5:     "\xd9\x22\x06\xd1\xbb\x4c\x3b\x40\x19\xc4\x3c\x08\x75\xc0\x6d\xc0",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -546,7 +545,7 @@ var (
 				id:      40,
 				name:    "GL000248.1",
 				lRef:    39786,
-				md5:     &[16]uint8{0x5a, 0x8e, 0x43, 0xbe, 0xc9, 0xbe, 0x36, 0xc7, 0xb4, 0x9c, 0x84, 0xd5, 0x85, 0x10, 0x77, 0x76},
+				md5:     "\x5a\x8e\x43\xbe\xc9\xbe\x36\xc7\xb4\x9c\x84\xd5\x85\x10\x77\x76",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -559,7 +558,7 @@ var (
 				id:      41,
 				name:    "GL000244.1",
 				lRef:    39929,
-				md5:     &[16]uint8{0x09, 0x96, 0xb4, 0x47, 0x5f, 0x35, 0x3c, 0xa9, 0x8b, 0xac, 0xb7, 0x56, 0xac, 0x47, 0x91, 0x40},
+				md5:     "\x09\x96\xb4\x47\x5f\x35\x3c\xa9\x8b\xac\xb7\x56\xac\x47\x91\x40",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -572,7 +571,7 @@ var (
 				id:      42,
 				name:    "GL000238.1",
 				lRef:    39939,
-				md5:     &[16]uint8{0x13, 0x1b, 0x1e, 0xfc, 0x32, 0x70, 0xcc, 0x83, 0x86, 0x86, 0xb5, 0x4e, 0x7c, 0x34, 0xb1, 0x7b},
+				md5:     "\x13\x1b\x1e\xfc\x32\x70\xcc\x83\x86\x86\xb5\x4e\x7c\x34\xb1\x7b",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -585,7 +584,7 @@ var (
 				id:      43,
 				name:    "GL000202.1",
 				lRef:    40103,
-				md5:     &[16]uint8{0x06, 0xcb, 0xf1, 0x26, 0x24, 0x7d, 0x89, 0x66, 0x4a, 0x4f, 0xae, 0xba, 0xd1, 0x30, 0xfe, 0x9c},
+				md5:     "\x06\xcb\xf1\x26\x24\x7d\x89\x66\x4a\x4f\xae\xba\xd1\x30\xfe\x9c",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -598,7 +597,7 @@ var (
 				id:      44,
 				name:    "GL000234.1",
 				lRef:    40531,
-				md5:     &[16]uint8{0x93, 0xf9, 0x98, 0x53, 0x6b, 0x61, 0xa5, 0x6f, 0xd0, 0xff, 0x47, 0x32, 0x2a, 0x91, 0x1d, 0x4b},
+				md5:     "\x93\xf9\x98\x53\x6b\x61\xa5\x6f\xd0\xff\x47\x32\x2a\x91\x1d\x4b",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -611,7 +610,7 @@ var (
 				id:      45,
 				name:    "GL000232.1",
 				lRef:    40652,
-				md5:     &[16]uint8{0x3e, 0x06, 0xb6, 0x74, 0x10, 0x61, 0xad, 0x93, 0xa8, 0x58, 0x75, 0x31, 0x30, 0x70, 0x57, 0xd8},
+				md5:     "\x3e\x06\xb6\x74\x10\x61\xad\x93\xa8\x58\x75\x31\x30\x70\x57\xd8",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -624,7 +623,7 @@ var (
 				id:      46,
 				name:    "GL000206.1",
 				lRef:    41001,
-				md5:     &[16]uint8{0x43, 0xf6, 0x9e, 0x42, 0x35, 0x33, 0xe9, 0x48, 0xbf, 0xae, 0x5c, 0xe1, 0xd4, 0x5b, 0xd3, 0xf1},
+				md5:     "\x43\xf6\x9e\x42\x35\x33\xe9\x48\xbf\xae\x5c\xe1\xd4\x5b\xd3\xf1",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -637,7 +636,7 @@ var (
 				id:      47,
 				name:    "GL000240.1",
 				lRef:    41933,
-				md5:     &[16]uint8{0x44, 0x5a, 0x86, 0x17, 0x3d, 0xa9, 0xf2, 0x37, 0xd7, 0xbc, 0xf4, 0x1c, 0x6c, 0xb8, 0xcc, 0x62},
+				md5:     "\x44\x5a\x86\x17\x3d\xa9\xf2\x37\xd7\xbc\xf4\x1c\x6c\xb8\xcc\x62",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -650,7 +649,7 @@ var (
 				id:      48,
 				name:    "GL000236.1",
 				lRef:    41934,
-				md5:     &[16]uint8{0xfd, 0xcd, 0x73, 0x99, 0x13, 0xef, 0xa1, 0xfd, 0xc6, 0x4b, 0x6c, 0x0c, 0xd7, 0x01, 0x67, 0x79},
+				md5:     "\xfd\xcd\x73\x99\x13\xef\xa1\xfd\xc6\x4b\x6c\x0c\xd7\x01\x67\x79",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -663,7 +662,7 @@ var (
 				id:      49,
 				name:    "GL000241.1",
 				lRef:    42152,
-				md5:     &[16]uint8{0xef, 0x42, 0x58, 0xcd, 0xc5, 0xa4, 0x5c, 0x20, 0x6c, 0xea, 0x8f, 0xc3, 0xe1, 0xd8, 0x58, 0xcf},
+				md5:     "\xef\x42\x58\xcd\xc5\xa4\x5c\x20\x6c\xea\x8f\xc3\xe1\xd8\x58\xcf",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -676,7 +675,7 @@ var (
 				id:      50,
 				name:    "GL000243.1",
 				lRef:    43341,
-				md5:     &[16]uint8{0xcc, 0x34, 0x27, 0x9a, 0x7e, 0x35, 0x31, 0x36, 0x74, 0x1c, 0x9f, 0xce, 0x79, 0xbc, 0x43, 0x96},
+				md5:     "\xcc\x34\x27\x9a\x7e\x35\x31\x36\x74\x1c\x9f\xce\x79\xbc\x43\x96",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -689,7 +688,7 @@ var (
 				id:      51,
 				name:    "GL000242.1",
 				lRef:    43523,
-				md5:     &[16]uint8{0x2f, 0x86, 0x94, 0xfc, 0x47, 0x57, 0x6b, 0xc8, 0x1b, 0x5f, 0xe9, 0xe7, 0xde, 0x0b, 0xa4, 0x9e},
+				md5:     "\x2f\x86\x94\xfc\x47\x57\x6b\xc8\x1b\x5f\xe9\xe7\xde\x0b\xa4\x9e",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -702,7 +701,7 @@ var (
 				id:      52,
 				name:    "GL000230.1",
 				lRef:    43691,
-				md5:     &[16]uint8{0xb4, 0xeb, 0x71, 0xee, 0x87, 0x8d, 0x37, 0x06, 0x24, 0x6b, 0x7c, 0x1d, 0xbe, 0xf6, 0x92, 0x99},
+				md5:     "\xb4\xeb\x71\xee\x87\x8d\x37\x06\x24\x6b\x7c\x1d\xbe\xf6\x92\x99",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -715,7 +714,7 @@ var (
 				id:      53,
 				name:    "GL000237.1",
 				lRef:    45867,
-				md5:     &[16]uint8{0xe0, 0xc8, 0x2e, 0x77, 0x51, 0xdf, 0x73, 0xf4, 0xf6, 0xd0, 0xed, 0x30, 0xcd, 0xc8, 0x53, 0xc0},
+				md5:     "\xe0\xc8\x2e\x77\x51\xdf\x73\xf4\xf6\xd0\xed\x30\xcd\xc8\x53\xc0",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -728,7 +727,7 @@ var (
 				id:      54,
 				name:    "GL000233.1",
 				lRef:    45941,
-				md5:     &[16]uint8{0x7f, 0xed, 0x60, 0x29, 0x8a, 0x8d, 0x62, 0xff, 0x80, 0x8b, 0x74, 0xb6, 0xce, 0x82, 0x00, 0x01},
+				md5:     "\x7f\xed\x60\x29\x8a\x8d\x62\xff\x80\x8b\x74\xb6\xce\x82\x00\x01",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -741,7 +740,7 @@ var (
 				id:      55,
 				name:    "GL000204.1",
 				lRef:    81310,
-				md5:     &[16]uint8{0xef, 0xc4, 0x9c, 0x87, 0x15, 0x36, 0xfa, 0x8d, 0x79, 0xcb, 0x0a, 0x06, 0xfa, 0x73, 0x97, 0x22},
+				md5:     "\xef\xc4\x9c\x87\x15\x36\xfa\x8d\x79\xcb\x0a\x06\xfa\x73\x97\x22",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -754,7 +753,7 @@ var (
 				id:      56,
 				name:    "GL000198.1",
 				lRef:    90085,
-				md5:     &[16]uint8{0x86, 0x8e, 0x77, 0x84, 0x04, 0x0d, 0xa9, 0x0d, 0x90, 0x0d, 0x2d, 0x1b, 0x66, 0x7a, 0x13, 0x83},
+				md5:     "\x86\x8e\x77\x84\x04\x0d\xa9\x0d\x90\x0d\x2d\x1b\x66\x7a\x13\x83",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -767,7 +766,7 @@ var (
 				id:      57,
 				name:    "GL000208.1",
 				lRef:    92689,
-				md5:     &[16]uint8{0xaa, 0x81, 0xbe, 0x49, 0xbf, 0x3f, 0xe6, 0x3a, 0x79, 0xbd, 0xc6, 0xa6, 0xf2, 0x79, 0xab, 0xf6},
+				md5:     "\xaa\x81\xbe\x49\xbf\x3f\xe6\x3a\x79\xbd\xc6\xa6\xf2\x79\xab\xf6",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -780,7 +779,7 @@ var (
 				id:      58,
 				name:    "GL000191.1",
 				lRef:    106433,
-				md5:     &[16]uint8{0xd7, 0x5b, 0x43, 0x6f, 0x50, 0xa8, 0x21, 0x4e, 0xe9, 0xc2, 0xa5, 0x1d, 0x30, 0xb2, 0xc2, 0xcc},
+				md5:     "\xd7\x5b\x43\x6f\x50\xa8\x21\x4e\xe9\xc2\xa5\x1d\x30\xb2\xc2\xcc",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -793,7 +792,7 @@ var (
 				id:      59,
 				name:    "GL000227.1",
 				lRef:    128374,
-				md5:     &[16]uint8{0xa4, 0xae, 0xad, 0x23, 0xf8, 0x05, 0x3f, 0x26, 0x55, 0xe4, 0x68, 0xbc, 0xc6, 0xec, 0xdc, 0xeb},
+				md5:     "\xa4\xae\xad\x23\xf8\x05\x3f\x26\x55\xe4\x68\xbc\xc6\xec\xdc\xeb",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -806,7 +805,7 @@ var (
 				id:      60,
 				name:    "GL000228.1",
 				lRef:    129120,
-				md5:     &[16]uint8{0xc5, 0xa1, 0x7c, 0x97, 0xe2, 0xc1, 0xa0, 0xb6, 0xa9, 0xcc, 0x5a, 0x6b, 0x06, 0x4b, 0x71, 0x4f},
+				md5:     "\xc5\xa1\x7c\x97\xe2\xc1\xa0\xb6\xa9\xcc\x5a\x6b\x06\x4b\x71\x4f",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -819,7 +818,7 @@ var (
 				id:      61,
 				name:    "GL000214.1",
 				lRef:    137718,
-				md5:     &[16]uint8{0x46, 0xc2, 0x03, 0x2c, 0x37, 0xf2, 0xed, 0x89, 0x9e, 0xb4, 0x1c, 0x04, 0x73, 0x31, 0x9a, 0x69},
+				md5:     "\x46\xc2\x03\x2c\x37\xf2\xed\x89\x9e\xb4\x1c\x04\x73\x31\x9a\x69",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -832,7 +831,7 @@ var (
 				id:      62,
 				name:    "GL000221.1",
 				lRef:    155397,
-				md5:     &[16]uint8{0x32, 0x38, 0xfb, 0x74, 0xea, 0x87, 0xae, 0x85, 0x7f, 0x9c, 0x75, 0x08, 0xd3, 0x15, 0xba, 0xbb},
+				md5:     "\x32\x38\xfb\x74\xea\x87\xae\x85\x7f\x9c\x75\x08\xd3\x15\xba\xbb",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -845,7 +844,7 @@ var (
 				id:      63,
 				name:    "GL000209.1",
 				lRef:    159169,
-				md5:     &[16]uint8{0xf4, 0x05, 0x98, 0xe2, 0xa5, 0xa6, 0xb2, 0x6e, 0x84, 0xa3, 0x77, 0x5e, 0x0d, 0x1e, 0x2c, 0x81},
+				md5:     "\xf4\x05\x98\xe2\xa5\xa6\xb2\x6e\x84\xa3\x77\x5e\x0d\x1e\x2c\x81",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -858,7 +857,7 @@ var (
 				id:      64,
 				name:    "GL000218.1",
 				lRef:    161147,
-				md5:     &[16]uint8{0x1d, 0x70, 0x8b, 0x54, 0x64, 0x4c, 0x26, 0xc7, 0xe0, 0x1c, 0x2d, 0xad, 0x54, 0x26, 0xd3, 0x8c},
+				md5:     "\x1d\x70\x8b\x54\x64\x4c\x26\xc7\xe0\x1c\x2d\xad\x54\x26\xd3\x8c",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -871,7 +870,7 @@ var (
 				id:      65,
 				name:    "GL000220.1",
 				lRef:    161802,
-				md5:     &[16]uint8{0xfc, 0x35, 0xde, 0x96, 0x3c, 0x57, 0xbf, 0x76, 0x48, 0x42, 0x9e, 0x64, 0x54, 0xf1, 0xc9, 0xdb},
+				md5:     "\xfc\x35\xde\x96\x3c\x57\xbf\x76\x48\x42\x9e\x64\x54\xf1\xc9\xdb",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -884,7 +883,7 @@ var (
 				id:      66,
 				name:    "GL000213.1",
 				lRef:    164239,
-				md5:     &[16]uint8{0x9d, 0x42, 0x4f, 0xdc, 0xc9, 0x88, 0x66, 0x65, 0x0b, 0x58, 0xf0, 0x04, 0x08, 0x0a, 0x99, 0x2a},
+				md5:     "\x9d\x42\x4f\xdc\xc9\x88\x66\x65\x0b\x58\xf0\x04\x08\x0a\x99\x2a",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -897,7 +896,7 @@ var (
 				id:      67,
 				name:    "GL000211.1",
 				lRef:    166566,
-				md5:     &[16]uint8{0x7d, 0xaa, 0xa4, 0x5c, 0x66, 0xb2, 0x88, 0x84, 0x7b, 0x9b, 0x32, 0xb9, 0x64, 0xe6, 0x23, 0xd3},
+				md5:     "\x7d\xaa\xa4\x5c\x66\xb2\x88\x84\x7b\x9b\x32\xb9\x64\xe6\x23\xd3",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -910,7 +909,7 @@ var (
 				id:      68,
 				name:    "GL000199.1",
 				lRef:    169874,
-				md5:     &[16]uint8{0x56, 0x9a, 0xf3, 0xb7, 0x35, 0x22, 0xfa, 0xb4, 0xb4, 0x09, 0x95, 0xae, 0x49, 0x44, 0xe7, 0x8e},
+				md5:     "\x56\x9a\xf3\xb7\x35\x22\xfa\xb4\xb4\x09\x95\xae\x49\x44\xe7\x8e",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -923,7 +922,7 @@ var (
 				id:      69,
 				name:    "GL000217.1",
 				lRef:    172149,
-				md5:     &[16]uint8{0x6d, 0x24, 0x3e, 0x18, 0xde, 0xa1, 0x94, 0x5f, 0xb7, 0xf2, 0x51, 0x76, 0x15, 0xb8, 0xf5, 0x2e},
+				md5:     "\x6d\x24\x3e\x18\xde\xa1\x94\x5f\xb7\xf2\x51\x76\x15\xb8\xf5\x2e",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -936,7 +935,7 @@ var (
 				id:      70,
 				name:    "GL000216.1",
 				lRef:    172294,
-				md5:     &[16]uint8{0x64, 0x2a, 0x23, 0x2d, 0x91, 0xc4, 0x86, 0xac, 0x33, 0x92, 0x63, 0x82, 0x0a, 0xef, 0x7f, 0xe0},
+				md5:     "\x64\x2a\x23\x2d\x91\xc4\x86\xac\x33\x92\x63\x82\x0a\xef\x7f\xe0",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -949,7 +948,7 @@ var (
 				id:      71,
 				name:    "GL000215.1",
 				lRef:    172545,
-				md5:     &[16]uint8{0x5e, 0xb3, 0xb4, 0x18, 0x48, 0x0a, 0xe6, 0x7a, 0x99, 0x79, 0x57, 0xc9, 0x09, 0x37, 0x5a, 0x73},
+				md5:     "\x5e\xb3\xb4\x18\x48\x0a\xe6\x7a\x99\x79\x57\xc9\x09\x37\x5a\x73",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -962,7 +961,7 @@ var (
 				id:      72,
 				name:    "GL000205.1",
 				lRef:    174588,
-				md5:     &[16]uint8{0xd2, 0x24, 0x41, 0x39, 0x8d, 0x99, 0xca, 0xf6, 0x73, 0xe9, 0xaf, 0xb9, 0xa1, 0x90, 0x8e, 0xc5},
+				md5:     "\xd2\x24\x41\x39\x8d\x99\xca\xf6\x73\xe9\xaf\xb9\xa1\x90\x8e\xc5",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -975,7 +974,7 @@ var (
 				id:      73,
 				name:    "GL000219.1",
 				lRef:    179198,
-				md5:     &[16]uint8{0xf9, 0x77, 0xed, 0xd1, 0x3b, 0xac, 0x45, 0x9c, 0xb2, 0xed, 0x4a, 0x54, 0x57, 0xdb, 0xa1, 0xb3},
+				md5:     "\xf9\x77\xed\xd1\x3b\xac\x45\x9c\xb2\xed\x4a\x54\x57\xdb\xa1\xb3",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -988,7 +987,7 @@ var (
 				id:      74,
 				name:    "GL000224.1",
 				lRef:    179693,
-				md5:     &[16]uint8{0xd5, 0xb2, 0xfc, 0x04, 0xf6, 0xb4, 0x1b, 0x21, 0x2a, 0x41, 0x98, 0xa0, 0x7f, 0x45, 0x0e, 0x20},
+				md5:     "\xd5\xb2\xfc\x04\xf6\xb4\x1b\x21\x2a\x41\x98\xa0\x7f\x45\x0e\x20",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -1001,7 +1000,7 @@ var (
 				id:      75,
 				name:    "GL000223.1",
 				lRef:    180455,
-				md5:     &[16]uint8{0x39, 0x9d, 0xfa, 0x03, 0xbf, 0x32, 0x02, 0x2a, 0xb5, 0x2a, 0x84, 0x6f, 0x7c, 0xa3, 0x5b, 0x30},
+				md5:     "\x39\x9d\xfa\x03\xbf\x32\x02\x2a\xb5\x2a\x84\x6f\x7c\xa3\x5b\x30",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -1014,7 +1013,7 @@ var (
 				id:      76,
 				name:    "GL000195.1",
 				lRef:    182896,
-				md5:     &[16]uint8{0x5d, 0x9e, 0xc0, 0x07, 0x86, 0x8d, 0x51, 0x7e, 0x73, 0x54, 0x3b, 0x00, 0x5b, 0xa4, 0x85, 0x35},
+				md5:     "\x5d\x9e\xc0\x07\x86\x8d\x51\x7e\x73\x54\x3b\x00\x5b\xa4\x85\x35",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -1027,7 +1026,7 @@ var (
 				id:      77,
 				name:    "GL000212.1",
 				lRef:    186858,
-				md5:     &[16]uint8{0x56, 0x35, 0x31, 0x68, 0x9f, 0x3d, 0xbd, 0x69, 0x13, 0x31, 0xfd, 0x6c, 0x57, 0x30, 0xa8, 0x8b},
+				md5:     "\x56\x35\x31\x68\x9f\x3d\xbd\x69\x13\x31\xfd\x6c\x57\x30\xa8\x8b",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -1040,7 +1039,7 @@ var (
 				id:      78,
 				name:    "GL000222.1",
 				lRef:    186861,
-				md5:     &[16]uint8{0x6f, 0xe9, 0xab, 0xac, 0x45, 0x51, 0x69, 0xf5, 0x04, 0x70, 0xf5, 0xa6, 0xb0, 0x1d, 0x0f, 0x59},
+				md5:     "\x6f\xe9\xab\xac\x45\x51\x69\xf5\x04\x70\xf5\xa6\xb0\x1d\x0f\x59",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -1053,7 +1052,7 @@ var (
 				id:      79,
 				name:    "GL000200.1",
 				lRef:    187035,
-				md5:     &[16]uint8{0x75, 0xe4, 0xc8, 0xd1, 0x7c, 0xd4, 0xad, 0xdf, 0x39, 0x17, 0xd1, 0x70, 0x3c, 0xac, 0xaf, 0x25},
+				md5:     "\x75\xe4\xc8\xd1\x7c\xd4\xad\xdf\x39\x17\xd1\x70\x3c\xac\xaf\x25",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -1065,7 +1064,7 @@ var (
 			{
 				id:   80,
 				name: "GL000193.1",
-				lRef: 189789, md5: &[16]uint8{0xdb, 0xb6, 0xe8, 0xec, 0xe0, 0xb5, 0xde, 0x29, 0xda, 0x56, 0x60, 0x16, 0x13, 0x00, 0x7c, 0x2a},
+				lRef: 189789, md5: "\xdb\xb6\xe8\xec\xe0\xb5\xde\x29\xda\x56\x60\x16\x13\x00\x7c\x2a",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -1078,7 +1077,7 @@ var (
 				id:      81,
 				name:    "GL000194.1",
 				lRef:    191469,
-				md5:     &[16]uint8{0x6a, 0xc8, 0xf8, 0x15, 0xbf, 0x8e, 0x84, 0x5b, 0xb3, 0x03, 0x1b, 0x73, 0xf8, 0x12, 0xc0, 0x12},
+				md5:     "\x6a\xc8\xf8\x15\xbf\x8e\x84\x5b\xb3\x03\x1b\x73\xf8\x12\xc0\x12",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -1091,7 +1090,7 @@ var (
 				id:      82,
 				name:    "GL000225.1",
 				lRef:    211173,
-				md5:     &[16]uint8{0x63, 0x94, 0x5c, 0x3e, 0x69, 0x62, 0xf2, 0x8f, 0xfd, 0x46, 0x97, 0x19, 0xa7, 0x47, 0xe7, 0x3c},
+				md5:     "\x63\x94\x5c\x3e\x69\x62\xf2\x8f\xfd\x46\x97\x19\xa7\x47\xe7\x3c",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -1104,7 +1103,7 @@ var (
 				id:      83,
 				name:    "GL000192.1",
 				lRef:    547496,
-				md5:     &[16]uint8{0x32, 0x5b, 0xa9, 0xe8, 0x08, 0xf6, 0x69, 0xdf, 0xee, 0xe2, 0x10, 0xfd, 0xd7, 0xb4, 0x70, 0xac},
+				md5:     "\x32\x5b\xa9\xe8\x08\xf6\x69\xdf\xee\xe2\x10\xfd\xd7\xb4\x70\xac",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -1117,7 +1116,7 @@ var (
 				id:      84,
 				name:    "NC_007605",
 				lRef:    171823,
-				md5:     &[16]uint8{0x67, 0x43, 0xbd, 0x63, 0xb3, 0xff, 0x2b, 0x5b, 0x89, 0x85, 0xd8, 0x93, 0x3c, 0x53, 0x29, 0x0a},
+				md5:     "\x67\x43\xbd\x63\xb3\xff\x2b\x5b\x89\x85\xd8\x93\x3c\x53\x29\x0a",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
@@ -1130,7 +1129,7 @@ var (
 				id:      85,
 				name:    "hs37d5",
 				lRef:    35477943,
-				md5:     &[16]uint8{0x5b, 0x6a, 0x4b, 0x3a, 0x81, 0xa2, 0xd3, 0xc1, 0x34, 0xb7, 0xd1, 0x4b, 0xf6, 0xad, 0x39, 0xf1},
+				md5:     "\x5b\x6a\x4b\x3a\x81\xa2\xd3\xc1\x34\xb7\xd1\x4b\xf6\xad\x39\xf1",
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{

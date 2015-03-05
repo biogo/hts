@@ -16,7 +16,7 @@ type Reference struct {
 	id      int32
 	name    string
 	lRef    int32
-	md5     *[16]byte
+	md5     string
 	assemID string
 	species string
 	uri     *url.URL
@@ -32,10 +32,12 @@ func NewReference(name, assemID, species string, length int, md5 []byte, uri *ur
 	if name == "" {
 		return nil, errors.New("sam: no name provided")
 	}
-	var h *[16]byte
+	var h string
 	if md5 != nil {
-		h = &[16]byte{}
-		copy(h[:], md5)
+		if len(md5) != 16 {
+			return nil, errors.New("sam: invalid md5 sum length")
+		}
+		h = string(md5[:])
 	}
 	return &Reference{
 		id:      -1, // This is altered by a Header when added.
@@ -81,12 +83,11 @@ func (r *Reference) Species() string {
 }
 
 // MD5 returns a 16 byte slice holding the MD5 sum of the reference sequence.
-// The returned slice should not be altered.
 func (r *Reference) MD5() []byte {
-	if r == nil || r.md5 == nil {
+	if r == nil || r.md5 == "" {
 		return nil
 	}
-	return r.md5[:]
+	return []byte(r.md5)
 }
 
 // URI returns the URI of the reference.
@@ -120,8 +121,8 @@ func (r *Reference) SetLen(l int) error {
 func (r *Reference) String() string {
 	var buf bytes.Buffer
 	fmt.Fprintf(&buf, "@SQ\tSN:%s\tLN:%d", r.name, r.lRef)
-	if r.md5 != nil {
-		fmt.Fprintf(&buf, "\tM5:%x", *r.md5)
+	if r.md5 != "" {
+		fmt.Fprintf(&buf, "\tM5:%x", []byte(r.md5))
 	}
 	if r.assemID != "" {
 		fmt.Fprintf(&buf, "\tAS:%s", r.assemID)
@@ -142,10 +143,6 @@ func (r *Reference) Clone() *Reference {
 	}
 	cr := *r
 	cr.id = -1
-	if r.md5 != nil {
-		cr.md5 = &[16]byte{}
-		*cr.md5 = *r.md5
-	}
 	if r.uri != nil {
 		cr.uri = &url.URL{}
 		*cr.uri = *r.uri

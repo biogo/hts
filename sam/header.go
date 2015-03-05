@@ -318,7 +318,7 @@ func (bh *Header) AddReference(r *Reference) error {
 		} else if tr := (Reference{id: er.id, name: er.name, lRef: er.lRef}); *r != tr {
 			return errDupReference
 		}
-		if r.md5 == nil {
+		if r.md5 == "" {
 			r.md5 = er.md5
 		}
 		if r.assemID == "" {

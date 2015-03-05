@@ -235,7 +235,7 @@ func referenceLine(l []byte, bh *Header) error {
 			if n != 16 {
 				return errBadHeader
 			}
-			rf.md5 = &hb
+			rf.md5 = string(hb[:])
 		case t == speciesTag:
 			rf.species = fs
 		case t == uriTag:
