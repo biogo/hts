@@ -17,8 +17,8 @@ import (
 )
 
 var (
-	badHeader = errors.New("sam: malformed header line")
-	dupTag    = errors.New("sam: duplicate field")
+	errBadHeader = errors.New("sam: malformed header line")
+	errDupTag    = errors.New("sam: duplicate field")
 )
 
 var bamMagic = [4]byte{'B', 'A', 'M', 0x1}
@@ -28,6 +28,9 @@ func (bh *Header) UnmarshalBinary(b []byte) error {
 	return bh.DecodeBinary(bytes.NewReader(b))
 }
 
+// DecodeBinary unmarshals a Header from the given io.Reader. The byte
+// stream must be in the format described in the SAM specification,
+// section 4.2.
 func (bh *Header) DecodeBinary(r io.Reader) error {
 	var (
 		lText, nRef int32
@@ -114,7 +117,7 @@ func (bh *Header) UnmarshalText(text []byte) error {
 			continue
 		}
 		if l[0] != '@' || len(l) < 3 {
-			return badHeader
+			return errBadHeader
 		}
 		copy(t[:], l[1:3])
 		var err error
@@ -130,7 +133,7 @@ func (bh *Header) UnmarshalText(text []byte) error {
 		case t == commentTag:
 			err = commentLine(l, bh)
 		default:
-			return badHeader
+			return errBadHeader
 		}
 		if err != nil {
 			return fmt.Errorf("%v: line %d: %q", err, i+1, l)
@@ -143,39 +146,39 @@ func (bh *Header) UnmarshalText(text []byte) error {
 func headerLine(l []byte, bh *Header) error {
 	fields := bytes.Split(l, []byte{'\t'})
 	if len(fields) < 2 {
-		return badHeader
+		return errBadHeader
 	}
 
 	var t Tag
 	for _, f := range fields[1:] {
 		if f[2] != ':' {
-			return badHeader
+			return errBadHeader
 		}
 		copy(t[:], f[:2])
 		fs := string(f[3:])
 		switch {
 		case t == versionTag:
 			if bh.Version != "" {
-				return badHeader
+				return errBadHeader
 			}
 			bh.Version = fs
 		case t == sortOrderTag:
 			if bh.SortOrder != UnknownOrder {
-				return badHeader
+				return errBadHeader
 			}
 			bh.SortOrder = sortOrderMap[fs]
 		case t == groupOrderTag:
 			if bh.GroupOrder != GroupUnspecified {
-				return badHeader
+				return errBadHeader
 			}
 			bh.GroupOrder = groupOrderMap[fs]
 		default:
-			return badHeader
+			return errBadHeader
 		}
 	}
 
 	if bh.Version == "" {
-		return badHeader
+		return errBadHeader
 	}
 
 	return nil
@@ -184,7 +187,7 @@ func headerLine(l []byte, bh *Header) error {
 func referenceLine(l []byte, bh *Header) error {
 	fields := bytes.Split(l, []byte{'\t'})
 	if len(fields) < 3 {
-		return badHeader
+		return errBadHeader
 	}
 
 	var (
@@ -198,11 +201,11 @@ func referenceLine(l []byte, bh *Header) error {
 
 	for _, f := range fields[1:] {
 		if f[2] != ':' {
-			return badHeader
+			return errBadHeader
 		}
 		copy(t[:], f[:2])
 		if _, ok := seen[t]; ok {
-			return dupTag
+			return errDupTag
 		}
 		seen[t] = struct{}{}
 		fs := string(f[3:])
@@ -214,10 +217,10 @@ func referenceLine(l []byte, bh *Header) error {
 		case t == refLengthTag:
 			l, err := strconv.Atoi(fs)
 			if err != nil {
-				return badHeader
+				return errBadHeader
 			}
 			if !validLen(l) {
-				return badLen
+				return errBadLen
 			}
 			rf.lRef = int32(l)
 			lok = true
@@ -230,7 +233,7 @@ func referenceLine(l []byte, bh *Header) error {
 				return err
 			}
 			if n != 16 {
-				return badHeader
+				return errBadHeader
 			}
 			rf.md5 = &hb
 		case t == speciesTag:
@@ -245,7 +248,7 @@ func referenceLine(l []byte, bh *Header) error {
 				rf.uri.Scheme = "file"
 			}
 		default:
-			return badHeader
+			return errBadHeader
 		}
 	}
 
@@ -253,13 +256,13 @@ func referenceLine(l []byte, bh *Header) error {
 		if er := bh.refs[dupID]; *er == *rf {
 			return nil
 		} else if tr := (Reference{id: er.id, name: er.name, lRef: er.lRef}); *er != tr {
-			return dupReference
+			return errDupReference
 		}
 		bh.refs[dupID] = rf
 		return nil
 	}
 	if !nok || !lok {
-		return badHeader
+		return errBadHeader
 	}
 	id := int32(len(bh.refs))
 	rf.id = id
@@ -286,7 +289,7 @@ var iso8601 = []string{iso8601Date, iso8601TimeDateZ, iso8601TimeDateN}
 func readGroupLine(l []byte, bh *Header) error {
 	fields := bytes.Split(l, []byte{'\t'})
 	if len(fields) < 2 {
-		return badHeader
+		return errBadHeader
 	}
 
 	var (
@@ -299,18 +302,18 @@ func readGroupLine(l []byte, bh *Header) error {
 L:
 	for _, f := range fields[1:] {
 		if f[2] != ':' {
-			return badHeader
+			return errBadHeader
 		}
 		copy(t[:], f[:2])
 		if _, ok := seen[t]; ok {
-			return dupTag
+			return errDupTag
 		}
 		seen[t] = struct{}{}
 		fs := string(f[3:])
 		switch {
 		case t == idTag:
 			if _, ok := bh.seenRefs[fs]; ok {
-				return dupReadGroup
+				return errDupReadGroup
 			}
 			rg.name = fs
 			idok = true
@@ -341,7 +344,7 @@ L:
 				return err
 			}
 			if !validInt32(i) {
-				return badLen
+				return errBadLen
 			}
 			rg.insertSize = i
 		case t == platformTag:
@@ -351,12 +354,12 @@ L:
 		case t == sampleTag:
 			rg.sample = fs
 		default:
-			return badHeader
+			return errBadHeader
 		}
 	}
 
 	if !idok {
-		return badHeader
+		return errBadHeader
 	}
 	id := int32(len(bh.rgs))
 	rg.id = id
@@ -369,7 +372,7 @@ L:
 func programLine(l []byte, bh *Header) error {
 	fields := bytes.Split(l, []byte{'\t'})
 	if len(fields) < 2 {
-		return badHeader
+		return errBadHeader
 	}
 
 	var (
@@ -381,18 +384,18 @@ func programLine(l []byte, bh *Header) error {
 
 	for _, f := range fields[1:] {
 		if f[2] != ':' {
-			return badHeader
+			return errBadHeader
 		}
 		copy(t[:], f[:2])
 		if _, ok := seen[t]; ok {
-			return dupTag
+			return errDupTag
 		}
 		seen[t] = struct{}{}
 		fs := string(f[3:])
 		switch {
 		case t == idTag:
 			if _, ok := bh.seenProgs[fs]; ok {
-				return dupProgram
+				return errDupProgram
 			}
 			p.uid = fs
 			idok = true
@@ -405,12 +408,12 @@ func programLine(l []byte, bh *Header) error {
 		case t == versionTag:
 			p.version = fs
 		default:
-			return badHeader
+			return errBadHeader
 		}
 	}
 
 	if !idok {
-		return badHeader
+		return errBadHeader
 	}
 	id := int32(len(bh.progs))
 	p.id = id
@@ -423,7 +426,7 @@ func programLine(l []byte, bh *Header) error {
 func commentLine(l []byte, bh *Header) error {
 	fields := bytes.Split(l, []byte{'\t'})
 	if len(fields) < 2 {
-		return badHeader
+		return errBadHeader
 	}
 	bh.Comments = append(bh.Comments, string(fields[1]))
 	return nil

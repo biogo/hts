@@ -400,8 +400,10 @@ func formatQual(q []byte) []byte {
 	return []byte{'*'}
 }
 
+// Doublet is a nybble-encode pair of nucleotide bases.
 type Doublet byte
 
+// Seq is a nybble-encode pair of nucleotide sequence.
 type Seq struct {
 	Length int
 	Seq    []Doublet
@@ -429,6 +431,7 @@ var (
 	}
 )
 
+// NewSeq returns a new Seq based on the given byte slice.
 func NewSeq(s []byte) Seq {
 	return Seq{
 		Length: len(s),
@@ -454,6 +457,7 @@ func contract(s []byte) []Doublet {
 	return ns
 }
 
+// Expand returns the byte encoded form of the receiver.
 func (ns Seq) Expand() []byte {
 	s := make([]byte, ns.Length)
 	for i := range s {

@@ -10,6 +10,7 @@ import (
 	"strconv"
 )
 
+// Cigar is a set of CIGAR operations.
 type Cigar []CigarOp
 
 // IsValid returns whether the CIGAR string is valid for a record of the given
@@ -39,6 +40,7 @@ func (c Cigar) IsValid(length int) bool {
 	return length == 0
 }
 
+// String returns the CIGAR string for c.
 func (c Cigar) String() string {
 	if len(c) == 0 {
 		return "*"
@@ -50,6 +52,8 @@ func (c Cigar) String() string {
 	return b.String()
 }
 
+// CigarOp is a single CIGAR operation including the operation type and the
+// length of the operation.
 type CigarOp uint32
 
 // NewCigarOp returns a CIGAR operation of the specified type with length n.

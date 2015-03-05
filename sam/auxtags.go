@@ -185,6 +185,7 @@ func NewAux(t Tag, typ byte, value interface{}) (Aux, error) {
 	}
 }
 
+// ParseAux returns an AUX parsed from the given text.
 func ParseAux(text []byte) (Aux, error) {
 	tf := bytes.SplitN(text, []byte{':'}, 3)
 	if len(tf) != 3 || len(tf[1]) != 1 {
@@ -474,8 +475,11 @@ func (a Aux) Value() interface{} {
 	}
 }
 
+// AuxFields is a set of auxiliary fields.
 type AuxFields []Aux
 
+// Get returns the auxiliary field identified by the given tag, or nil
+// if no field matches.
 func (a AuxFields) Get(tag Tag) Aux {
 	for _, f := range a {
 		if f.Tag() == tag {

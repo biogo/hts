@@ -14,6 +14,7 @@ import (
 	"io"
 )
 
+// Reader implements SAM format reading.
 type Reader struct {
 	r *bufio.Reader
 	h *Header
@@ -21,6 +22,7 @@ type Reader struct {
 	seenRefs map[string]*Reference
 }
 
+// NewReader returns a new Reader, reading from the given io.Reader.
 func NewReader(r io.Reader) (*Reader, error) {
 	h, _ := NewHeader(nil, nil)
 	sr := &Reader{
@@ -64,10 +66,12 @@ func NewReader(r io.Reader) (*Reader, error) {
 	return sr, nil
 }
 
+// Header returns the SAM Header held by the Reader.
 func (r *Reader) Header() *Header {
 	return r.h
 }
 
+// Read returns the next sam.Record in the SAM stream.
 func (r *Reader) Read() (*Record, error) {
 	b, err := r.r.ReadBytes('\n')
 	if err != nil {
@@ -170,11 +174,15 @@ func (i *Iterator) Error() error {
 // Record returns the most recent record read by a call to Next.
 func (i *Iterator) Record() *Record { return i.rec }
 
+// Writer implements SAM format writing.
 type Writer struct {
 	w     io.Writer
 	flags int
 }
 
+// NewWriter returns a Writer to the given io.Writer using h for the SAM
+// header. The format of flags for SAM lines can be FlagDecimal, FlagHex
+// or FlagString.
 func NewWriter(w io.Writer, h *Header, flags int) (*Writer, error) {
 	if flags < FlagDecimal || flags > FlagString {
 		return nil, errors.New("bam: flag format option out of range")
@@ -188,6 +196,7 @@ func NewWriter(w io.Writer, h *Header, flags int) (*Writer, error) {
 	return sw, nil
 }
 
+// Write writes r to the SAM stream.
 func (w *Writer) Write(r *Record) error {
 	b, err := r.MarshalSAM(w.flags)
 	if err != nil {

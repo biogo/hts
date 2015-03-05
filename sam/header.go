@@ -13,15 +13,16 @@ import (
 )
 
 var (
-	dupReference  = errors.New("sam: duplicate reference name")
-	dupReadGroup  = errors.New("sam: duplicate read group name")
-	dupProgram    = errors.New("sam: duplicate program name")
-	usedReference = errors.New("sam: reference already used")
-	usedReadGroup = errors.New("sam: read group already used")
-	usedProgram   = errors.New("sam: program already used")
-	badLen        = errors.New("sam: reference length out of range")
+	errDupReference  = errors.New("sam: duplicate reference name")
+	errDupReadGroup  = errors.New("sam: duplicate read group name")
+	errDupProgram    = errors.New("sam: duplicate program name")
+	errUsedReference = errors.New("sam: reference already used")
+	errUsedReadGroup = errors.New("sam: read group already used")
+	errUsedProgram   = errors.New("sam: program already used")
+	errBadLen        = errors.New("sam: reference length out of range")
 )
 
+// SortOrder indicates the sort order of a SAM or BAM file.
 type SortOrder int
 
 const (
@@ -46,6 +47,7 @@ var (
 	}
 )
 
+// String returns the string representation of a SortOrder.
 func (so SortOrder) String() string {
 	if so < Unsorted || so > Coordinate {
 		return sortOrder[UnknownOrder]
@@ -53,6 +55,7 @@ func (so SortOrder) String() string {
 	return sortOrder[so]
 }
 
+// GroupOrder indicates the grouping order of a SAM or BAM file.
 type GroupOrder int
 
 const (
@@ -76,6 +79,7 @@ var (
 	}
 )
 
+// String returns the string representation of a GroupOrder.
 func (g GroupOrder) String() string {
 	if g < GroupNone || g > GroupReference {
 		return groupOrder[GroupUnspecified]
@@ -85,6 +89,7 @@ func (g GroupOrder) String() string {
 
 type set map[string]int32
 
+// Header is a SAM or BAM header.
 type Header struct {
 	Version    string
 	SortOrder  SortOrder
@@ -98,6 +103,9 @@ type Header struct {
 	seenProgs  set
 }
 
+// NewHeader returns a new Header based on the given text and list
+// of References. If there is a conflict between the text and the
+// given References NewHeader will return a non-nil error.
 func NewHeader(text []byte, r []*Reference) (*Header, error) {
 	var err error
 	bh := &Header{
@@ -118,6 +126,7 @@ func NewHeader(text []byte, r []*Reference) (*Header, error) {
 	return bh, nil
 }
 
+// Clone returns a deep copy of the receiver.
 func (bh *Header) Clone() *Header {
 	c := &Header{
 		Version:    bh.Version,
@@ -196,6 +205,8 @@ func (bh *Header) MarshalBinary() ([]byte, error) {
 	return b.Bytes(), nil
 }
 
+// EncodeBinary writes a binary encoding of the Header to the given io.Writer.
+// The format of the encoding is defined in the SAM specification, section 4.2.
 func (bh *Header) EncodeBinary(w io.Writer) error {
 	wb := &errWriter{w: w}
 
@@ -238,6 +249,12 @@ func (w *errWriter) Write(p []byte) (int, error) {
 	return n, w.err
 }
 
+// Validate checks r against the Header for record validity according to the
+// SAM specification:
+//
+//  - a program auxiliary field must refer to a program listed in the header
+//  - a read group auxiliary field must refer to a read group listed in the
+//    header and these must agree on platform unit and library.
 func (bh *Header) Validate(r *Record) error {
 	rp := r.AuxFields.Get(programTag)
 	found := false
@@ -274,25 +291,32 @@ func (bh *Header) Validate(r *Record) error {
 	return nil
 }
 
+// Refs returns the Header's list of References. The returned slice
+// should not be altered.
 func (bh *Header) Refs() []*Reference {
 	return bh.refs
 }
 
+// RGs returns the Header's list of ReadGroups. The returned slice
+// should not be altered.
 func (bh *Header) RGs() []*ReadGroup {
 	return bh.rgs
 }
 
+// Progs returns the Header's list of Programs. The returned slice
+// should not be altered.
 func (bh *Header) Progs() []*Program {
 	return bh.progs
 }
 
+// AddReference adds r to the Header.
 func (bh *Header) AddReference(r *Reference) error {
 	if dupID, dup := bh.seenRefs[r.name]; dup {
 		er := bh.refs[dupID]
 		if *er == *r {
 			return nil
 		} else if tr := (Reference{id: er.id, name: er.name, lRef: er.lRef}); *r != tr {
-			return dupReference
+			return errDupReference
 		}
 		if r.md5 == nil {
 			r.md5 = er.md5
@@ -310,7 +334,7 @@ func (bh *Header) AddReference(r *Reference) error {
 		return nil
 	}
 	if r.id >= 0 {
-		return usedReference
+		return errUsedReference
 	}
 	r.id = int32(len(bh.refs))
 	bh.seenRefs[r.name] = r.id
@@ -318,12 +342,13 @@ func (bh *Header) AddReference(r *Reference) error {
 	return nil
 }
 
+// AddReadGroup adds rg to the Header.
 func (bh *Header) AddReadGroup(rg *ReadGroup) error {
 	if _, ok := bh.seenGroups[rg.name]; ok {
-		return dupReadGroup
+		return errDupReadGroup
 	}
 	if rg.id >= 0 {
-		return usedReadGroup
+		return errUsedReadGroup
 	}
 	rg.id = int32(len(bh.rgs))
 	bh.seenGroups[rg.name] = rg.id
@@ -331,12 +356,13 @@ func (bh *Header) AddReadGroup(rg *ReadGroup) error {
 	return nil
 }
 
+// AddProgram adds p to the Header.
 func (bh *Header) AddProgram(p *Program) error {
 	if _, ok := bh.seenProgs[p.uid]; ok {
-		return dupProgram
+		return errDupProgram
 	}
 	if p.id >= 0 {
-		return usedProgram
+		return errUsedProgram
 	}
 	p.id = int32(len(bh.progs))
 	bh.seenProgs[p.uid] = p.id

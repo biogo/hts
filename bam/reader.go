@@ -77,6 +77,7 @@ func vOffset(o bgzf.Offset) int64 {
 	return o.File<<16 | int64(o.Block)
 }
 
+// Read returns the next sam.Record in the BAM stream.
 func (br *Reader) Read() (*sam.Record, error) {
 	if br.c != nil && vOffset(br.r.LastChunk().End) >= vOffset(br.c.End) {
 		return nil, io.EOF
