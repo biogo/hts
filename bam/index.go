@@ -169,7 +169,7 @@ found:
 	return nil
 }
 
-// Chunks returns a []bgzf.Chunk that correspond to the given genomic interval.
+// Chunks returns a []bgzf.Chunk that corresponds to the given genomic interval.
 func (i *Index) Chunks(r *sam.Reference, beg, end int) []bgzf.Chunk {
 	rid := r.ID()
 	if rid < 0 || rid >= len(i.refs) {

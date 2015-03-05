@@ -12,7 +12,7 @@ import (
 	"io"
 )
 
-// WriteCSI writes the index to the given io.Writer.
+// WriteCSI writes the CSI index to the given io.Writer.
 func WriteCSI(w io.Writer, idx *CSI) error {
 	idx.sort()
 	err := binary.Write(w, binary.LittleEndian, csiMagic)

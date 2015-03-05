@@ -52,7 +52,7 @@ func validIndexPos(i int, minShift, depth uint32) bool { // 0-based.
 	return -1 <= i && i <= (1<<(minShift+depth*nextBinShift)-1)-1
 }
 
-// NewCSI returns a CSI index with the given minuimum shift and depth.
+// NewCSI returns a CSI index with the given minimum shift and depth.
 // The returned index defaults to CSI version 2.
 func NewCSI(minShift, depth int) *CSI {
 	if minShift == 0 {
@@ -134,7 +134,7 @@ type Record interface {
 	End() int
 }
 
-// Add records the Record as having being located at the given chunk wit the given
+// Add records the Record as having being located at the given chunk with the given
 // mapping and placement status.
 func (i *CSI) Add(r Record, c bgzf.Chunk, mapped, placed bool) error {
 	if !validIndexPos(r.Start(), i.minShift, i.depth) || !validIndexPos(r.End(), i.minShift, i.depth) {
@@ -211,7 +211,7 @@ found:
 	return nil
 }
 
-// Chunks returns a []bgzf.Chunk that correspond to the given interval.
+// Chunks returns a []bgzf.Chunk that corresponds to the given interval.
 func (i *CSI) Chunks(rid int, beg, end int) []bgzf.Chunk {
 	if rid < 0 || rid >= len(i.refs) {
 		return nil
