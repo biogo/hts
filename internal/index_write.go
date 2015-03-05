@@ -26,12 +26,8 @@ func WriteIndex(w io.Writer, idx *Index, typ string) error {
 }
 
 func writeIndices(w io.Writer, idx []RefIndex, typ string) error {
-	err := binary.Write(w, binary.LittleEndian, int32(len(idx)))
-	if err != nil {
-		return err
-	}
 	for i := range idx {
-		err = writeBins(w, idx[i].Bins, idx[i].Stats, typ)
+		err := writeBins(w, idx[i].Bins, idx[i].Stats, typ)
 		if err != nil {
 			return err
 		}

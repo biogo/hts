@@ -84,7 +84,15 @@ func ReadIndex(r io.Reader) (*Index, error) {
 		return nil, errors.New("bam: magic number mismatch")
 	}
 
-	idx.idx, err = internal.ReadIndex(r, "bam")
+	var n int32
+	err = binary.Read(r, binary.LittleEndian, &n)
+	if err != nil {
+		return nil, err
+	}
+	if n == 0 {
+		return nil, nil
+	}
+	idx.idx, err = internal.ReadIndex(r, n, "bam")
 	if err != nil {
 		return nil, err
 	}
@@ -98,5 +106,9 @@ func WriteIndex(w io.Writer, idx *Index) error {
 		return err
 	}
 
+	err = binary.Write(w, binary.LittleEndian, int32(len(idx.idx.Refs)))
+	if err != nil {
+		return err
+	}
 	return internal.WriteIndex(w, &idx.idx, "bam")
 }

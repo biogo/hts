@@ -14,12 +14,12 @@ import (
 )
 
 // ReadIndex reads the Index from the given io.Reader.
-func ReadIndex(r io.Reader, typ string) (Index, error) {
+func ReadIndex(r io.Reader, n int32, typ string) (Index, error) {
 	var (
 		idx Index
 		err error
 	)
-	idx.Refs, err = readIndices(r, typ)
+	idx.Refs, err = readIndices(r, n, typ)
 	if err != nil {
 		return idx, err
 	}
@@ -34,15 +34,8 @@ func ReadIndex(r io.Reader, typ string) (Index, error) {
 	return idx, nil
 }
 
-func readIndices(r io.Reader, typ string) ([]RefIndex, error) {
-	var n int32
-	err := binary.Read(r, binary.LittleEndian, &n)
-	if err != nil {
-		return nil, err
-	}
-	if n == 0 {
-		return nil, nil
-	}
+func readIndices(r io.Reader, n int32, typ string) ([]RefIndex, error) {
+	var err error
 	idx := make([]RefIndex, n)
 	for i := range idx {
 		idx[i].Bins, idx[i].Stats, err = readBins(r, typ)
