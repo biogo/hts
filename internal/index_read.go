@@ -2,49 +2,39 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package bam
+package internal
 
 import (
 	"code.google.com/p/biogo.bam/bgzf"
-	"code.google.com/p/biogo.bam/bgzf/index"
 
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"io"
 	"sort"
 )
 
-// ReadIndex reads the BAI Index from the given io.Reader.
-func ReadIndex(r io.Reader) (*Index, error) {
+// ReadIndex reads the Index from the given io.Reader.
+func ReadIndex(r io.Reader, typ string) (Index, error) {
 	var (
-		idx   Index
-		magic [4]byte
-		err   error
+		idx Index
+		err error
 	)
-	err = binary.Read(r, binary.LittleEndian, &magic)
+	idx.Refs, err = readIndices(r, typ)
 	if err != nil {
-		return nil, err
-	}
-	if magic != baiMagic {
-		return nil, errors.New("bam: magic number mismatch")
-	}
-	idx.refs, err = readIndices(r)
-	if err != nil {
-		return nil, err
+		return idx, err
 	}
 	var nUnmapped uint64
 	err = binary.Read(r, binary.LittleEndian, &nUnmapped)
 	if err == nil {
-		idx.unmapped = &nUnmapped
+		idx.Unmapped = &nUnmapped
 	} else if err != io.EOF {
-		return nil, err
+		return idx, err
 	}
-	idx.isSorted = true
-	return &idx, nil
+	idx.IsSorted = true
+	return idx, nil
 }
 
-func readIndices(r io.Reader) ([]refIndex, error) {
+func readIndices(r io.Reader, typ string) ([]RefIndex, error) {
 	var n int32
 	err := binary.Read(r, binary.LittleEndian, &n)
 	if err != nil {
@@ -53,13 +43,13 @@ func readIndices(r io.Reader) ([]refIndex, error) {
 	if n == 0 {
 		return nil, nil
 	}
-	idx := make([]refIndex, n)
+	idx := make([]RefIndex, n)
 	for i := range idx {
-		idx[i].bins, idx[i].stats, err = readBins(r)
+		idx[i].Bins, idx[i].Stats, err = readBins(r, typ)
 		if err != nil {
 			return nil, err
 		}
-		idx[i].intervals, err = readIntervals(r)
+		idx[i].Intervals, err = readIntervals(r, typ)
 		if err != nil {
 			return nil, err
 		}
@@ -67,7 +57,7 @@ func readIndices(r io.Reader) ([]refIndex, error) {
 	return idx, nil
 }
 
-func readBins(r io.Reader) ([]bin, *index.ReferenceStats, error) {
+func readBins(r io.Reader, typ string) ([]Bin, *ReferenceStats, error) {
 	var n int32
 	err := binary.Read(r, binary.LittleEndian, &n)
 	if err != nil {
@@ -76,22 +66,22 @@ func readBins(r io.Reader) ([]bin, *index.ReferenceStats, error) {
 	if n == 0 {
 		return nil, nil, nil
 	}
-	var stats *index.ReferenceStats
-	bins := make([]bin, n)
+	var stats *ReferenceStats
+	bins := make([]Bin, n)
 	for i := 0; i < len(bins); i++ {
-		err = binary.Read(r, binary.LittleEndian, &bins[i].bin)
+		err = binary.Read(r, binary.LittleEndian, &bins[i].Bin)
 		if err != nil {
-			return nil, nil, fmt.Errorf("bam: failed to read bin number: %v", err)
+			return nil, nil, fmt.Errorf("%s: failed to read bin number: %v", typ, err)
 		}
 		err = binary.Read(r, binary.LittleEndian, &n)
 		if err != nil {
-			return nil, nil, fmt.Errorf("bam: failed to read bin count: %v", err)
+			return nil, nil, fmt.Errorf("%s: failed to read bin count: %v", typ, err)
 		}
-		if bins[i].bin == statsDummyBin {
+		if bins[i].Bin == StatsDummyBin {
 			if n != 2 {
-				return nil, nil, errors.New("bam: malformed dummy bin header")
+				return nil, nil, fmt.Errorf("%s: malformed dummy bin header", typ)
 			}
-			stats, err = readStats(r)
+			stats, err = readStats(r, typ)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -99,7 +89,7 @@ func readBins(r io.Reader) ([]bin, *index.ReferenceStats, error) {
 			i--
 			continue
 		}
-		bins[i].chunks, err = readChunks(r, n)
+		bins[i].Chunks, err = readChunks(r, n, typ)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -110,7 +100,7 @@ func readBins(r io.Reader) ([]bin, *index.ReferenceStats, error) {
 	return bins, stats, nil
 }
 
-func readChunks(r io.Reader, n int32) ([]bgzf.Chunk, error) {
+func readChunks(r io.Reader, n int32, typ string) ([]bgzf.Chunk, error) {
 	if n == 0 {
 		return nil, nil
 	}
@@ -122,12 +112,12 @@ func readChunks(r io.Reader, n int32) ([]bgzf.Chunk, error) {
 	for i := range chunks {
 		err = binary.Read(r, binary.LittleEndian, &vOff)
 		if err != nil {
-			return nil, fmt.Errorf("bam: failed to read chunk begin virtual offset: %v", err)
+			return nil, fmt.Errorf("%s: failed to read chunk begin virtual offset: %v", typ, err)
 		}
 		chunks[i].Begin = makeOffset(vOff)
 		err = binary.Read(r, binary.LittleEndian, &vOff)
 		if err != nil {
-			return nil, fmt.Errorf("bam: failed to read chunk end virtual offset: %v", err)
+			return nil, fmt.Errorf("%s: failed to read chunk end virtual offset: %v", typ, err)
 		}
 		chunks[i].End = makeOffset(vOff)
 	}
@@ -137,34 +127,34 @@ func readChunks(r io.Reader, n int32) ([]bgzf.Chunk, error) {
 	return chunks, nil
 }
 
-func readStats(r io.Reader) (*index.ReferenceStats, error) {
+func readStats(r io.Reader, typ string) (*ReferenceStats, error) {
 	var (
 		vOff  uint64
-		stats index.ReferenceStats
+		stats ReferenceStats
 		err   error
 	)
 	err = binary.Read(r, binary.LittleEndian, &vOff)
 	if err != nil {
-		return nil, fmt.Errorf("bam: failed to read index stats chunk begin virtual offset: %v", err)
+		return nil, fmt.Errorf("%s: failed to read index stats chunk begin virtual offset: %v", typ, err)
 	}
 	stats.Chunk.Begin = makeOffset(vOff)
 	err = binary.Read(r, binary.LittleEndian, &vOff)
 	if err != nil {
-		return nil, fmt.Errorf("bam: failed to read index stats chunk end virtual offset: %v", err)
+		return nil, fmt.Errorf("%s: failed to read index stats chunk end virtual offset: %v", typ, err)
 	}
 	stats.Chunk.End = makeOffset(vOff)
 	err = binary.Read(r, binary.LittleEndian, &stats.Mapped)
 	if err != nil {
-		return nil, fmt.Errorf("bam: failed to read index stats mapped count: %v", err)
+		return nil, fmt.Errorf("%s: failed to read index stats mapped count: %v", typ, err)
 	}
 	err = binary.Read(r, binary.LittleEndian, &stats.Unmapped)
 	if err != nil {
-		return nil, fmt.Errorf("bam: failed to read index stats unmapped count: %v", err)
+		return nil, fmt.Errorf("%s: failed to read index stats unmapped count: %v", typ, err)
 	}
 	return &stats, nil
 }
 
-func readIntervals(r io.Reader) ([]bgzf.Offset, error) {
+func readIntervals(r io.Reader, typ string) ([]bgzf.Offset, error) {
 	var n int32
 	err := binary.Read(r, binary.LittleEndian, &n)
 	if err != nil {
@@ -178,7 +168,7 @@ func readIntervals(r io.Reader) ([]bgzf.Offset, error) {
 	for i := range offsets {
 		err := binary.Read(r, binary.LittleEndian, &vOff)
 		if err != nil {
-			return nil, fmt.Errorf("bam: failed to read tile interval virtual offset: %v", err)
+			return nil, fmt.Errorf("%s: failed to read tile interval virtual offset: %v", typ, err)
 		}
 		offsets[i] = makeOffset(vOff)
 	}

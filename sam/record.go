@@ -6,6 +6,7 @@ package sam
 
 import (
 	"bytes"
+	"code.google.com/p/biogo.bam/internal"
 	"errors"
 	"fmt"
 	"strconv"
@@ -127,10 +128,10 @@ func (r *Record) Bin() int {
 		return 4680 // reg2bin(-1, 0)
 	}
 	end := r.End()
-	if !validIndexPos(r.Pos) || !validIndexPos(end) {
+	if !internal.IsValidIndexPos(r.Pos) || !internal.IsValidIndexPos(end) {
 		return -1
 	}
-	return int(reg2bin(r.Pos, r.End()))
+	return int(internal.BinFor(r.Pos, r.End()))
 }
 
 // Len returns the length of the alignment.
@@ -183,7 +184,7 @@ func (r *Record) String() string {
 		r.Ref.Name(),
 		r.Pos,
 		end,
-		int(reg2bin(r.Pos, end)),
+		r.Bin(),
 		end-r.Pos,
 		r.MateRef.Name(),
 		r.MatePos,

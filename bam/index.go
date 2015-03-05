@@ -5,274 +5,98 @@
 package bam
 
 import (
+	"encoding/binary"
+	"errors"
+	"io"
+
 	"code.google.com/p/biogo.bam/bgzf"
 	"code.google.com/p/biogo.bam/bgzf/index"
+	"code.google.com/p/biogo.bam/internal"
 	"code.google.com/p/biogo.bam/sam"
-
-	"errors"
-	"sort"
-)
-
-var baiMagic = [4]byte{'B', 'A', 'I', 0x1}
-
-const (
-	tileWidth     = 0x4000
-	statsDummyBin = 0x924a
 )
 
 // Index is a BAI index.
 type Index struct {
-	refs       []refIndex
-	unmapped   *uint64
-	isSorted   bool
-	lastRecord int
-}
-
-type refIndex struct {
-	bins      []bin
-	stats     *index.ReferenceStats
-	intervals []bgzf.Offset
-}
-
-type bin struct {
-	bin    uint32
-	chunks []bgzf.Chunk
+	idx internal.Index
 }
 
 // NumRefs returns the number of references in the index.
 func (i *Index) NumRefs() int {
-	return len(i.refs)
+	return len(i.idx.Refs)
 }
 
 // ReferenceStats returns the index statistics for the given reference and true
 // if the statistics are valid.
 func (i *Index) ReferenceStats(id int) (stats index.ReferenceStats, ok bool) {
-	s := i.refs[id].stats
+	s := i.idx.Refs[id].Stats
 	if s == nil {
 		return index.ReferenceStats{}, false
 	}
-	return *s, true
+	return index.ReferenceStats(*s), true
 }
 
 // Unmapped returns the number of unmapped reads and true if the count is valid.
 func (i *Index) Unmapped() (n uint64, ok bool) {
-	if i.unmapped == nil {
+	if i.idx.Unmapped == nil {
 		return 0, false
 	}
-	return *i.unmapped, true
+	return *i.idx.Unmapped, true
 }
 
 // Add records the SAM record as having being located at the given chunk.
 func (i *Index) Add(r *sam.Record, c bgzf.Chunk) error {
-	if !validIndexPos(r.Start()) || !validIndexPos(r.End()) {
-		return errors.New("bam: attempt to add record outside indexable range")
-	}
-
-	if i.unmapped == nil {
-		i.unmapped = new(uint64)
-	}
-	if !isPlaced(r) {
-		*i.unmapped++
-		return nil
-	}
-
-	rid := r.Ref.ID()
-	if rid < len(i.refs)-1 {
-		return errors.New("bam: attempt to add record out of reference ID sort order")
-	}
-	if rid == len(i.refs) {
-		i.refs = append(i.refs, refIndex{})
-		i.lastRecord = 0
-	} else if rid > len(i.refs) {
-		refs := make([]refIndex, rid+1)
-		copy(refs, i.refs)
-		i.refs = refs
-		i.lastRecord = 0
-	}
-	ref := &i.refs[rid]
-
-	// Record bin information.
-	b := uint32(r.Bin())
-	for i, bin := range ref.bins {
-		if bin.bin == b {
-			for j, chunk := range ref.bins[i].chunks {
-				if vOffset(chunk.End) > vOffset(c.Begin) {
-					ref.bins[i].chunks[j].End = c.End
-					goto found
-				}
-			}
-			ref.bins[i].chunks = append(ref.bins[i].chunks, c)
-			goto found
-		}
-	}
-	i.isSorted = false // TODO(kortschak) Consider making use of this more effectively for bin search.
-	ref.bins = append(ref.bins, bin{
-		bin:    b,
-		chunks: []bgzf.Chunk{c},
-	})
-found:
-
-	// Record interval tile information.
-	biv := r.Start() / tileWidth
-	if r.Start() < i.lastRecord {
-		return errors.New("bam: attempt to add record out of position sort order")
-	}
-	i.lastRecord = r.Start()
-	eiv := r.End() / tileWidth
-	if eiv == len(ref.intervals) {
-		if eiv > biv {
-			panic("bam: unexpected alignment length")
-		}
-		ref.intervals = append(ref.intervals, c.Begin)
-	} else if eiv > len(ref.intervals) {
-		intvs := make([]bgzf.Offset, eiv)
-		if len(ref.intervals) > biv {
-			biv = len(ref.intervals)
-		}
-		for iv, offset := range intvs[biv:eiv] {
-			if !isZero(offset) {
-				panic("bam: unexpected non-zero offset")
-			}
-			intvs[iv+biv] = c.Begin
-		}
-		copy(intvs, ref.intervals)
-		ref.intervals = intvs
-	}
-
-	// Record index stats.
-	if ref.stats == nil {
-		ref.stats = &index.ReferenceStats{
-			Chunk: c,
-		}
-	} else {
-		ref.stats.Chunk.End = c.End
-	}
-	if r.Flags&sam.Unmapped == 0 {
-		ref.stats.Mapped++
-	} else {
-		ref.stats.Unmapped++
-	}
-
-	return nil
-}
-
-// Chunks returns a []bgzf.Chunk that corresponds to the given genomic interval.
-func (i *Index) Chunks(r *sam.Reference, beg, end int) []bgzf.Chunk {
-	rid := r.ID()
-	if rid < 0 || rid >= len(i.refs) {
-		return nil
-	}
-	i.sort()
-	ref := i.refs[rid]
-
-	iv := beg / tileWidth
-	if iv >= len(ref.intervals) {
-		return nil
-	}
-
-	// Collect candidate chunks according to the scheme described in
-	// the SAM spec under section 5 Indexing BAM.
-	var chunks []bgzf.Chunk
-	for _, bin := range reg2bins(beg, end) {
-		b := uint32(bin)
-		c := sort.Search(len(ref.bins), func(i int) bool { return ref.bins[i].bin >= b })
-		if c < len(ref.bins) && ref.bins[c].bin == b {
-			for _, chunk := range ref.bins[c].chunks {
-				// Here we check all tiles starting from the left end of the
-				// query region until we get a non-zero offset. The spec states
-				// that we only need to check tiles that contain beg. That is
-				// not correct since we may have no alignments at the left end
-				// of the query region.
-				for j, tile := range ref.intervals[iv:] {
-					if isZero(tile) {
-						continue
-					}
-					tbeg := (j + iv) * tileWidth
-					tend := tbeg + tileWidth
-					// We allow adjacent alignment since samtools behaviour here
-					// has always irritated me and it is cheap to discard these
-					// later if they are not wanted.
-					if tend >= beg && tbeg <= end && vOffset(chunk.End) > vOffset(tile) {
-						chunks = append(chunks, chunk)
-						break
-					}
-				}
-			}
-		}
-	}
-
-	// Sort and merge overlaps.
-	if !sort.IsSorted(byBeginOffset(chunks)) {
-		sort.Sort(byBeginOffset(chunks))
-	}
-
-	return index.Adjacent(chunks)
-}
-
-func (i *Index) sort() {
-	if !i.isSorted {
-		for _, ref := range i.refs {
-			sort.Sort(byBinNumber(ref.bins))
-			for _, bin := range ref.bins {
-				sort.Sort(byBeginOffset(bin.chunks))
-			}
-			sort.Sort(byVirtOffset(ref.intervals))
-		}
-		i.isSorted = true
-	}
-}
-
-// MergeChunks applies the given MergeStrategy to all bins in the Index.
-func (i *Index) MergeChunks(s index.MergeStrategy) {
-	if s == nil {
-		return
-	}
-	for _, ref := range i.refs {
-		for b, bin := range ref.bins {
-			if !sort.IsSorted(byBeginOffset(bin.chunks)) {
-				sort.Sort(byBeginOffset(bin.chunks))
-			}
-			ref.bins[b].chunks = s(bin.chunks)
-			if !sort.IsSorted(byBeginOffset(bin.chunks)) {
-				sort.Sort(byBeginOffset(bin.chunks))
-			}
-		}
-	}
-}
-
-func makeOffset(vOff uint64) bgzf.Offset {
-	return bgzf.Offset{
-		File:  int64(vOff >> 16),
-		Block: uint16(vOff),
-	}
-}
-
-func isZero(o bgzf.Offset) bool {
-	return o == bgzf.Offset{}
-}
-
-func vOffset(o bgzf.Offset) int64 {
-	return o.File<<16 | int64(o.Block)
+	return i.idx.Add(r, uint32(r.Bin()), c, isPlaced(r), isMapped(r))
 }
 
 func isPlaced(r *sam.Record) bool {
 	return r.Ref != nil && r.Pos != -1
 }
 
-type byBinNumber []bin
+func isMapped(r *sam.Record) bool {
+	return r.Flags&sam.Unmapped == 0
+}
 
-func (b byBinNumber) Len() int           { return len(b) }
-func (b byBinNumber) Less(i, j int) bool { return b[i].bin < b[j].bin }
-func (b byBinNumber) Swap(i, j int)      { b[i], b[j] = b[j], b[i] }
+// Chunks returns a []bgzf.Chunk that corresponds to the given genomic interval.
+func (i *Index) Chunks(r *sam.Reference, beg, end int) []bgzf.Chunk {
+	chunks := i.idx.Chunks(r.ID(), beg, end)
+	return index.Adjacent(chunks)
+}
 
-type byBeginOffset []bgzf.Chunk
+// MergeChunks applies the given MergeStrategy to all bins in the Index.
+func (i *Index) MergeChunks(s index.MergeStrategy) {
+	i.idx.MergeChunks(s)
+}
 
-func (c byBeginOffset) Len() int           { return len(c) }
-func (c byBeginOffset) Less(i, j int) bool { return vOffset(c[i].Begin) < vOffset(c[j].Begin) }
-func (c byBeginOffset) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
+var baiMagic = [4]byte{'B', 'A', 'I', 0x1}
 
-type byVirtOffset []bgzf.Offset
+// ReadIndex reads the BAI Index from the given io.Reader.
+func ReadIndex(r io.Reader) (*Index, error) {
+	var (
+		idx   Index
+		magic [4]byte
+		err   error
+	)
+	err = binary.Read(r, binary.LittleEndian, &magic)
+	if err != nil {
+		return nil, err
+	}
+	if magic != baiMagic {
+		return nil, errors.New("bam: magic number mismatch")
+	}
 
-func (o byVirtOffset) Len() int           { return len(o) }
-func (o byVirtOffset) Less(i, j int) bool { return vOffset(o[i]) < vOffset(o[j]) }
-func (o byVirtOffset) Swap(i, j int)      { o[i], o[j] = o[j], o[i] }
+	idx.idx, err = internal.ReadIndex(r, "bam")
+	if err != nil {
+		return nil, err
+	}
+	return &idx, nil
+}
+
+// WriteIndex writes the Index to the given io.Writer.
+func WriteIndex(w io.Writer, idx *Index) error {
+	err := binary.Write(w, binary.LittleEndian, baiMagic)
+	if err != nil {
+		return err
+	}
+
+	return internal.WriteIndex(w, &idx.idx, "bam")
+}

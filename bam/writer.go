@@ -94,7 +94,7 @@ func (bw *Writer) Write(r *sam.Record) error {
 	bin.writeInt32(int32(r.Pos))
 	bin.writeUint8(byte(len(r.Name) + 1))
 	bin.writeUint8(r.MapQ)
-	bin.writeUint16(reg2bin(r.Pos, r.End())) //r.bin
+	bin.writeUint16(uint16(r.Bin())) //r.bin
 	bin.writeUint16(uint16(len(r.Cigar)))
 	bin.writeUint16(uint16(r.Flags))
 	bin.writeInt32(int32(r.Seq.Length))

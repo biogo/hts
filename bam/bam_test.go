@@ -18,6 +18,7 @@ import (
 
 	"code.google.com/p/biogo.bam/bgzf"
 	"code.google.com/p/biogo.bam/bgzf/index"
+	"code.google.com/p/biogo.bam/internal"
 	"code.google.com/p/biogo.bam/sam"
 
 	"gopkg.in/check.v1"
@@ -697,7 +698,7 @@ var issue11 = []struct {
 	expect sam.GroupOrder
 }{
 	{
-		// 1000 genomes file hand edited to reduce number of refs and reads;
+		// 1000 genomes file hand edited to reduce number of Refs and reads;
 		// no specified group ordering.
 		input: []byte{
 			0x1f, 0x8b, 0x08, 0x04, 0x00, 0x00, 0x00, 0x00,
@@ -1239,27 +1240,27 @@ var baiTestData = []struct {
 			0x00, 0x00, 0x62, 0x00, 0x00, 0x00, 0x00, 0x00,
 			0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		},
-		expect: &Index{
-			refs: []refIndex{
+		expect: &Index{internal.Index{
+			Refs: []internal.RefIndex{
 				{
-					bins: []bin{
+					Bins: []internal.Bin{
 						{
-							bin: 4681, chunks: []bgzf.Chunk{
+							Bin: 4681, Chunks: []bgzf.Chunk{
 								{Begin: bgzf.Offset{File: 98, Block: 0}, End: bgzf.Offset{File: 401, Block: 0}},
 							},
 						},
 					},
-					stats: &index.ReferenceStats{
+					Stats: &internal.ReferenceStats{
 						Chunk:    bgzf.Chunk{Begin: bgzf.Offset{File: 98, Block: 0}, End: bgzf.Offset{File: 401, Block: 0}},
 						Mapped:   8,
 						Unmapped: 1,
 					},
-					intervals: []bgzf.Offset{{File: 98, Block: 0}},
+					Intervals: []bgzf.Offset{{File: 98, Block: 0}},
 				},
 			},
-			unmapped: uint64ptr(1),
-			isSorted: true,
-		},
+			Unmapped: uint64ptr(1),
+			IsSorted: true,
+		}},
 		err: nil,
 	},
 	{
@@ -1301,27 +1302,27 @@ var baiTestData = []struct {
 			0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
 			0x00, 0x00, 0x62, 0x00, 0x00, 0x00, 0x00, 0x00,
 		},
-		expect: &Index{
-			refs: []refIndex{
+		expect: &Index{internal.Index{
+			Refs: []internal.RefIndex{
 				{
-					bins: []bin{
+					Bins: []internal.Bin{
 						{
-							bin: 4681, chunks: []bgzf.Chunk{
+							Bin: 4681, Chunks: []bgzf.Chunk{
 								{Begin: bgzf.Offset{File: 98, Block: 0}, End: bgzf.Offset{File: 401, Block: 0}},
 							},
 						},
 					},
-					stats: &index.ReferenceStats{
+					Stats: &internal.ReferenceStats{
 						Chunk:    bgzf.Chunk{Begin: bgzf.Offset{File: 98, Block: 0}, End: bgzf.Offset{File: 401, Block: 0}},
 						Mapped:   8,
 						Unmapped: 1,
 					},
-					intervals: []bgzf.Offset{{File: 98, Block: 0}},
+					Intervals: []bgzf.Offset{{File: 98, Block: 0}},
 				},
 			},
-			unmapped: nil,
-			isSorted: true,
-		},
+			Unmapped: nil,
+			IsSorted: true,
+		}},
 		err: nil,
 	},
 	{
@@ -1352,23 +1353,23 @@ var baiTestData = []struct {
 			0x00, 0x00, 0x62, 0x00, 0x00, 0x00, 0x00, 0x00,
 			0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		},
-		expect: &Index{
-			refs: []refIndex{
+		expect: &Index{internal.Index{
+			Refs: []internal.RefIndex{
 				{
-					bins: []bin{
+					Bins: []internal.Bin{
 						{
-							bin: 4681, chunks: []bgzf.Chunk{
+							Bin: 4681, Chunks: []bgzf.Chunk{
 								{Begin: bgzf.Offset{File: 98, Block: 0}, End: bgzf.Offset{File: 401, Block: 0}},
 							},
 						},
 					},
-					stats:     nil,
-					intervals: []bgzf.Offset{{File: 98, Block: 0}},
+					Stats:     nil,
+					Intervals: []bgzf.Offset{{File: 98, Block: 0}},
 				},
 			},
-			unmapped: uint64ptr(1),
-			isSorted: true,
-		},
+			Unmapped: uint64ptr(1),
+			IsSorted: true,
+		}},
 		err: nil,
 	},
 	{
@@ -1396,23 +1397,23 @@ var baiTestData = []struct {
 			0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
 			0x00, 0x00, 0x62, 0x00, 0x00, 0x00, 0x00, 0x00,
 		},
-		expect: &Index{
-			refs: []refIndex{
+		expect: &Index{idx: internal.Index{
+			Refs: []internal.RefIndex{
 				{
-					bins: []bin{
+					Bins: []internal.Bin{
 						{
-							bin: 4681, chunks: []bgzf.Chunk{
+							Bin: 4681, Chunks: []bgzf.Chunk{
 								{Begin: bgzf.Offset{File: 98, Block: 0}, End: bgzf.Offset{File: 401, Block: 0}},
 							},
 						},
 					},
-					stats:     nil,
-					intervals: []bgzf.Offset{{File: 98, Block: 0}},
+					Stats:     nil,
+					Intervals: []bgzf.Offset{{File: 98, Block: 0}},
 				},
 			},
-			unmapped: nil,
-			isSorted: true,
-		},
+			Unmapped: nil,
+			IsSorted: true,
+		}},
 		err: nil,
 	},
 	{
@@ -1593,14 +1594,14 @@ var baiTestData = []struct {
 			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 			0xa4, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		},
-		expect: &Index{
-			refs: func() []refIndex {
-				idx := [86]refIndex{
+		expect: &Index{internal.Index{
+			Refs: func() []internal.RefIndex {
+				idx := [86]internal.RefIndex{
 					23: {
-						bins: []bin{
+						Bins: []internal.Bin{
 							{
-								bin: 0x2070,
-								chunks: []bgzf.Chunk{
+								Bin: 0x2070,
+								Chunks: []bgzf.Chunk{
 									{
 										Begin: bgzf.Offset{File: 0x1246, Block: 0x0},
 										End:   bgzf.Offset{File: 0x1246, Block: 0x1cf9},
@@ -1608,20 +1609,20 @@ var baiTestData = []struct {
 								},
 							},
 						},
-						stats: &index.ReferenceStats{
+						Stats: &internal.ReferenceStats{
 							Chunk: bgzf.Chunk{
 								Begin: bgzf.Offset{File: 0x1246, Block: 0x0},
 								End:   bgzf.Offset{File: 0x1246, Block: 0x1cf9},
 							},
 							Mapped: 0, Unmapped: 0x1d,
 						},
-						intervals: nil,
+						Intervals: nil,
 					},
 					24: {
-						bins: []bin{
+						Bins: []internal.Bin{
 							{
-								bin: 0x124a,
-								chunks: []bgzf.Chunk{
+								Bin: 0x124a,
+								Chunks: []bgzf.Chunk{
 									{
 										Begin: bgzf.Offset{File: 0x1246, Block: 0x1cf9},
 										End:   bgzf.Offset{File: 0x1246, Block: 0x401d},
@@ -1629,20 +1630,20 @@ var baiTestData = []struct {
 								},
 							},
 						},
-						stats: &index.ReferenceStats{
+						Stats: &internal.ReferenceStats{
 							Chunk: bgzf.Chunk{
 								Begin: bgzf.Offset{File: 0x1246, Block: 0x1cf9},
 								End:   bgzf.Offset{File: 0x1246, Block: 0x401d},
 							},
 							Mapped: 0, Unmapped: 0x25,
 						},
-						intervals: nil,
+						Intervals: nil,
 					},
 					72: {
-						bins: []bin{
+						Bins: []internal.Bin{
 							{
-								bin: 0x1253,
-								chunks: []bgzf.Chunk{
+								Bin: 0x1253,
+								Chunks: []bgzf.Chunk{
 									{
 										Begin: bgzf.Offset{File: 0x1246, Block: 0x401d},
 										End:   bgzf.Offset{File: 0x1246, Block: 0x41f5},
@@ -1650,21 +1651,21 @@ var baiTestData = []struct {
 								},
 							},
 						},
-						stats: &index.ReferenceStats{
+						Stats: &internal.ReferenceStats{
 							Chunk: bgzf.Chunk{
 								Begin: bgzf.Offset{File: 0x1246, Block: 0x401d},
 								End:   bgzf.Offset{File: 0x1246, Block: 0x41f5},
 							},
 							Mapped: 0, Unmapped: 0x2,
 						},
-						intervals: nil,
+						Intervals: nil,
 					},
 				}
 				return idx[:]
 			}(),
-			unmapped: uint64ptr(932),
-			isSorted: true,
-		},
+			Unmapped: uint64ptr(932),
+			IsSorted: true,
+		}},
 		err: nil,
 	},
 }
@@ -1904,15 +1905,15 @@ func (s *S) TestAdd(c *check.C) {
 	gz, err := gzip.NewReader(bytes.NewReader(conceptualBAIdata))
 	c.Assert(err, check.Equals, nil)
 	expect, err := ReadIndex(gz)
-	c.Check(bai.refs[0].bins, check.DeepEquals, expect.refs[0].bins)
-	c.Check(bai.refs[0].stats, check.DeepEquals, expect.refs[0].stats)
-	c.Check(bai.unmapped, check.DeepEquals, expect.unmapped)
+	c.Check(bai.idx.Refs[0].Bins, check.DeepEquals, expect.idx.Refs[0].Bins)
+	c.Check(bai.idx.Refs[0].Stats, check.DeepEquals, expect.idx.Refs[0].Stats)
+	c.Check(bai.idx.Unmapped, check.DeepEquals, expect.idx.Unmapped)
 
 	// We check naively for overlap with tiles since we do not merge chunks in Add.
-	for i := range bai.refs[0].intervals {
-		got := bai.refs[0].intervals[i]
-		tbeg := i * tileWidth
-		tend := tbeg + tileWidth
+	for i := range bai.idx.Refs[0].Intervals {
+		got := bai.idx.Refs[0].Intervals[i]
+		tbeg := i * internal.TileWidth
+		tend := tbeg + internal.TileWidth
 		hasOverlap := false
 		for _, r := range bamFile {
 			if tbeg < r.rec.End() && tend > r.rec.Start() {
@@ -1943,13 +1944,13 @@ var chunkMergeTests = []struct {
 }{
 	{
 		index: func() *Index {
-			return &Index{
-				refs: []refIndex{
+			return &Index{idx: internal.Index{
+				Refs: []internal.RefIndex{
 					{
-						bins: []bin{
+						Bins: []internal.Bin{
 							{
-								bin: 0,
-								chunks: []bgzf.Chunk{
+								Bin: 0,
+								Chunks: []bgzf.Chunk{
 									{
 										Begin: bgzf.Offset{File: 1, Block: 0},
 										End:   bgzf.Offset{File: 2, Block: 0},
@@ -1961,8 +1962,8 @@ var chunkMergeTests = []struct {
 								},
 							},
 							{
-								bin: 1,
-								chunks: []bgzf.Chunk{
+								Bin: 1,
+								Chunks: []bgzf.Chunk{
 									{
 										Begin: bgzf.Offset{File: 1, Block: 0},
 										End:   bgzf.Offset{File: 2, Block: 0},
@@ -1976,15 +1977,15 @@ var chunkMergeTests = []struct {
 						},
 					},
 				},
-			}
+			}}
 		},
-		expectAdjacent: &Index{
-			refs: []refIndex{
+		expectAdjacent: &Index{idx: internal.Index{
+			Refs: []internal.RefIndex{
 				{
-					bins: []bin{
+					Bins: []internal.Bin{
 						{
-							bin: 0,
-							chunks: []bgzf.Chunk{
+							Bin: 0,
+							Chunks: []bgzf.Chunk{
 								{
 									Begin: bgzf.Offset{File: 1, Block: 0},
 									End:   bgzf.Offset{File: 3, Block: 0},
@@ -1992,8 +1993,8 @@ var chunkMergeTests = []struct {
 							},
 						},
 						{
-							bin: 1,
-							chunks: []bgzf.Chunk{
+							Bin: 1,
+							Chunks: []bgzf.Chunk{
 								{
 									Begin: bgzf.Offset{File: 1, Block: 0},
 									End:   bgzf.Offset{File: 3, Block: 0},
@@ -2003,14 +2004,14 @@ var chunkMergeTests = []struct {
 					},
 				},
 			},
-		},
-		expectSquash: &Index{
-			refs: []refIndex{
+		}},
+		expectSquash: &Index{idx: internal.Index{
+			Refs: []internal.RefIndex{
 				{
-					bins: []bin{
+					Bins: []internal.Bin{
 						{
-							bin: 0,
-							chunks: []bgzf.Chunk{
+							Bin: 0,
+							Chunks: []bgzf.Chunk{
 								{
 									Begin: bgzf.Offset{File: 1, Block: 0},
 									End:   bgzf.Offset{File: 3, Block: 0},
@@ -2018,8 +2019,8 @@ var chunkMergeTests = []struct {
 							},
 						},
 						{
-							bin: 1,
-							chunks: []bgzf.Chunk{
+							Bin: 1,
+							Chunks: []bgzf.Chunk{
 								{
 									Begin: bgzf.Offset{File: 1, Block: 0},
 									End:   bgzf.Offset{File: 3, Block: 0},
@@ -2029,17 +2030,17 @@ var chunkMergeTests = []struct {
 					},
 				},
 			},
-		},
+		}},
 	},
 	{
 		index: func() *Index {
-			return &Index{
-				refs: []refIndex{
+			return &Index{idx: internal.Index{
+				Refs: []internal.RefIndex{
 					{
-						bins: []bin{
+						Bins: []internal.Bin{
 							{
-								bin: 0,
-								chunks: []bgzf.Chunk{
+								Bin: 0,
+								Chunks: []bgzf.Chunk{
 									{
 										Begin: bgzf.Offset{File: 1, Block: 0},
 										End:   bgzf.Offset{File: 2, Block: 0},
@@ -2051,8 +2052,8 @@ var chunkMergeTests = []struct {
 								},
 							},
 							{
-								bin: 1,
-								chunks: []bgzf.Chunk{
+								Bin: 1,
+								Chunks: []bgzf.Chunk{
 									{
 										Begin: bgzf.Offset{File: 1, Block: 0},
 										End:   bgzf.Offset{File: 2, Block: 0},
@@ -2066,15 +2067,15 @@ var chunkMergeTests = []struct {
 						},
 					},
 				},
-			}
+			}}
 		},
-		expectAdjacent: &Index{
-			refs: []refIndex{
+		expectAdjacent: &Index{idx: internal.Index{
+			Refs: []internal.RefIndex{
 				{
-					bins: []bin{
+					Bins: []internal.Bin{
 						{
-							bin: 0,
-							chunks: []bgzf.Chunk{
+							Bin: 0,
+							Chunks: []bgzf.Chunk{
 								{
 									Begin: bgzf.Offset{File: 1, Block: 0},
 									End:   bgzf.Offset{File: 2, Block: 0},
@@ -2086,8 +2087,8 @@ var chunkMergeTests = []struct {
 							},
 						},
 						{
-							bin: 1,
-							chunks: []bgzf.Chunk{
+							Bin: 1,
+							Chunks: []bgzf.Chunk{
 								{
 									Begin: bgzf.Offset{File: 1, Block: 0},
 									End:   bgzf.Offset{File: 2, Block: 0},
@@ -2101,14 +2102,14 @@ var chunkMergeTests = []struct {
 					},
 				},
 			},
-		},
-		expectSquash: &Index{
-			refs: []refIndex{
+		}},
+		expectSquash: &Index{idx: internal.Index{
+			Refs: []internal.RefIndex{
 				{
-					bins: []bin{
+					Bins: []internal.Bin{
 						{
-							bin: 0,
-							chunks: []bgzf.Chunk{
+							Bin: 0,
+							Chunks: []bgzf.Chunk{
 								{
 									Begin: bgzf.Offset{File: 1, Block: 0},
 									End:   bgzf.Offset{File: 4, Block: 0},
@@ -2116,8 +2117,8 @@ var chunkMergeTests = []struct {
 							},
 						},
 						{
-							bin: 1,
-							chunks: []bgzf.Chunk{
+							Bin: 1,
+							Chunks: []bgzf.Chunk{
 								{
 									Begin: bgzf.Offset{File: 1, Block: 0},
 									End:   bgzf.Offset{File: 4, Block: 0},
@@ -2127,17 +2128,17 @@ var chunkMergeTests = []struct {
 					},
 				},
 			},
-		},
+		}},
 	},
 	{
 		index: func() *Index {
-			return &Index{
-				refs: []refIndex{
+			return &Index{idx: internal.Index{
+				Refs: []internal.RefIndex{
 					{
-						bins: []bin{
+						Bins: []internal.Bin{
 							{
-								bin: 0,
-								chunks: []bgzf.Chunk{
+								Bin: 0,
+								Chunks: []bgzf.Chunk{
 									{
 										Begin: bgzf.Offset{File: 1, Block: 0},
 										End:   bgzf.Offset{File: 2, Block: 0},
@@ -2149,8 +2150,8 @@ var chunkMergeTests = []struct {
 								},
 							},
 							{
-								bin: 1,
-								chunks: []bgzf.Chunk{
+								Bin: 1,
+								Chunks: []bgzf.Chunk{
 									{
 										Begin: bgzf.Offset{File: 1, Block: 0},
 										End:   bgzf.Offset{File: 2, Block: 0},
@@ -2164,16 +2165,16 @@ var chunkMergeTests = []struct {
 						},
 					},
 				},
-			}
+			}}
 		},
 		compStrat: index.CompressorStrategy(0x20000),
-		expectCompress: &Index{
-			refs: []refIndex{
+		expectCompress: &Index{idx: internal.Index{
+			Refs: []internal.RefIndex{
 				{
-					bins: []bin{
+					Bins: []internal.Bin{
 						{
-							bin: 0,
-							chunks: []bgzf.Chunk{
+							Bin: 0,
+							Chunks: []bgzf.Chunk{
 								{
 									Begin: bgzf.Offset{File: 1, Block: 0},
 									End:   bgzf.Offset{File: 0x10000, Block: 0},
@@ -2181,8 +2182,8 @@ var chunkMergeTests = []struct {
 							},
 						},
 						{
-							bin: 1,
-							chunks: []bgzf.Chunk{
+							Bin: 1,
+							Chunks: []bgzf.Chunk{
 								{
 									Begin: bgzf.Offset{File: 1, Block: 0},
 									End:   bgzf.Offset{File: 2, Block: 0},
@@ -2196,7 +2197,7 @@ var chunkMergeTests = []struct {
 					},
 				},
 			},
-		},
+		}},
 	},
 }
 
