@@ -169,22 +169,28 @@ func (i *CSI) Add(r Record, c bgzf.Chunk, mapped, placed bool) error {
 			for j, chunk := range ref.bins[i].chunks {
 				if vOffset(chunk.End) > vOffset(c.Begin) {
 					ref.bins[i].chunks[j].End = c.End
-					return nil
+					ref.bins[i].records++
+					goto found
 				}
 			}
+			ref.bins[i].records++
 			ref.bins[i].chunks = append(ref.bins[i].chunks, c)
-			return nil
+			goto found
 		}
 	}
 	i.isSorted = false // TODO(kortschak) Consider making use of this more effectively for bin search.
+	ref.bins = append(ref.bins, bin{
+		bin:     b,
+		left:    c.Begin,
+		records: 1,
+		chunks:  []bgzf.Chunk{c},
+	})
+found:
+
 	if r.Start() < i.lastRecord {
 		return errors.New("csi: attempt to add record out of position sort order")
 	}
-	ref.bins = append(ref.bins, bin{
-		bin:    b,
-		left:   c.Begin,
-		chunks: []bgzf.Chunk{c},
-	})
+	i.lastRecord = r.Start()
 
 	// Record index stats.
 	if ref.stats == nil {
