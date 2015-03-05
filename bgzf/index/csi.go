@@ -155,10 +155,12 @@ func (i *CSI) Add(r Record, c bgzf.Chunk, mapped, placed bool) error {
 	}
 	if rid == len(i.refs) {
 		i.refs = append(i.refs, refIndex{})
+		i.lastRecord = 0
 	} else if rid > len(i.refs) {
 		refs := make([]refIndex, rid+1)
 		copy(refs, i.refs)
 		i.refs = refs
+		i.lastRecord = 0
 	}
 	ref := &i.refs[rid]
 
