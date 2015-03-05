@@ -39,10 +39,10 @@ type bin struct {
 	chunks []bgzf.Chunk
 }
 
-// ReferenceStats holds mapping statistics for a BAM reference
+// ReferenceStats holds mapping statistics for a BAM reference.
 type ReferenceStats struct {
-	// Chunk is the span of the BAM holding alignments
-	// to the reference.
+	// Chunk is the span of the indexed BAM
+	// holding alignments to the reference.
 	Chunk bgzf.Chunk
 
 	// Mapped is the count of mapped reads.
