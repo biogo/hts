@@ -331,9 +331,9 @@ L:
 			}
 			return err
 		case t == flowOrderTag:
-			rg.flowOrder = append([]byte(nil), fs...)
+			rg.flowOrder = fs
 		case t == keySequenceTag:
-			rg.keySeq = append([]byte(nil), fs...)
+			rg.keySeq = fs
 		case t == libraryTag:
 			rg.library = fs
 		case t == programTag:

@@ -150,8 +150,6 @@ func (bh *Header) Clone() *Header {
 	for i, r := range bh.rgs {
 		c.rgs[i] = new(ReadGroup)
 		*c.rgs[i] = *r
-		c.rgs[i].flowOrder = append([]byte(nil), r.flowOrder...)
-		c.rgs[i].keySeq = append([]byte(nil), r.keySeq...)
 	}
 	for i, p := range bh.progs {
 		c.progs[i] = new(Program)

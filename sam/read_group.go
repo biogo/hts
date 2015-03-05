@@ -18,8 +18,8 @@ type ReadGroup struct {
 	center       string
 	description  string
 	date         time.Time
-	flowOrder    []byte
-	keySeq       []byte
+	flowOrder    string
+	keySeq       string
 	library      string
 	program      string
 	insertSize   int
@@ -29,10 +29,9 @@ type ReadGroup struct {
 }
 
 // NewReadGroup returns a ReadGroup with the given name, center, description,
-// library, program, platform, unique platform unit, sample name, date of
-// read group production, predicted median insert size, flow order and key
-// sequence.
-func NewReadGroup(name, center, desc, lib, prog, plat, unit, sample string, date time.Time, size int, flow, key []byte) (*ReadGroup, error) {
+// library, program, platform, unique platform unit, sample name, flow order,
+// key, date of read group production, and predicted median insert size sequence.
+func NewReadGroup(name, center, desc, lib, prog, plat, unit, sample, flow, key string, date time.Time, size int) (*ReadGroup, error) {
 	if !validInt32(size) {
 		return nil, errors.New("sam: length overflow")
 	}
@@ -76,8 +75,6 @@ func (r *ReadGroup) Clone() *ReadGroup {
 	}
 	cr := *r
 	cr.id = -1
-	cr.flowOrder = append([]byte(nil), r.flowOrder...)
-	cr.keySeq = append([]byte(nil), r.keySeq...)
 	return &cr
 }
 
@@ -104,10 +101,10 @@ func (r *ReadGroup) String() string {
 	if (r.date != time.Time{}) {
 		fmt.Fprintf(&buf, "\tDT:%s", r.date.Format(iso8601TimeDateN))
 	}
-	if r.flowOrder != nil {
+	if r.flowOrder != "" {
 		fmt.Fprintf(&buf, "\tFO:%s", r.flowOrder)
 	}
-	if r.keySeq != nil {
+	if r.keySeq != "" {
 		fmt.Fprintf(&buf, "\tKS:%s", r.keySeq)
 	}
 	if r.library != "" {

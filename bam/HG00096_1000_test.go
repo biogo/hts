@@ -1081,10 +1081,10 @@ func init() {
 			"ILLUMINA",
 			"",
 			"HG00096",
+			"",
+			"",
 			time.Time{},
 			206,
-			nil,
-			nil,
 		)),
 		mustReadGroup(sam.NewReadGroup(
 			"SRR062635",
@@ -1095,10 +1095,10 @@ func init() {
 			"ILLUMINA",
 			"",
 			"HG00096",
+			"",
+			"",
 			time.Time{},
 			206,
-			nil,
-			nil,
 		)),
 		mustReadGroup(sam.NewReadGroup(
 			"SRR062641",
@@ -1109,10 +1109,10 @@ func init() {
 			"ILLUMINA",
 			"",
 			"HG00096",
+			"",
+			"",
 			time.Time{},
 			206,
-			nil,
-			nil,
 		)),
 	} {
 		if err := headerHG00096_1000.AddReadGroup(rg); err != nil {
