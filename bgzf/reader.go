@@ -666,3 +666,20 @@ func (bg *Reader) keep(b Block) {
 		bg.cache.Put(b)
 	}
 }
+
+// Begin returns a Tx that starts at the current virtual offset.
+func (bg *Reader) Begin() Tx { return Tx{begin: bg.lastChunk.Begin, r: bg} }
+
+// Tx represents a multi-read transaction.
+type Tx struct {
+	begin Offset
+	r     *Reader
+}
+
+// End returns the Chunk spanning the transaction. After return the Tx is
+// no longer valid.
+func (t *Tx) End() Chunk {
+	c := Chunk{Begin: t.begin, End: t.r.lastChunk.End}
+	t.r = nil
+	return c
+}

@@ -92,9 +92,9 @@ func (br *Reader) Read() (*sam.Record, error) {
 
 	// br.r.Chunk() is only valid after the call the Read(), so this
 	// must come after the first read in the record.
-	br.lastChunk.Begin = br.r.LastChunk().Begin
+	tx := br.r.Begin()
 	defer func() {
-		br.lastChunk.End = br.r.LastChunk().End
+		br.lastChunk = tx.End()
 	}()
 
 	var rec sam.Record
