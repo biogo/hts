@@ -2,5 +2,5 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package index implement CSI and Tabix BGZF indexing.
+// Package index implement CSI and tabix BGZF indexing.
 package index
