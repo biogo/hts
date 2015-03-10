@@ -20,14 +20,10 @@ type ChunkReader struct {
 }
 
 // NewChunkReader returns a ChunkReader to read from r, limiting the reads to
-// the provided chunks.
-//
-// Note: Currently the limiting is loose; a single read that extends beyond the
-// end of a chunk will not be truncated. In practice this should not be an issue
-// since reads should correspond to the reads that were performed during indexing.
-// This behaviour may change in future.
+// the provided chunks. The provided bgzf.Reader will be put into Blocked mode.
 func NewChunkReader(r *bgzf.Reader, chunks []bgzf.Chunk) (*ChunkReader, error) {
 	if len(chunks) != 0 {
+		r.Blocked(true)
 		err := r.Seek(chunks[0].Begin)
 		if err != nil {
 			return nil, err
@@ -42,11 +38,19 @@ func (r *ChunkReader) Read(p []byte) (int, error) {
 		return 0, io.EOF
 	}
 
-	// TODO(kortschak): Make the chunk limits hard. Currently a read that
-	// extends beyond the end of a chunk is not truncated. It probably
-	// should be. This may require invasive changes to bgzf.Reader.
+	// Ensure the byte slice does not extend beyond the end of
+	// the current chunk. We do not need to consider reading
+	// beyond the end of the block because the bgzf.Reader is in
+	// blocked mode and so will stop there anyway.
+	if r.r.LastChunk().End.File == r.chunks[0].End.File {
+		p = p[:r.chunks[0].End.Block-r.r.LastChunk().End.Block]
+	}
+
 	n, err := r.r.Read(p)
 	if err != nil {
+		if n != 0 && err == io.EOF {
+			err = nil
+		}
 		return n, err
 	}
 	if len(r.chunks) != 0 && vOffset(r.r.LastChunk().End) >= vOffset(r.chunks[0].End) {
