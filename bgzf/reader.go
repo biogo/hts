@@ -325,9 +325,14 @@ type Reader struct {
 	// or seek operation.
 	lastChunk Chunk
 
-	// blocked specifies the behaviour of the
+	// Blocked specifies the behaviour of the
 	// Reader at the end of a BGZF member.
-	blocked bool
+	// If the Reader is Blocked, a Read that
+	// reaches the end of a BGZF block will
+	// return io.EOF. This error is not sticky,
+	// so a subsequent Read will progress to
+	// the next block if it is available.
+	Blocked bool
 
 	// Non-concurrent work decompressor.
 	dec *decompressor
@@ -425,14 +430,6 @@ func (bg *Reader) SetCache(c Cache) {
 	bg.mu.Lock()
 	bg.cache = c
 	bg.mu.Unlock()
-}
-
-// Blocked sets the Reader's behaviour on reaching the end of a BGZF
-// block. If the Reader is Blocked, a Read that reaches the end of a
-// BGZF block will return io.EOF. This error is not sticky, so a
-// subsequent Read will progress to the next block if it is available.
-func (bg *Reader) Blocked(ok bool) {
-	bg.blocked = ok
 }
 
 // Seek performs a seek operation to the given virtual offset.
@@ -534,7 +531,7 @@ func (bg *Reader) Read(p []byte) (int, error) {
 				break
 			}
 
-			if bg.blocked {
+			if bg.Blocked {
 				bg.err = nil
 				return n, io.EOF
 			}

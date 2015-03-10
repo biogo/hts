@@ -972,7 +972,7 @@ func TestBlocked(t *testing.T) {
 		if err != nil {
 			t.Fatalf("NewReader: %v", err)
 		}
-		r.Blocked(blocked)
+		r.Blocked = blocked
 
 		p := make([]byte, len(infix))
 		var (

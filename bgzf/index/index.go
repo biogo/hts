@@ -16,20 +16,23 @@ import (
 type ChunkReader struct {
 	r *bgzf.Reader
 
+	wasBlocked bool
+
 	chunks []bgzf.Chunk
 }
 
 // NewChunkReader returns a ChunkReader to read from r, limiting the reads to
 // the provided chunks. The provided bgzf.Reader will be put into Blocked mode.
 func NewChunkReader(r *bgzf.Reader, chunks []bgzf.Chunk) (*ChunkReader, error) {
+	b := r.Blocked
+	r.Blocked = true
 	if len(chunks) != 0 {
-		r.Blocked(true)
 		err := r.Seek(chunks[0].Begin)
 		if err != nil {
 			return nil, err
 		}
 	}
-	return &ChunkReader{r: r, chunks: chunks}, nil
+	return &ChunkReader{r: r, wasBlocked: b, chunks: chunks}, nil
 }
 
 // Read satisfies the io.Reader interface.
@@ -58,4 +61,12 @@ func (r *ChunkReader) Read(p []byte) (int, error) {
 		r.chunks = r.chunks[1:]
 	}
 	return n, err
+}
+
+// Close returns the bgzf.Reader to its original blocking mode and releases it.
+// The bgzf.Reader is not closed.
+func (r *ChunkReader) Close() error {
+	r.r.Blocked = r.wasBlocked
+	r.r = nil
+	return nil
 }
