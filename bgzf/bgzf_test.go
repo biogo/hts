@@ -940,6 +940,69 @@ func TestCache(t *testing.T) {
 	}
 }
 
+func TestBlocked(t *testing.T) {
+	const (
+		infix  = "payload"
+		blocks = 10
+	)
+
+	for _, blocked := range []bool{false, true} {
+		var (
+			buf  bytes.Buffer
+			want bytes.Buffer
+		)
+		w := NewWriter(&buf, 1)
+		for i := 0; i < blocks; i++ {
+			if _, err := fmt.Fprintf(w, "%d%[2]s%[1]d\n", i, infix); err != nil {
+				t.Fatalf("Write: %v", err)
+			}
+			if err := w.Flush(); err != nil {
+				t.Fatalf("Flush: %v", err)
+			}
+			if _, err := fmt.Fprintf(&want, "%d%[2]s%[1]d\n", i, infix); err != nil {
+				t.Fatalf("Write: %v", err)
+			}
+		}
+		err := w.Close()
+		if err != nil {
+			t.Fatalf("unexpected error on Close: %v", err)
+		}
+
+		r, err := NewReader(bytes.NewReader(buf.Bytes()), *conc)
+		if err != nil {
+			t.Fatalf("NewReader: %v", err)
+		}
+		r.Blocked(blocked)
+
+		p := make([]byte, len(infix))
+		var (
+			got       []byte
+			gotBlocks int
+		)
+		for {
+			n, err := r.Read(p)
+			got = append(got, p[:n]...)
+			if err != nil {
+				if err == io.EOF && n != 0 {
+					gotBlocks++
+					continue
+				}
+				break
+			}
+		}
+		if !blocked && gotBlocks != 1 {
+			t.Errorf("unexpected number of blocks:\n\tgot:%d\n\twant:%d", gotBlocks, 1)
+		}
+		if blocked && gotBlocks != blocks {
+			t.Errorf("unexpected number of blocks:\n\tgot:%d\n\twant:%d", gotBlocks, blocks)
+		}
+		if !bytes.Equal(got, want.Bytes()) {
+			t.Errorf("unexpected result:\n\tgot:%q\n\twant:%q", got, want.Bytes())
+		}
+		r.Close()
+	}
+}
+
 type zero struct{}
 
 func (z zero) Read(p []byte) (int, error) {
