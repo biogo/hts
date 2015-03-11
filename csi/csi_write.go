@@ -2,18 +2,19 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package index
+package csi
 
 import (
-	"code.google.com/p/biogo.bam/bgzf"
-
 	"encoding/binary"
 	"fmt"
 	"io"
+
+	"code.google.com/p/biogo.bam/bgzf"
+	"code.google.com/p/biogo.bam/bgzf/index"
 )
 
-// WriteCSI writes the CSI index to the given io.Writer.
-func WriteCSI(w io.Writer, idx *CSI) error {
+// WriteTo writes the CSI index to the given io.Writer.
+func WriteTo(w io.Writer, idx *Index) error {
 	idx.sort()
 	err := binary.Write(w, binary.LittleEndian, csiMagic)
 	if err != nil {
@@ -63,7 +64,7 @@ func writeIndices(w io.Writer, version byte, idx []refIndex) error {
 	return nil
 }
 
-func writeBins(w io.Writer, version byte, bins []bin, stats *ReferenceStats) error {
+func writeBins(w io.Writer, version byte, bins []bin, stats *index.ReferenceStats) error {
 	n := int32(len(bins))
 	if stats != nil {
 		n++
@@ -116,7 +117,7 @@ func writeChunks(w io.Writer, chunks []bgzf.Chunk) error {
 	return nil
 }
 
-func writeStats(w io.Writer, version byte, stats *ReferenceStats) error {
+func writeStats(w io.Writer, version byte, stats *index.ReferenceStats) error {
 	var err error
 	switch version {
 	case 0x1:

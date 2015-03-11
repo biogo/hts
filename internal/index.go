@@ -7,7 +7,6 @@ package internal
 
 import (
 	"code.google.com/p/biogo.bam/bgzf"
-
 	"errors"
 	"sort"
 )

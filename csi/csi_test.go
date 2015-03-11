@@ -2,13 +2,14 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package index
+package csi
 
 import (
 	"bytes"
 	"testing"
 
 	"code.google.com/p/biogo.bam/bgzf"
+	"code.google.com/p/biogo.bam/bgzf/index"
 
 	"gopkg.in/check.v1"
 )
@@ -31,7 +32,7 @@ var _ = check.Suite(&S{})
 // This is a coordinate-translated version of the conceptual example in the
 // SAM spec using binning as actually used by BAM rather than as presented.
 /*
-	0x43, 0x53, 0x49, 0x01, // CSI\1
+	0x43, 0x53, 0x49, 0x01, // Index\1
 	0x0e, 0x00, 0x00, 0x00, // min_shift
 	0x05, 0x00, 0x00, 0x00, // depth
 	0x00, 0x00, 0x00, 0x00, // l_aux
@@ -49,7 +50,7 @@ var _ = check.Suite(&S{})
 				0x00, 0x00, 0x65, 0x00, 0x00, 0x00, 0x00, 0x00, // chunk_beg {101,0}
 				0x00, 0x00, 0xe4, 0x00, 0x00, 0x00, 0x00, 0x00, // chunk_end {228,0}
 
-			// Not mentioned in the CSI spec.
+			// Not mentioned in the Index spec.
 			0x4a, 0x92, 0x00, 0x00, // bin - always 0x924a
 			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // loffset
 			0x02, 0x00, 0x00, 0x00, // n_chunk - always 2
@@ -84,7 +85,7 @@ var chunkTests = []struct {
 	expect   []bgzf.Chunk
 }{
 	{
-		beg: 65000, end: 71000, // CSI does not use tiles, so this is hit.
+		beg: 65000, end: 71000, // Index does not use tiles, so this is hit.
 		expect: []bgzf.Chunk{
 			{Begin: bgzf.Offset{File: 101, Block: 0}, End: bgzf.Offset{File: 228, Block: 0}},
 		},
@@ -114,7 +115,7 @@ var chunkTests = []struct {
 		},
 	},
 	{
-		beg: 80740352, end: 81788928, // 77m78m - Not in covered region, but CSI does not use tiles, so this is hit.
+		beg: 80740352, end: 81788928, // 77m78m - Not in covered region, but Index does not use tiles, so this is hit.
 		expect: []bgzf.Chunk{
 			{Begin: bgzf.Offset{File: 101, Block: 0}, End: bgzf.Offset{File: 228, Block: 0}},
 		},
@@ -122,7 +123,7 @@ var chunkTests = []struct {
 }
 
 func (s *S) TestConceptualCSIv1(c *check.C) {
-	csi, err := ReadCSI(bytes.NewReader(conceptualCSIv1data))
+	csi, err := ReadFrom(bytes.NewReader(conceptualCSIv1data))
 	c.Assert(err, check.Equals, nil)
 
 	for _, test := range chunkTests {
@@ -132,7 +133,7 @@ func (s *S) TestConceptualCSIv1(c *check.C) {
 	}
 	stats, ok := csi.ReferenceStats(0)
 	c.Check(ok, check.Equals, true)
-	c.Check(stats, check.Equals, ReferenceStats{
+	c.Check(stats, check.Equals, index.ReferenceStats{
 		Chunk: bgzf.Chunk{
 			Begin: bgzf.Offset{File: 101, Block: 0},
 			End:   bgzf.Offset{File: 228, Block: 0},
@@ -155,7 +156,7 @@ func (s *S) TestConceptualCSIv1(c *check.C) {
 // This is a coordinate-translated version of the conceptual example in the
 // SAM spec using binning as actually used by BAM rather than as presented.
 /*
-	0x43, 0x53, 0x49, 0x02, // CSI\1
+	0x43, 0x53, 0x49, 0x02, // Index\1
 	0x0e, 0x00, 0x00, 0x00, // min_shift
 	0x05, 0x00, 0x00, 0x00, // depth
 	0x00, 0x00, 0x00, 0x00, // l_aux
@@ -207,7 +208,7 @@ var conceptualCSIv2data = []byte{
 }
 
 func (s *S) TestConceptualCSIv2(c *check.C) {
-	csi, err := ReadCSI(bytes.NewReader(conceptualCSIv2data))
+	csi, err := ReadFrom(bytes.NewReader(conceptualCSIv2data))
 	c.Assert(err, check.Equals, nil)
 
 	for _, test := range chunkTests {
@@ -217,7 +218,7 @@ func (s *S) TestConceptualCSIv2(c *check.C) {
 	}
 	stats, ok := csi.ReferenceStats(0)
 	c.Check(ok, check.Equals, true)
-	c.Check(stats, check.Equals, ReferenceStats{
+	c.Check(stats, check.Equals, index.ReferenceStats{
 		Chunk: bgzf.Chunk{
 			Begin: bgzf.Offset{File: 101, Block: 0},
 			End:   bgzf.Offset{File: 228, Block: 0},
@@ -233,11 +234,11 @@ func uint64ptr(i uint64) *uint64 {
 }
 
 var csiTestData = []struct {
-	csi *CSI
+	csi *Index
 	err error
 }{
 	{
-		csi: &CSI{
+		csi: &Index{
 			minShift: 14, depth: 5,
 			refs: []refIndex{
 				{
@@ -249,7 +250,7 @@ var csiTestData = []struct {
 							},
 						},
 					},
-					stats: &ReferenceStats{
+					stats: &index.ReferenceStats{
 						Chunk:    bgzf.Chunk{Begin: bgzf.Offset{File: 98, Block: 0}, End: bgzf.Offset{File: 401, Block: 0}},
 						Mapped:   8,
 						Unmapped: 1,
@@ -262,7 +263,7 @@ var csiTestData = []struct {
 		err: nil,
 	},
 	{
-		csi: &CSI{
+		csi: &Index{
 			minShift: 14, depth: 5,
 			refs: []refIndex{
 				{
@@ -274,7 +275,7 @@ var csiTestData = []struct {
 							},
 						},
 					},
-					stats: &ReferenceStats{
+					stats: &index.ReferenceStats{
 						Chunk:    bgzf.Chunk{Begin: bgzf.Offset{File: 98, Block: 0}, End: bgzf.Offset{File: 401, Block: 0}},
 						Mapped:   8,
 						Unmapped: 1,
@@ -287,7 +288,7 @@ var csiTestData = []struct {
 		err: nil,
 	},
 	{
-		csi: &CSI{
+		csi: &Index{
 			minShift: 14, depth: 5,
 			refs: []refIndex{
 				{
@@ -308,7 +309,7 @@ var csiTestData = []struct {
 		err: nil,
 	},
 	{
-		csi: &CSI{
+		csi: &Index{
 			minShift: 14, depth: 5,
 			refs: []refIndex{
 				{
@@ -329,7 +330,7 @@ var csiTestData = []struct {
 		err: nil,
 	},
 	{
-		csi: &CSI{
+		csi: &Index{
 			Auxilliary: []byte("Various commentary strings"),
 			minShift:   14, depth: 5,
 			refs: func() []refIndex {
@@ -346,7 +347,7 @@ var csiTestData = []struct {
 								},
 							},
 						},
-						stats: &ReferenceStats{
+						stats: &index.ReferenceStats{
 							Chunk: bgzf.Chunk{
 								Begin: bgzf.Offset{File: 0x1246, Block: 0x0},
 								End:   bgzf.Offset{File: 0x1246, Block: 0x1cf9},
@@ -366,7 +367,7 @@ var csiTestData = []struct {
 								},
 							},
 						},
-						stats: &ReferenceStats{
+						stats: &index.ReferenceStats{
 							Chunk: bgzf.Chunk{
 								Begin: bgzf.Offset{File: 0x1246, Block: 0x1cf9},
 								End:   bgzf.Offset{File: 0x1246, Block: 0x401d},
@@ -386,7 +387,7 @@ var csiTestData = []struct {
 								},
 							},
 						},
-						stats: &ReferenceStats{
+						stats: &index.ReferenceStats{
 							Chunk: bgzf.Chunk{
 								Begin: bgzf.Offset{File: 0x1246, Block: 0x401d},
 								End:   bgzf.Offset{File: 0x1246, Block: 0x41f5},
@@ -408,8 +409,8 @@ func (s *S) TestCSIRoundtrip(c *check.C) {
 	for i, test := range csiTestData {
 		for test.csi.Version = 1; test.csi.Version <= 2; test.csi.Version++ {
 			var buf bytes.Buffer
-			c.Assert(WriteCSI(&buf, test.csi), check.Equals, nil)
-			got, err := ReadCSI(&buf)
+			c.Assert(WriteTo(&buf, test.csi), check.Equals, nil)
+			got, err := ReadFrom(&buf)
 			c.Assert(err, check.Equals, nil, check.Commentf("Test %d", i))
 			c.Check(got, check.DeepEquals, test.csi, check.Commentf("Test %d", i))
 		}

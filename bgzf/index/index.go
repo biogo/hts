@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package index implement CSI and tabix BGZF indexing.
+// Package index provides common code for CSI and tabix BGZF indexing.
 package index
 
 import (
@@ -10,6 +10,19 @@ import (
 
 	"code.google.com/p/biogo.bam/bgzf"
 )
+
+// ReferenceStats holds mapping statistics for a genomic reference.
+type ReferenceStats struct {
+	// Chunk is the span of the indexed BGZF
+	// holding alignments to the reference.
+	Chunk bgzf.Chunk
+
+	// Mapped is the count of mapped reads.
+	Mapped uint64
+
+	// Unmapped is the count of unmapped reads.
+	Unmapped uint64
+}
 
 // Reader wraps a bgzf.Reader to provide a mechanism to read a selection of
 // BGZF chunks.
@@ -61,6 +74,10 @@ func (r *ChunkReader) Read(p []byte) (int, error) {
 		r.chunks = r.chunks[1:]
 	}
 	return n, err
+}
+
+func vOffset(o bgzf.Offset) int64 {
+	return o.File<<16 | int64(o.Block)
 }
 
 // Close returns the bgzf.Reader to its original blocking mode and releases it.

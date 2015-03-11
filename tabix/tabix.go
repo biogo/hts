@@ -2,7 +2,8 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package index
+// Package tabix implements tabix coordinate sorted indexing.
+package tabix
 
 import (
 	"encoding/binary"
@@ -12,12 +13,13 @@ import (
 	"strings"
 
 	"code.google.com/p/biogo.bam/bgzf"
+	"code.google.com/p/biogo.bam/bgzf/index"
 	"code.google.com/p/biogo.bam/internal"
 	"code.google.com/p/biogo.bam/sam"
 )
 
-// Tabix is a tabix index.
-type Tabix struct {
+// Index is a tabix index.
+type Index struct {
 	Format    byte
 	ZeroBased bool
 
@@ -34,42 +36,42 @@ type Tabix struct {
 	idx internal.Index
 }
 
-// NewTabix returns a new Tabix index.
-func NewTabix() *Tabix {
-	return &Tabix{nameMap: make(map[string]int)}
+// New returns a new tabix index.
+func NewTabix() *Index {
+	return &Index{nameMap: make(map[string]int)}
 }
 
 // NumRefs returns the number of references in the index.
-func (i *Tabix) NumRefs() int {
+func (i *Index) NumRefs() int {
 	return len(i.idx.Refs)
 }
 
 // Names returns the reference names in the index. The returned
 // slice should not be altered.
-func (i *Tabix) Names() []string {
+func (i *Index) Names() []string {
 	return i.refNames
 }
 
 // ReferenceStats returns the index statistics for the given reference and true
 // if the statistics are valid.
-func (i *Tabix) ReferenceStats(id int) (stats ReferenceStats, ok bool) {
+func (i *Index) ReferenceStats(id int) (stats index.ReferenceStats, ok bool) {
 	s := i.idx.Refs[id].Stats
 	if s == nil {
-		return ReferenceStats{}, false
+		return index.ReferenceStats{}, false
 	}
-	return ReferenceStats(*s), true
+	return index.ReferenceStats(*s), true
 }
 
 // Unmapped returns the number of unmapped reads and true if the count is valid.
-func (i *Tabix) Unmapped() (n uint64, ok bool) {
+func (i *Index) Unmapped() (n uint64, ok bool) {
 	if i.idx.Unmapped == nil {
 		return 0, false
 	}
 	return *i.idx.Unmapped, true
 }
 
-// TabixRecord wraps types that may be indexed by a Tabix.
-type TabixRecord interface {
+// Record wraps types that may be indexed by an Index.
+type Record interface {
 	RefName() string
 	Start() int
 	End() int
@@ -84,7 +86,7 @@ func (r tabixShim) Start() int { return r.start }
 func (r tabixShim) End() int   { return r.end }
 
 // Add records the SAM record as having being located at the given chunk.
-func (i *Tabix) Add(r TabixRecord, c bgzf.Chunk, placed, mapped bool) error {
+func (i *Index) Add(r Record, c bgzf.Chunk, placed, mapped bool) error {
 	refName := r.RefName()
 	rid, ok := i.nameMap[refName]
 	if !ok {
@@ -96,22 +98,24 @@ func (i *Tabix) Add(r TabixRecord, c bgzf.Chunk, placed, mapped bool) error {
 }
 
 // Chunks returns a []bgzf.Chunk that corresponds to the given genomic interval.
-func (i *Tabix) Chunks(r *sam.Reference, beg, end int) []bgzf.Chunk {
+func (i *Index) Chunks(r *sam.Reference, beg, end int) []bgzf.Chunk {
 	chunks := i.idx.Chunks(r.ID(), beg, end)
-	return Adjacent(chunks)
+	return adjacent(chunks)
 }
 
+var adjacent = index.Adjacent
+
 // MergeChunks applies the given MergeStrategy to all bins in the Index.
-func (i *Tabix) MergeChunks(s MergeStrategy) {
+func (i *Index) MergeChunks(s index.MergeStrategy) {
 	i.idx.MergeChunks(s)
 }
 
 var tbiMagic = [4]byte{'T', 'B', 'I', 0x1}
 
 // ReadTabix reads the tabix index from the given io.Reader.
-func ReadTabix(r io.Reader) (*Tabix, error) {
+func ReadTabix(r io.Reader) (*Index, error) {
 	var (
-		idx   Tabix
+		idx   Index
 		magic [4]byte
 		err   error
 	)
@@ -151,7 +155,7 @@ func ReadTabix(r io.Reader) (*Tabix, error) {
 	return &idx, nil
 }
 
-func readTabixHeader(r io.Reader, idx *Tabix) error {
+func readTabixHeader(r io.Reader, idx *Index) error {
 	var (
 		format int32
 		err    error
@@ -203,7 +207,7 @@ func readTabixHeader(r io.Reader, idx *Tabix) error {
 }
 
 // WriteTabix writes the index to the given io.Writer.
-func WriteTabix(w io.Writer, idx *Tabix) error {
+func WriteTabix(w io.Writer, idx *Index) error {
 	err := binary.Write(w, binary.LittleEndian, tbiMagic)
 	if err != nil {
 		return err
@@ -221,7 +225,7 @@ func WriteTabix(w io.Writer, idx *Tabix) error {
 	return internal.WriteIndex(w, &idx.idx, "tabix")
 }
 
-func writeTabixHeader(w io.Writer, idx *Tabix) error {
+func writeTabixHeader(w io.Writer, idx *Index) error {
 	var err error
 	format := int32(idx.Format)
 	if idx.ZeroBased {

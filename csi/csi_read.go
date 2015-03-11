@@ -2,22 +2,23 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package index
+package csi
 
 import (
-	"code.google.com/p/biogo.bam/bgzf"
-
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
 	"sort"
+
+	"code.google.com/p/biogo.bam/bgzf"
+	"code.google.com/p/biogo.bam/bgzf/index"
 )
 
-// ReadCSI reads the CSI index from the given io.Reader.
-func ReadCSI(r io.Reader) (*CSI, error) {
+// ReadFrom reads the CSI index from the given io.Reader.
+func ReadFrom(r io.Reader) (*Index, error) {
 	var (
-		idx   CSI
+		idx   Index
 		magic [3]byte
 		err   error
 	)
@@ -97,7 +98,7 @@ func readIndices(r io.Reader, version byte) ([]refIndex, error) {
 	return idx, nil
 }
 
-func readBins(r io.Reader, version byte) ([]bin, *ReferenceStats, error) {
+func readBins(r io.Reader, version byte) ([]bin, *index.ReferenceStats, error) {
 	var n int32
 	err := binary.Read(r, binary.LittleEndian, &n)
 	if err != nil {
@@ -106,7 +107,7 @@ func readBins(r io.Reader, version byte) ([]bin, *ReferenceStats, error) {
 	if n == 0 {
 		return nil, nil, nil
 	}
-	var stats *ReferenceStats
+	var stats *index.ReferenceStats
 	bins := make([]bin, n)
 	for i := 0; i < len(bins); i++ {
 		err = binary.Read(r, binary.LittleEndian, &bins[i].bin)
@@ -179,10 +180,10 @@ func readChunks(r io.Reader, n int32) ([]bgzf.Chunk, error) {
 	return chunks, nil
 }
 
-func readStats(r io.Reader) (*ReferenceStats, error) {
+func readStats(r io.Reader) (*index.ReferenceStats, error) {
 	var (
 		vOff  uint64
-		stats ReferenceStats
+		stats index.ReferenceStats
 		err   error
 	)
 	err = binary.Read(r, binary.LittleEndian, &vOff)

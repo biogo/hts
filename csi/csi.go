@@ -2,13 +2,15 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package index
+// Package csi implements CSIv1 and CSIv2 coordinate sorted indexing.
+package csi
 
 import (
-	"code.google.com/p/biogo.bam/bgzf"
-
 	"errors"
 	"sort"
+
+	"code.google.com/p/biogo.bam/bgzf"
+	"code.google.com/p/biogo.bam/bgzf/index"
 )
 
 var csiMagic = [3]byte{'C', 'S', 'I'}
@@ -52,20 +54,20 @@ func validIndexPos(i int, minShift, depth uint32) bool { // 0-based.
 	return -1 <= i && i <= (1<<(minShift+depth*nextBinShift)-1)-1
 }
 
-// NewCSI returns a CSI index with the given minimum shift and depth.
+// New returns a CSI index with the given minimum shift and depth.
 // The returned index defaults to CSI version 2.
-func NewCSI(minShift, depth int) *CSI {
+func New(minShift, depth int) *Index {
 	if minShift == 0 {
 		minShift = DefaultShift
 	}
 	if depth == 0 {
 		depth = DefaultDepth
 	}
-	return &CSI{Version: 0x2, minShift: uint32(minShift), depth: uint32(depth)}
+	return &Index{Version: 0x2, minShift: uint32(minShift), depth: uint32(depth)}
 }
 
-// CSI implements coordinate sorted indexing.
-type CSI struct {
+// Index implements coordinate sorted indexing.
+type Index struct {
 	Auxilliary []byte
 	Version    byte
 
@@ -81,7 +83,7 @@ type CSI struct {
 
 type refIndex struct {
 	bins  []bin
-	stats *ReferenceStats
+	stats *index.ReferenceStats
 }
 
 type bin struct {
@@ -91,43 +93,30 @@ type bin struct {
 	chunks  []bgzf.Chunk
 }
 
-// ReferenceStats holds mapping statistics for a genomic reference.
-type ReferenceStats struct {
-	// Chunk is the span of the indexed BGZF
-	// holding alignments to the reference.
-	Chunk bgzf.Chunk
-
-	// Mapped is the count of mapped reads.
-	Mapped uint64
-
-	// Unmapped is the count of unmapped reads.
-	Unmapped uint64
-}
-
 // NumRefs returns the number of references in the index.
-func (i *CSI) NumRefs() int {
+func (i *Index) NumRefs() int {
 	return len(i.refs)
 }
 
 // ReferenceStats returns the index statistics for the given reference and true
 // if the statistics are valid.
-func (i *CSI) ReferenceStats(id int) (stats ReferenceStats, ok bool) {
+func (i *Index) ReferenceStats(id int) (stats index.ReferenceStats, ok bool) {
 	s := i.refs[id].stats
 	if s == nil {
-		return ReferenceStats{}, false
+		return index.ReferenceStats{}, false
 	}
 	return *s, true
 }
 
 // Unmapped returns the number of unmapped reads and true if the count is valid.
-func (i *CSI) Unmapped() (n uint64, ok bool) {
+func (i *Index) Unmapped() (n uint64, ok bool) {
 	if i.unmapped == nil {
 		return 0, false
 	}
 	return *i.unmapped, true
 }
 
-// Record wraps types that may be indexed by a CSI.
+// Record wraps types that may be indexed by an Index.
 type Record interface {
 	RefID() int
 	Start() int
@@ -136,7 +125,7 @@ type Record interface {
 
 // Add records the Record as having being located at the given chunk with the given
 // mapping and placement status.
-func (i *CSI) Add(r Record, c bgzf.Chunk, mapped, placed bool) error {
+func (i *Index) Add(r Record, c bgzf.Chunk, mapped, placed bool) error {
 	if !validIndexPos(r.Start(), i.minShift, i.depth) || !validIndexPos(r.End(), i.minShift, i.depth) {
 		return errors.New("csi: attempt to add record outside indexable range")
 	}
@@ -196,7 +185,7 @@ found:
 
 	// Record index stats.
 	if ref.stats == nil {
-		ref.stats = &ReferenceStats{
+		ref.stats = &index.ReferenceStats{
 			Chunk: c,
 		}
 	} else {
@@ -212,7 +201,7 @@ found:
 }
 
 // Chunks returns a []bgzf.Chunk that corresponds to the given interval.
-func (i *CSI) Chunks(rid int, beg, end int) []bgzf.Chunk {
+func (i *Index) Chunks(rid int, beg, end int) []bgzf.Chunk {
 	if rid < 0 || rid >= len(i.refs) {
 		return nil
 	}
@@ -245,7 +234,9 @@ func (i *CSI) Chunks(rid int, beg, end int) []bgzf.Chunk {
 	return adjacent(chunks)
 }
 
-func (i *CSI) sort() {
+var adjacent = index.Adjacent
+
+func (i *Index) sort() {
 	if !i.isSorted {
 		for _, ref := range i.refs {
 			sort.Sort(byBinNumber(ref.bins))
@@ -258,7 +249,7 @@ func (i *CSI) sort() {
 }
 
 // MergeChunks applies the given MergeStrategy to all bins in the Index.
-func (i *CSI) MergeChunks(s MergeStrategy) {
+func (i *Index) MergeChunks(s index.MergeStrategy) {
 	if s == nil {
 		return
 	}
