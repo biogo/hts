@@ -6,9 +6,9 @@
 package cache
 
 import (
-	"code.google.com/p/biogo.bam/bgzf"
-
 	"sync"
+
+	"code.google.com/p/biogo.bam/bgzf"
 )
 
 var (

@@ -6,9 +6,10 @@
 package internal
 
 import (
-	"code.google.com/p/biogo.bam/bgzf"
 	"errors"
 	"sort"
+
+	"code.google.com/p/biogo.bam/bgzf"
 )
 
 const (

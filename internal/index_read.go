@@ -5,12 +5,12 @@
 package internal
 
 import (
-	"code.google.com/p/biogo.bam/bgzf"
-
 	"encoding/binary"
 	"fmt"
 	"io"
 	"sort"
+
+	"code.google.com/p/biogo.bam/bgzf"
 )
 
 // ReadIndex reads the Index from the given io.Reader.

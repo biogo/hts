@@ -9,9 +9,6 @@
 package bgzf_test
 
 import (
-	. "code.google.com/p/biogo.bam/bgzf"
-	"code.google.com/p/biogo.bam/bgzf/cache"
-
 	"bytes"
 	"compress/gzip"
 	"errors"
@@ -25,6 +22,9 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	. "code.google.com/p/biogo.bam/bgzf"
+	"code.google.com/p/biogo.bam/bgzf/cache"
 )
 
 var conc = flag.Int("conc", 1, "sets the level of concurrency for compression")

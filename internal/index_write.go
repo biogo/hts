@@ -5,11 +5,11 @@
 package internal
 
 import (
-	"code.google.com/p/biogo.bam/bgzf"
-
 	"encoding/binary"
 	"fmt"
 	"io"
+
+	"code.google.com/p/biogo.bam/bgzf"
 )
 
 // WriteIndex writes the Index to the given io.Writer.
