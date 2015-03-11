@@ -1,4 +1,4 @@
-// Copyright ©2012-2013 The bíogo.bam Authors. All rights reserved.
+// Copyright ©2012-2013 The bíogo Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"code.google.com/p/biogo.bam/internal"
+	"code.google.com/p/biogo.hts/internal"
 )
 
 // Record represents a SAM/BAM record.

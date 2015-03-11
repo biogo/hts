@@ -4,7 +4,7 @@ import (
 	"net/url"
 	"time"
 
-	"code.google.com/p/biogo.bam/sam"
+	"code.google.com/p/biogo.hts/sam"
 )
 
 var headerHG00096_1000 *sam.Header

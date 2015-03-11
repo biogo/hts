@@ -1,4 +1,4 @@
-// Copyright ©2014 The bíogo.bam Authors. All rights reserved.
+// Copyright ©2014 The bíogo Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -12,10 +12,10 @@ import (
 	"io"
 	"strings"
 
-	"code.google.com/p/biogo.bam/bgzf"
-	"code.google.com/p/biogo.bam/bgzf/index"
-	"code.google.com/p/biogo.bam/internal"
-	"code.google.com/p/biogo.bam/sam"
+	"code.google.com/p/biogo.hts/bgzf"
+	"code.google.com/p/biogo.hts/bgzf/index"
+	"code.google.com/p/biogo.hts/internal"
+	"code.google.com/p/biogo.hts/sam"
 )
 
 // Index is a tabix index.

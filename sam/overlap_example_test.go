@@ -1,4 +1,4 @@
-// Copyright ©2012 The bíogo.bam Authors. All rights reserved.
+// Copyright ©2012 The bíogo Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -7,7 +7,7 @@ package sam_test
 import (
 	"fmt"
 
-	"code.google.com/p/biogo.bam/sam"
+	"code.google.com/p/biogo.hts/sam"
 )
 
 func min(a, b int) int {

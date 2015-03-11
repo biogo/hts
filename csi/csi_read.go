@@ -1,4 +1,4 @@
-// Copyright ©2015 The bíogo.bam Authors. All rights reserved.
+// Copyright ©2015 The bíogo Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -11,8 +11,8 @@ import (
 	"io"
 	"sort"
 
-	"code.google.com/p/biogo.bam/bgzf"
-	"code.google.com/p/biogo.bam/bgzf/index"
+	"code.google.com/p/biogo.hts/bgzf"
+	"code.google.com/p/biogo.hts/bgzf/index"
 )
 
 // ReadFrom reads the CSI index from the given io.Reader.

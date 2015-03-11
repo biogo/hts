@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the Go LICENSE file.
 
-// Changes copyright ©2012 The bíogo.bam Authors. All rights reserved.
+// Changes copyright ©2012 The bíogo Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -23,8 +23,8 @@ import (
 	"testing"
 	"time"
 
-	. "code.google.com/p/biogo.bam/bgzf"
-	"code.google.com/p/biogo.bam/bgzf/cache"
+	. "code.google.com/p/biogo.hts/bgzf"
+	"code.google.com/p/biogo.hts/bgzf/cache"
 )
 
 var conc = flag.Int("conc", 1, "sets the level of concurrency for compression")
