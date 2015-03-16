@@ -8,7 +8,7 @@ package index
 import (
 	"io"
 
-	"code.google.com/p/biogo.hts/bgzf"
+	"github.com/biogo/hts/bgzf"
 )
 
 // ReferenceStats holds mapping statistics for a genomic reference.

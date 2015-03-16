@@ -16,10 +16,10 @@ import (
 	"testing"
 	"time"
 
-	"code.google.com/p/biogo.hts/bgzf"
-	"code.google.com/p/biogo.hts/bgzf/index"
-	"code.google.com/p/biogo.hts/internal"
-	"code.google.com/p/biogo.hts/sam"
+	"github.com/biogo/hts/bgzf"
+	"github.com/biogo/hts/bgzf/index"
+	"github.com/biogo/hts/internal"
+	"github.com/biogo/hts/sam"
 
 	"gopkg.in/check.v1"
 )

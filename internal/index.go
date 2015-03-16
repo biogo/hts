@@ -9,7 +9,7 @@ import (
 	"errors"
 	"sort"
 
-	"code.google.com/p/biogo.hts/bgzf"
+	"github.com/biogo/hts/bgzf"
 )
 
 const (

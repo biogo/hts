@@ -7,7 +7,7 @@ package sam_test
 import (
 	"fmt"
 
-	"code.google.com/p/biogo.hts/sam"
+	"github.com/biogo/hts/sam"
 )
 
 func min(a, b int) int {

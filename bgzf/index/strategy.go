@@ -5,7 +5,7 @@
 package index
 
 import (
-	"code.google.com/p/biogo.hts/bgzf"
+	"github.com/biogo/hts/bgzf"
 )
 
 // MergeStrategy represents a chunk compression strategy.

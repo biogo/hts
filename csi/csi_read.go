@@ -11,8 +11,8 @@ import (
 	"io"
 	"sort"
 
-	"code.google.com/p/biogo.hts/bgzf"
-	"code.google.com/p/biogo.hts/bgzf/index"
+	"github.com/biogo/hts/bgzf"
+	"github.com/biogo/hts/bgzf/index"
 )
 
 // ReadFrom reads the CSI index from the given io.Reader.

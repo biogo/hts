@@ -10,7 +10,7 @@ import (
 	"os"
 	"testing"
 
-	"code.google.com/p/biogo.boom"
+	"github.com/biogo/boom"
 )
 
 func BenchmarkReadBoom(b *testing.B) {

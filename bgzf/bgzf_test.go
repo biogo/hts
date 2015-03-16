@@ -23,8 +23,8 @@ import (
 	"testing"
 	"time"
 
-	. "code.google.com/p/biogo.hts/bgzf"
-	"code.google.com/p/biogo.hts/bgzf/cache"
+	. "github.com/biogo/hts/bgzf"
+	"github.com/biogo/hts/bgzf/cache"
 )
 
 var conc = flag.Int("conc", 1, "sets the level of concurrency for compression")
