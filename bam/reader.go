@@ -165,6 +165,11 @@ func (br *Reader) Read() (*sam.Record, error) {
 	return &rec, nil
 }
 
+// SetCache sets the cache to be used by the Reader.
+func (bg *Reader) SetCache(c bgzf.Cache) {
+	bg.r.SetCache(c)
+}
+
 // SetChunk sets a limited range of the underlying BGZF file to read, after
 // seeking to the start of the given chunk. It may be used to iterate over
 // a defined genomic interval.
