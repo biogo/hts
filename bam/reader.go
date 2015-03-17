@@ -346,6 +346,11 @@ func (r *errReader) Read(p []byte) (int, error) {
 	}
 	var n int
 	n, r.err = r.r.Read(p)
+	for n < len(p) && r.err == nil {
+		var _n int
+		_n, r.err = r.r.Read(p[n:])
+		n += _n
+	}
 	r.n += n
 	return n, r.err
 }
