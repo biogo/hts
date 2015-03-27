@@ -170,6 +170,11 @@ func (bg *Reader) SetCache(c bgzf.Cache) {
 	bg.r.SetCache(c)
 }
 
+// Seek performs a seek to the specified bgzf.Offset.
+func (br *Reader) Seek(off bgzf.Offset) error {
+	return br.r.Seek(off)
+}
+
 // SetChunk sets a limited range of the underlying BGZF file to read, after
 // seeking to the start of the given chunk. It may be used to iterate over
 // a defined genomic interval.
