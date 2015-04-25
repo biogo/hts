@@ -72,7 +72,7 @@ func NewAux(t Tag, typ byte, value interface{}) (Aux, error) {
 				a = Aux{t[0], t[1], 'I', 0, 0, 0, 0, 0}
 				binary.LittleEndian.PutUint32(a[4:8], uint32(i))
 			default:
-				return nil, fmt.Errorf("sam: unsigned integer value out of range %d > %d", i, math.MaxUint32)
+				return nil, fmt.Errorf("sam: unsigned integer value out of range %d > %d", i, uint(math.MaxUint32))
 			}
 			return a, nil
 		case int8:
@@ -147,7 +147,7 @@ func NewAux(t Tag, typ byte, value interface{}) (Aux, error) {
 			return nil, fmt.Errorf("sam: wrong dynamic type %T for 'B' tag", value)
 		}
 		l := rv.Len()
-		if l > math.MaxUint32 {
+		if uint(l) > math.MaxUint32 {
 			return nil, fmt.Errorf("sam: array too long for 'B' tag")
 		}
 		a := Aux{t[0], t[1], 'B', 0, 0, 0, 0, 0}
