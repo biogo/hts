@@ -29,7 +29,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -42,7 +42,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -55,7 +55,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -68,7 +68,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -81,7 +81,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -94,7 +94,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -107,7 +107,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -120,7 +120,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -133,7 +133,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -146,7 +146,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -159,7 +159,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -172,7 +172,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -185,7 +185,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -198,7 +198,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -211,7 +211,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -224,7 +224,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -237,7 +237,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -250,7 +250,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -263,7 +263,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -276,7 +276,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -289,7 +289,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -302,7 +302,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -315,7 +315,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -328,7 +328,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -341,7 +341,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -354,7 +354,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -367,7 +367,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -380,7 +380,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -393,7 +393,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -406,7 +406,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -419,7 +419,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -432,7 +432,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -445,7 +445,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -458,7 +458,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -471,7 +471,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -484,7 +484,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -497,7 +497,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -510,7 +510,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -523,7 +523,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -536,7 +536,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -549,7 +549,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -562,7 +562,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -575,7 +575,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -588,7 +588,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -601,7 +601,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -614,7 +614,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -627,7 +627,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -640,7 +640,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -653,7 +653,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -666,7 +666,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -679,7 +679,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -692,7 +692,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -705,7 +705,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -718,7 +718,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -731,7 +731,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -744,7 +744,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -757,7 +757,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -770,7 +770,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -783,7 +783,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -796,7 +796,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -809,7 +809,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -822,7 +822,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -835,7 +835,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -848,7 +848,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -861,7 +861,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -874,7 +874,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -887,7 +887,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -900,7 +900,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -913,7 +913,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -926,7 +926,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -939,7 +939,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -952,7 +952,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -965,7 +965,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -978,7 +978,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -991,7 +991,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -1004,7 +1004,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -1017,7 +1017,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -1030,7 +1030,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -1043,7 +1043,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -1056,7 +1056,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -1068,7 +1068,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -1081,7 +1081,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -1094,7 +1094,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -1107,7 +1107,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -1120,7 +1120,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},
@@ -1133,7 +1133,7 @@ var (
 				assemID: "NCBI37",
 				species: "Human",
 				uri: &url.URL{
-					Scheme: "file",
+					Scheme: "ftp",
 					Host:   "ftp.1000genomes.ebi.ac.uk",
 					Path:   "/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz",
 				},

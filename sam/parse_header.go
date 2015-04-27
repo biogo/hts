@@ -244,7 +244,7 @@ func referenceLine(l []byte, bh *Header) error {
 			if err != nil {
 				return err
 			}
-			if rf.uri.Scheme != "http" || rf.uri.Scheme != "ftp" {
+			if rf.uri.Scheme != "http" && rf.uri.Scheme != "ftp" {
 				rf.uri.Scheme = "file"
 			}
 		default:
