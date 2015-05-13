@@ -129,6 +129,12 @@ type RecordReader interface {
 	Read() (*Record, error)
 }
 
+// RecordWriter wraps types that can write SAM Records.
+type RecordWriter interface {
+	Write(r *sam.Record) error
+	Close() error
+}
+
 // Iterator wraps a Reader to provide a convenient loop interface for reading SAM/BAM data.
 // Successive calls to the Next method will step through the features of the provided
 // Reader. Iteration stops unrecoverably at EOF or the first error.
@@ -205,6 +211,11 @@ func (w *Writer) Write(r *Record) error {
 	b = append(b, '\n')
 	_, err = w.w.Write(b)
 	return err
+}
+
+// Close closes the writer.
+func (w *Writer) Close() error {
+	return nil
 }
 
 const (
