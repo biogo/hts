@@ -7,6 +7,8 @@ package sam
 import (
 	"bytes"
 	"flag"
+	"io"
+	"strings"
 	"testing"
 
 	"gopkg.in/check.v1"
@@ -536,5 +538,66 @@ r001	147	ref	37	30	9M	=	7	-39	CAGCGGCAT	*	NM:i:1
 		}
 		c.Check(i.Error(), check.Equals, nil)
 		c.Check(n, check.Equals, 6)
+	}
+}
+
+var auxTests = []struct {
+	sam string
+
+	want []*Record
+}{
+	{
+		sam: `1f001i8gk#GGCG#AA	0	*	0	0	*	*	0	0	*	*	NH:i:2	HI:i:1	AS:i:13	nM:i:4	NM:i:4	MD:Z:2C0T2T1C13	jM:B:c,-1	jI:B:i,-1
+1f001i8gk#GGCG#AA	0	*	0	0	*	*	0	0	*	*	NH:i:2	HI:i:2	AS:i:12	nM:i:0	NM:i:0	MD:Z:22	jM:B:c,0	jI:B:i,629,1095
+`,
+		want: []*Record{
+			{
+				Name:    "1f001i8gk#GGCG#AA",
+				Pos:     -1,
+				MatePos: -1,
+				AuxFields: AuxFields{
+					mustAux(NewAux(NewTag("NH"), 'i', uint(2))),
+					mustAux(NewAux(NewTag("HI"), 'i', uint(1))),
+					mustAux(NewAux(NewTag("AS"), 'i', uint(13))),
+					mustAux(NewAux(NewTag("nM"), 'i', uint(4))),
+					mustAux(NewAux(NewTag("NM"), 'i', uint(4))),
+					mustAux(NewAux(NewTag("MD"), 'Z', "2C0T2T1C13")),
+					mustAux(NewAux(NewTag("jM"), 'B', []int8{-1})),
+					mustAux(NewAux(NewTag("jI"), 'B', []int32{-1})),
+				},
+			},
+			{
+				Name:    "1f001i8gk#GGCG#AA",
+				Pos:     -1,
+				MatePos: -1,
+				AuxFields: AuxFields{
+					mustAux(NewAux(NewTag("NH"), 'i', uint(2))),
+					mustAux(NewAux(NewTag("HI"), 'i', uint(2))),
+					mustAux(NewAux(NewTag("AS"), 'i', uint(12))),
+					mustAux(NewAux(NewTag("nM"), 'i', uint(0))),
+					mustAux(NewAux(NewTag("NM"), 'i', uint(0))),
+					mustAux(NewAux(NewTag("MD"), 'Z', "22")),
+					mustAux(NewAux(NewTag("jM"), 'B', []int8{0})),
+					mustAux(NewAux(NewTag("jI"), 'B', []int32{629, 1095})),
+				},
+			},
+		},
+	},
+}
+
+func (s *S) TestAux(c *check.C) {
+	for _, test := range auxTests {
+		sr, err := NewReader(strings.NewReader(test.sam))
+		c.Assert(err, check.Equals, nil)
+		var recs []*Record
+		for {
+			r, err := sr.Read()
+			if err != nil {
+				c.Assert(err, check.Equals, io.EOF)
+				break
+			}
+			recs = append(recs, r)
+		}
+		c.Check(recs, check.DeepEquals, test.want)
 	}
 }

@@ -175,7 +175,9 @@ func NewAux(t Tag, typ byte, value interface{}) (Aux, error) {
 		default:
 			return nil, fmt.Errorf("sam: unsupported array type: %T", value)
 		}
-		err := binary.Write(bytes.NewBuffer(a), binary.LittleEndian, value)
+		buf := bytes.NewBuffer(a)
+		err := binary.Write(buf, binary.LittleEndian, value)
+		a = buf.Bytes()
 		if err != nil {
 			return nil, fmt.Errorf("sam: failed to encode array: %v", err)
 		}
@@ -234,11 +236,11 @@ func ParseAux(text []byte) (Aux, error) {
 		if len(nf) == 0 {
 			return nil, fmt.Errorf("sam: invalid aux tag field: %q", text)
 		}
-		switch auxKind[tf[2][0]] {
+		switch tf[2][0] {
 		case 'c':
 			a := make([]int8, len(nf))
 			for i, n := range nf {
-				v, err := strconv.ParseUint(string(n), 0, 8)
+				v, err := strconv.ParseInt(string(n), 0, 8)
 				if err != nil {
 					return nil, fmt.Errorf("sam: invalid aux tag field: %v", err)
 				}
@@ -258,7 +260,7 @@ func ParseAux(text []byte) (Aux, error) {
 		case 's':
 			a := make([]int16, len(nf))
 			for i, n := range nf {
-				v, err := strconv.ParseUint(string(n), 0, 16)
+				v, err := strconv.ParseInt(string(n), 0, 16)
 				if err != nil {
 					return nil, fmt.Errorf("sam: invalid aux tag field: %v", err)
 				}
@@ -278,7 +280,7 @@ func ParseAux(text []byte) (Aux, error) {
 		case 'i':
 			a := make([]int32, len(nf))
 			for i, n := range nf {
-				v, err := strconv.ParseUint(string(n), 0, 32)
+				v, err := strconv.ParseInt(string(n), 0, 32)
 				if err != nil {
 					return nil, fmt.Errorf("sam: invalid aux tag field: %v", err)
 				}
@@ -340,6 +342,8 @@ func (a Aux) String() string {
 		return fmt.Sprintf("%s:%c:%c", []byte(a[:2]), a.Kind(), a.Value())
 	case 'H':
 		return fmt.Sprintf("%s:%c:%02x", []byte(a[:2]), a.Kind(), a.Value())
+	case 'B':
+		return fmt.Sprintf("%s:%c:%c:%v", []byte(a[:2]), a.Kind(), a[3], a.Value())
 	}
 	return fmt.Sprintf("%s:%c:%v", []byte(a[:2]), a.Kind(), a.Value())
 }
@@ -428,43 +432,43 @@ func (a Aux) Value() interface{} {
 		length := int32(binary.LittleEndian.Uint32(a[4:8]))
 		switch t := a[3]; t {
 		case 'c':
-			c := a[4:]
+			c := a[8:]
 			return *(*[]int8)(unsafe.Pointer(&c))
 		case 'C':
-			return []uint8(a[4:])
+			return []uint8(a[8:])
 		case 's':
 			Bs := make([]int16, length)
 			err := binary.Read(bytes.NewBuffer(a[8:]), binary.LittleEndian, &Bs)
 			if err != nil {
-				panic(fmt.Sprintf("sam: binary.Read failed: %v", err))
+				panic(fmt.Sprintf("sam: binary.Read of s field failed: %v", err))
 			}
 			return Bs
 		case 'S':
 			BS := make([]uint16, length)
 			err := binary.Read(bytes.NewBuffer(a[8:]), binary.LittleEndian, &BS)
 			if err != nil {
-				panic(fmt.Sprintf("sam: binary.Read failed: %v", err))
+				panic(fmt.Sprintf("sam: binary.Read of S field failed: %v", err))
 			}
 			return BS
 		case 'i':
 			Bi := make([]int32, length)
 			err := binary.Read(bytes.NewBuffer(a[8:]), binary.LittleEndian, &Bi)
 			if err != nil {
-				panic(fmt.Sprintf("sam: binary.Read failed: %v", err))
+				panic(fmt.Sprintf("sam: binary.Read of i field failed: %v", err))
 			}
 			return Bi
 		case 'I':
 			BI := make([]uint32, length)
 			err := binary.Read(bytes.NewBuffer(a[8:]), binary.LittleEndian, &BI)
 			if err != nil {
-				panic(fmt.Sprintf("sam: binary.Read failed: %v", err))
+				panic(fmt.Sprintf("sam: binary.Read of I field failed: %v", err))
 			}
 			return BI
 		case 'f':
 			Bf := make([]float32, length)
 			err := binary.Read(bytes.NewBuffer(a[8:]), binary.LittleEndian, &Bf)
 			if err != nil {
-				panic(fmt.Sprintf("sam: binary.Read failed: %v", err))
+				panic(fmt.Sprintf("sam: binary.Read of f field failed: %v", err))
 			}
 			return Bf
 		default:

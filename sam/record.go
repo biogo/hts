@@ -265,7 +265,7 @@ func (r *Record) UnmarshalSAM(h *Header, b []byte) error {
 		for i := range r.Qual {
 			r.Qual[i] -= 33
 		}
-	} else {
+	} else if r.Seq.Length != 0 {
 		r.Qual = make([]byte, r.Seq.Length)
 		for i := range r.Qual {
 			r.Qual[i] = 0xff
