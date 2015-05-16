@@ -500,7 +500,7 @@ var specExamples = struct {
 			Seq:     sam.NewSeq([]byte("GCCTAAGCTAA")),
 			Qual:    []uint8{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
 			AuxFields: []sam.Aux{
-				mustAux(sam.NewAux(sam.NewTag("SA"), 'Z', "ref,29,-,6H5M,17,0;")),
+				mustAux(sam.NewAux(sam.NewTag("SA"), "ref,29,-,6H5M,17,0;")),
 			},
 		},
 		{
@@ -531,7 +531,7 @@ var specExamples = struct {
 			Seq:     sam.NewSeq([]byte("TAGGC")),
 			Qual:    []uint8{0xff, 0xff, 0xff, 0xff, 0xff},
 			AuxFields: []sam.Aux{
-				mustAux(sam.NewAux(sam.NewTag("SA"), 'Z', "ref,9,+,5S6M,30,1;")),
+				mustAux(sam.NewAux(sam.NewTag("SA"), "ref,9,+,5S6M,30,1;")),
 			},
 		},
 		{
@@ -547,7 +547,7 @@ var specExamples = struct {
 			Seq:     sam.NewSeq([]byte("CAGCGGCAT")),
 			Qual:    []uint8{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
 			AuxFields: []sam.Aux{
-				mustAux(sam.NewAux(sam.NewTag("NM"), 'i', uint(1))),
+				mustAux(sam.NewAux(sam.NewTag("NM"), uint(1))),
 			},
 		},
 	},

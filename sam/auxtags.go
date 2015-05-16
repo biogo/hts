@@ -15,13 +15,22 @@ import (
 	"unsafe"
 )
 
+// ASCII is a printable ASCII character included in an Aux tag.
+type ASCII byte
+
+// Hex is a byte slice represented as a hex string in an Aux tag.
+type Hex []byte
+
+// Text is a byte slice represented as a string in an Aux tag.
+type Text []byte
+
 // An Aux represents an auxilliary data field from a SAM alignment record.
 type Aux []byte
 
 // NewAux returns a new Aux with the given tag, type and value. Acceptable value
-// types depend on the typ parameter:
+// types and their corresponding SAM type are:
 //
-//  A - byte
+//  A - ASCII
 //  c - int8
 //  C - uint8
 //  s - int16
@@ -29,126 +38,81 @@ type Aux []byte
 //  i - int, uint or int32
 //  I - int, uint or uint32
 //  f - float32
-//  Z - []byte or string
-//  H - []byte
+//  Z - Text or string
+//  H - Hex
 //  B - []int8, []int16, []int32, []uint8, []uint16, []uint32 or []float32
 //
 // The handling of int and uint types is provided as a convenience - values must
 // fit within either int32 or uint32 and are converted to the smallest possible
 // representation.
 //
-func NewAux(t Tag, typ byte, value interface{}) (Aux, error) {
-	switch auxKind[typ] {
-	case 'A':
-		if c, ok := value.(byte); ok {
-			return Aux{t[0], t[1], 'A', c}, nil
-		}
-		return nil, fmt.Errorf("sam: wrong dynamic type %T for 'A' tag", value)
-	case 'i':
-		var a Aux
-		switch i := value.(type) {
-		case int:
-			switch {
-			case i <= math.MaxInt8:
-				return Aux{t[0], t[1], 'c', byte(i)}, nil
-			case i <= math.MaxInt16:
-				a = Aux{t[0], t[1], 's', 0, 0, 0}
-				binary.LittleEndian.PutUint16(a[4:6], uint16(i))
-			case i <= math.MaxInt32:
-				a = Aux{t[0], t[1], 'i', 0, 0, 0, 0, 0}
-				binary.LittleEndian.PutUint32(a[4:8], uint32(i))
-			default:
-				return nil, fmt.Errorf("sam: integer value out of range %d > %d", i, math.MaxInt32)
-			}
-			return a, nil
-		case uint:
-			switch {
-			case i <= math.MaxInt8:
-				return Aux{t[0], t[1], 'C', byte(i)}, nil
-			case i <= math.MaxInt16:
-				a = Aux{t[0], t[1], 'S', 0, 0, 0}
-				binary.LittleEndian.PutUint16(a[4:6], uint16(i))
-			case i <= math.MaxInt32:
-				a = Aux{t[0], t[1], 'I', 0, 0, 0, 0, 0}
-				binary.LittleEndian.PutUint32(a[4:8], uint32(i))
-			default:
-				return nil, fmt.Errorf("sam: unsigned integer value out of range %d > %d", i, uint(math.MaxUint32))
-			}
-			return a, nil
-		case int8:
-			if typ != 'c' {
-				goto badtype
-			}
-			return Aux{t[0], t[1], typ, byte(i)}, nil
-		case uint8:
-			if typ != 'C' {
-				goto badtype
-			}
-			return Aux{t[0], t[1], typ, i}, nil
-		case int16:
-			if typ != 's' {
-				goto badtype
-			}
-			a = Aux{t[0], t[1], typ, 0, 0, 0}
-			binary.LittleEndian.PutUint16(a[4:6], uint16(i))
-		case uint16:
-			if typ != 'S' {
-				goto badtype
-			}
-			a = Aux{t[0], t[1], typ, 0, 0, 0}
-			binary.LittleEndian.PutUint16(a[4:6], i)
-		case int32:
-			if typ != 'i' {
-				goto badtype
-			}
-			a = Aux{t[0], t[1], typ, 0, 0, 0, 0, 0}
-			binary.LittleEndian.PutUint32(a[4:8], uint32(i))
-		case uint32:
-			if typ != 'I' {
-				goto badtype
-			}
-			a = Aux{t[0], t[1], typ, 0, 0, 0, 0, 0}
-			binary.LittleEndian.PutUint32(a[4:8], i)
+func NewAux(t Tag, value interface{}) (Aux, error) {
+	var a Aux
+	switch v := value.(type) {
+	case ASCII:
+		a = Aux{t[0], t[1], 'A', byte(v)}
+	case int:
+		switch {
+		case v <= math.MaxInt8:
+			a = Aux{t[0], t[1], 'c', byte(v)}
+		case v <= math.MaxInt16:
+			a = Aux{t[0], t[1], 's', 0, 0, 0}
+			binary.LittleEndian.PutUint16(a[4:6], uint16(v))
+		case v <= math.MaxInt32:
+			a = Aux{t[0], t[1], 'i', 0, 0, 0, 0, 0}
+			binary.LittleEndian.PutUint32(a[4:8], uint32(v))
 		default:
-			goto badtype
+			return nil, fmt.Errorf("sam: integer value out of range %d > %d", v, math.MaxInt32)
 		}
-		return a, nil
-	badtype:
-		return nil, fmt.Errorf("sam: wrong dynamic type %T for %q tag", value, typ)
-	case 'f':
-		if f, ok := value.(float32); ok {
-			a := Aux{t[0], t[1], 'f', 0, 0, 0, 0, 0}
-			binary.LittleEndian.PutUint32(a[4:8], math.Float32bits(f))
-			return a, nil
-		}
-		return nil, fmt.Errorf("sam: wrong dynamic type %T for 'f' tag", value)
-	case 'Z':
-		var a Aux
-		switch s := value.(type) {
-		case []byte:
-			return append(Aux{t[0], t[1], 'Z'}, s...), nil
-		case string:
-			return append(Aux{t[0], t[1], 'Z'}, s...), nil
+	case uint:
+		switch {
+		case v <= math.MaxInt8:
+			a = Aux{t[0], t[1], 'C', byte(v)}
+		case v <= math.MaxInt16:
+			a = Aux{t[0], t[1], 'S', 0, 0, 0}
+			binary.LittleEndian.PutUint16(a[4:6], uint16(v))
+		case v <= math.MaxInt32:
+			a = Aux{t[0], t[1], 'I', 0, 0, 0, 0, 0}
+			binary.LittleEndian.PutUint32(a[4:8], uint32(v))
 		default:
-			return nil, fmt.Errorf("sam: wrong dynamic type %T for 'Z' tag", value)
+			return nil, fmt.Errorf("sam: unsigned integer value out of range %d > %d", v, uint(math.MaxUint32))
 		}
-		return a, nil
-	case 'H':
-		if b, ok := value.([]byte); ok {
-			a := make(Aux, 3, len(b)+3)
-			copy(a, Aux{t[0], t[1], 'H'})
-			return append(a, b...), nil
-		}
-		return nil, fmt.Errorf("sam: wrong dynamic type %T for 'H' tag", value)
-	case 'B':
+	case int8:
+		a = Aux{t[0], t[1], 'c', byte(v)}
+	case uint8:
+		a = Aux{t[0], t[1], 'C', v}
+	case int16:
+		a = Aux{t[0], t[1], 's', 0, 0, 0}
+		binary.LittleEndian.PutUint16(a[4:6], uint16(v))
+	case uint16:
+		a = Aux{t[0], t[1], 'S', 0, 0, 0}
+		binary.LittleEndian.PutUint16(a[4:6], v)
+	case int32:
+		a = Aux{t[0], t[1], 'i', 0, 0, 0, 0, 0}
+		binary.LittleEndian.PutUint32(a[4:8], uint32(v))
+	case uint32:
+		a = Aux{t[0], t[1], 'I', 0, 0, 0, 0, 0}
+		binary.LittleEndian.PutUint32(a[4:8], v)
+	case float32:
+		a = Aux{t[0], t[1], 'f', 0, 0, 0, 0, 0}
+		binary.LittleEndian.PutUint32(a[4:8], math.Float32bits(v))
+	case Text:
+		a = append(Aux{t[0], t[1], 'Z'}, v...)
+	case string:
+		a = append(Aux{t[0], t[1], 'Z'}, v...)
+	case Hex:
+		a = make(Aux, 3, len(v)+3)
+		copy(a, Aux{t[0], t[1], 'H'})
+		a = append(a, v...)
+	default:
 		rv := reflect.ValueOf(value)
 		rt := rv.Type()
 		if k := rt.Kind(); k != reflect.Array && k != reflect.Slice {
-			return nil, fmt.Errorf("sam: wrong dynamic type %T for 'B' tag", value)
+			return nil, fmt.Errorf("sam: unknown type %T", value)
 		}
 		l := rv.Len()
 		if uint(l) > math.MaxUint32 {
-			return nil, fmt.Errorf("sam: array too long for 'B' tag")
+			return nil, fmt.Errorf("sam: array too long")
 		}
 		a := Aux{t[0], t[1], 'B', 0, 0, 0, 0, 0}
 		binary.LittleEndian.PutUint32([]byte(a[4:8]), uint32(l))
@@ -158,7 +122,7 @@ func NewAux(t Tag, typ byte, value interface{}) (Aux, error) {
 			a[3] = 'c'
 			value := value.([]int8)
 			b := *(*[]byte)(unsafe.Pointer(&value))
-			return append(a, b...), nil
+			a = append(a, b...)
 		case reflect.Uint8:
 			a[3] = 'C'
 			return append(a, value.([]uint8)...), nil
@@ -181,10 +145,8 @@ func NewAux(t Tag, typ byte, value interface{}) (Aux, error) {
 		if err != nil {
 			return nil, fmt.Errorf("sam: failed to encode array: %v", err)
 		}
-		return a, nil
-	default:
-		return nil, fmt.Errorf("sam: unknown type %q", typ)
 	}
+	return a, nil
 }
 
 // ParseAux returns an AUX parsed from the given text.
@@ -193,16 +155,13 @@ func ParseAux(text []byte) (Aux, error) {
 	if len(tf) != 3 || len(tf[1]) != 1 {
 		return nil, fmt.Errorf("sam: invalid aux tag field: %q", text)
 	}
-	var (
-		typ   byte
-		value interface{}
-	)
-	switch typ = tf[1][0]; typ {
+	var value interface{}
+	switch typ := tf[1][0]; typ {
 	case 'A':
 		if len(tf[2]) != 1 {
 			return nil, fmt.Errorf("sam: invalid aux tag field: %q", text)
 		}
-		value = tf[2][0]
+		value = ASCII(tf[2][0])
 	case 'i':
 		i, err := strconv.Atoi(string(tf[2]))
 		if err != nil {
@@ -220,14 +179,14 @@ func ParseAux(text []byte) (Aux, error) {
 		}
 		value = f
 	case 'Z':
-		value = tf[2]
+		value = Text(tf[2])
 	case 'H':
 		b := make([]byte, hex.DecodedLen(len(tf[2])))
 		_, err := hex.Decode(b, tf[2])
 		if err != nil {
 			return nil, fmt.Errorf("sam: invalid aux tag field: %v", err)
 		}
-		value = b
+		value = Hex(b)
 	case 'B':
 		if tf[2][1] != ',' {
 			return nil, fmt.Errorf("sam: invalid aux tag field: %q", text)
@@ -317,7 +276,7 @@ func ParseAux(text []byte) (Aux, error) {
 	if copy(t[:], tf[0]) != 2 {
 		return nil, fmt.Errorf("sam: invalid aux tag: %q", tf[0])
 	}
-	aux, err := NewAux(t, typ, value)
+	aux, err := NewAux(t, value)
 	if err != nil {
 		return nil, fmt.Errorf("sam: invalid aux tag field: %v", err)
 	}
