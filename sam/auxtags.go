@@ -307,6 +307,29 @@ func (a Aux) String() string {
 	return fmt.Sprintf("%s:%c:%v", []byte(a[:2]), a.Kind(), a.Value())
 }
 
+// samAux implements SAM aux field formatting.
+type samAux Aux
+
+// String returns the string representation of an Aux type.
+func (sa samAux) String() string {
+	a := Aux(sa)
+	switch a.Type() {
+	case 'A':
+		return fmt.Sprintf("%s:%c:%c", []byte(a[:2]), a.Kind(), a.Value())
+	case 'H':
+		return fmt.Sprintf("%s:%c:%02x", []byte(a[:2]), a.Kind(), a.Value())
+	case 'B':
+		var buf bytes.Buffer
+		fmt.Fprintf(&buf, "%s:%c:%c", []byte(a[:2]), a.Kind(), a[3])
+		rv := reflect.ValueOf(a.Value())
+		for i := 0; i < rv.Len(); i++ {
+			fmt.Fprintf(&buf, ",%v", rv.Index(i).Interface())
+		}
+		return buf.String()
+	}
+	return fmt.Sprintf("%s:%c:%v", []byte(a[:2]), a.Kind(), a.Value())
+}
+
 // A Tag represents an auxilliary tag label.
 type Tag [2]byte
 

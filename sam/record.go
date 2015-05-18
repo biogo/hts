@@ -333,7 +333,7 @@ func (r *Record) MarshalSAM(flags int) ([]byte, error) {
 		formatQual(r.Qual),
 	)
 	for _, t := range r.AuxFields {
-		fmt.Fprintf(&buf, "\t%v", t)
+		fmt.Fprintf(&buf, "\t%v", samAux(t))
 	}
 	return buf.Bytes(), nil
 }
