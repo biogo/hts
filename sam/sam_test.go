@@ -556,14 +556,30 @@ var auxTests = []struct {
 				Pos:     -1,
 				MatePos: -1,
 				AuxFields: AuxFields{
-					mustAux(NewAux(NewTag("NH"), uint(2))),
-					mustAux(NewAux(NewTag("HI"), uint(1))),
-					mustAux(NewAux(NewTag("AS"), uint(13))),
-					mustAux(NewAux(NewTag("nM"), uint(4))),
-					mustAux(NewAux(NewTag("NM"), uint(4))),
-					mustAux(NewAux(NewTag("MD"), "2C0T2T1C13")),
-					mustAux(NewAux(NewTag("jM"), []int8{-1})),
-					mustAux(NewAux(NewTag("jI"), []int32{-1})),
+					{
+						0x4e, 0x48, 0x43, 0x02, // |NHC.|
+					},
+					{
+						0x48, 0x49, 0x43, 0x01, // |HIC.|
+					},
+					{
+						0x41, 0x53, 0x43, 0x0d, // |ASC.|
+					},
+					{
+						0x6e, 0x4d, 0x43, 0x04, // |nMC.|
+					},
+					{
+						0x4e, 0x4d, 0x43, 0x04, // |NMC.|
+					},
+					{
+						0x4d, 0x44, 0x5a, 0x32, 0x43, 0x30, 0x54, 0x32, 0x54, 0x31, 0x43, 0x31, 0x33, // |MDZ2C0T2T1C13|
+					},
+					{
+						0x6a, 0x4d, 0x42, 0x63, 0x01, 0x00, 0x00, 0x00, 0xff, // |jMBc.....|
+					},
+					{
+						0x6a, 0x49, 0x42, 0x69, 0x01, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, // |jIBi........|
+					},
 				},
 			},
 			{
@@ -571,14 +587,30 @@ var auxTests = []struct {
 				Pos:     -1,
 				MatePos: -1,
 				AuxFields: AuxFields{
-					mustAux(NewAux(NewTag("NH"), uint(2))),
-					mustAux(NewAux(NewTag("HI"), uint(2))),
-					mustAux(NewAux(NewTag("AS"), uint(12))),
-					mustAux(NewAux(NewTag("nM"), uint(0))),
-					mustAux(NewAux(NewTag("NM"), uint(0))),
-					mustAux(NewAux(NewTag("MD"), "22")),
-					mustAux(NewAux(NewTag("jM"), []int8{0})),
-					mustAux(NewAux(NewTag("jI"), []int32{629, 1095})),
+					{
+						0x4e, 0x48, 0x43, 0x02, // |NHC.|
+					},
+					{
+						0x48, 0x49, 0x43, 0x02, // |HIC.|
+					},
+					{
+						0x41, 0x53, 0x43, 0x0c, // |ASC.|
+					},
+					{
+						0x6e, 0x4d, 0x43, 0x00, // |nMC.|
+					},
+					{
+						0x4e, 0x4d, 0x43, 0x00, // |NMC.|
+					},
+					{
+						0x4d, 0x44, 0x5a, 0x32, 0x32, // |MDZ22|
+					},
+					{
+						0x6a, 0x4d, 0x42, 0x63, 0x01, 0x00, 0x00, 0x00, 0x00, // |jMBc.....|
+					},
+					{
+						0x6a, 0x49, 0x42, 0x69, 0x02, 0x00, 0x00, 0x00, 0x75, 0x02, 0x00, 0x00, 0x47, 0x04, 0x00, 0x00, // |jIBi....u...G...|
+					},
 				},
 			},
 		},

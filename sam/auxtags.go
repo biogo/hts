@@ -114,7 +114,7 @@ func NewAux(t Tag, value interface{}) (Aux, error) {
 		if uint(l) > math.MaxUint32 {
 			return nil, fmt.Errorf("sam: array too long")
 		}
-		a := Aux{t[0], t[1], 'B', 0, 0, 0, 0, 0}
+		a = Aux{t[0], t[1], 'B', 0, 0, 0, 0, 0}
 		binary.LittleEndian.PutUint32([]byte(a[4:8]), uint32(l))
 
 		switch rt.Elem().Kind() {
@@ -122,7 +122,7 @@ func NewAux(t Tag, value interface{}) (Aux, error) {
 			a[3] = 'c'
 			value := value.([]int8)
 			b := *(*[]byte)(unsafe.Pointer(&value))
-			a = append(a, b...)
+			return append(a, b...), nil
 		case reflect.Uint8:
 			a[3] = 'C'
 			return append(a, value.([]uint8)...), nil
