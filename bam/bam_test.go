@@ -1778,38 +1778,45 @@ func (s *S) TestConceptualBAM(c *check.C) {
 var chunkTests = []struct {
 	beg, end int
 	expect   []bgzf.Chunk
+	err      error
 }{
 	{
 		beg: 65000, end: 71000, // Not in covered region.
 		expect: nil,
+		err:    nil,
 	},
 	{
 		beg: 77594624, end: 80740352, // 73m77m:bin2+bin18 - This is the equivalent to the given example.
 		expect: []bgzf.Chunk{
 			{Begin: bgzf.Offset{File: 101, Block: 52}, End: bgzf.Offset{File: 228, Block: 0}},
 		},
+		err: nil,
 	},
 	{
 		beg: 62914561, end: 68157440, // 60m65m:bin0+bin2
 		expect: []bgzf.Chunk{
 			{Begin: bgzf.Offset{File: 101, Block: 0}, End: bgzf.Offset{File: 101, Block: 104}},
 		},
+		err: nil,
 	},
 	{
 		beg: 72351744, end: 80740352, // 69m77m:bin0+bin2+18
 		expect: []bgzf.Chunk{
 			{Begin: bgzf.Offset{File: 101, Block: 0}, End: bgzf.Offset{File: 228, Block: 0}},
 		},
+		err: nil,
 	},
 	{
 		beg: 61865984, end: 80740352, // 59m77m:bin0+bin2+bin18
 		expect: []bgzf.Chunk{
 			{Begin: bgzf.Offset{File: 101, Block: 0}, End: bgzf.Offset{File: 228, Block: 0}},
 		},
+		err: nil,
 	},
 	{
 		beg: 80740352, end: 81788928, // 77m78m - Not in covered region.
 		expect: nil,
+		err:    internal.ErrInvalid,
 	},
 }
 
@@ -1824,7 +1831,11 @@ func (s *S) TestConceptualBAI(c *check.C) {
 	h.AddReference(&ref)
 
 	for _, test := range chunkTests {
-		c.Check(bai.Chunks(&ref, test.beg, test.end), check.DeepEquals, test.expect,
+		chunks, err := bai.Chunks(&ref, test.beg, test.end)
+		c.Check(err, check.Equals, test.err,
+			check.Commentf("Unexpected error for [%d,%d).", test.beg, test.end),
+		)
+		c.Check(chunks, check.DeepEquals, test.expect,
 			check.Commentf("Unexpected result for [%d,%d).", test.beg, test.end),
 		)
 	}

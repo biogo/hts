@@ -97,14 +97,17 @@ func (i *Index) Add(r Record, c bgzf.Chunk, placed, mapped bool) error {
 }
 
 // Chunks returns a []bgzf.Chunk that corresponds to the given genomic interval.
-func (i *Index) Chunks(r Record) []bgzf.Chunk {
+func (i *Index) Chunks(r Record) ([]bgzf.Chunk, error) {
 	refName := r.RefName()
 	id, ok := i.nameMap[refName]
 	if !ok {
-		return nil
+		return nil, internal.ErrNoReference
 	}
-	chunks := i.idx.Chunks(id, r.Start(), r.End())
-	return adjacent(chunks)
+	chunks, err := i.idx.Chunks(id, r.Start(), r.End())
+	if err != nil {
+		return nil, err
+	}
+	return adjacent(chunks), nil
 }
 
 var adjacent = index.Adjacent

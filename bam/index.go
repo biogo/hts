@@ -57,9 +57,12 @@ func isMapped(r *sam.Record) bool {
 }
 
 // Chunks returns a []bgzf.Chunk that corresponds to the given genomic interval.
-func (i *Index) Chunks(r *sam.Reference, beg, end int) []bgzf.Chunk {
-	chunks := i.idx.Chunks(r.ID(), beg, end)
-	return index.Adjacent(chunks)
+func (i *Index) Chunks(r *sam.Reference, beg, end int) ([]bgzf.Chunk, error) {
+	chunks, err := i.idx.Chunks(r.ID(), beg, end)
+	if err != nil {
+		return nil, err
+	}
+	return index.Adjacent(chunks), nil
 }
 
 // MergeChunks applies the given MergeStrategy to all bins in the Index.

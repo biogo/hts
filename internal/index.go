@@ -156,17 +156,22 @@ found:
 	return nil
 }
 
+var (
+	ErrNoReference = errors.New("index: no reference")
+	ErrInvalid     = errors.New("index: invalid interval")
+)
+
 // Chunks returns a []bgzf.Chunk that corresponds to the given genomic interval.
-func (i *Index) Chunks(rid, beg, end int) []bgzf.Chunk {
+func (i *Index) Chunks(rid, beg, end int) ([]bgzf.Chunk, error) {
 	if rid < 0 || rid >= len(i.Refs) {
-		return nil
+		return nil, ErrNoReference
 	}
 	i.sort()
 	ref := i.Refs[rid]
 
 	iv := beg / TileWidth
 	if iv >= len(ref.Intervals) {
-		return nil
+		return nil, ErrInvalid
 	}
 
 	// Collect candidate chunks according to the scheme described in
@@ -204,7 +209,7 @@ func (i *Index) Chunks(rid, beg, end int) []bgzf.Chunk {
 		sort.Sort(byBeginOffset(chunks))
 	}
 
-	return chunks
+	return chunks, nil
 }
 
 func (i *Index) sort() {
