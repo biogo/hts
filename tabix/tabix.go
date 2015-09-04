@@ -15,7 +15,6 @@ import (
 	"github.com/biogo/hts/bgzf"
 	"github.com/biogo/hts/bgzf/index"
 	"github.com/biogo/hts/internal"
-	"github.com/biogo/hts/sam"
 )
 
 // Index is a tabix index.
@@ -98,8 +97,13 @@ func (i *Index) Add(r Record, c bgzf.Chunk, placed, mapped bool) error {
 }
 
 // Chunks returns a []bgzf.Chunk that corresponds to the given genomic interval.
-func (i *Index) Chunks(r *sam.Reference, beg, end int) []bgzf.Chunk {
-	chunks := i.idx.Chunks(r.ID(), beg, end)
+func (i *Index) Chunks(r Record) []bgzf.Chunk {
+	refName := r.RefName()
+	id, ok := i.nameMap[refName]
+	if !ok {
+		return nil
+	}
+	chunks := i.idx.Chunks(id, r.Start(), r.End())
 	return adjacent(chunks)
 }
 
