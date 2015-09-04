@@ -50,7 +50,7 @@ func NewChunkReader(r *bgzf.Reader, chunks []bgzf.Chunk) (*ChunkReader, error) {
 
 // Read satisfies the io.Reader interface.
 func (r *ChunkReader) Read(p []byte) (int, error) {
-	if len(r.chunks) == 0 && vOffset(r.r.LastChunk().End) >= vOffset(r.chunks[0].End) {
+	if len(r.chunks) == 0 || vOffset(r.r.LastChunk().End) >= vOffset(r.chunks[0].End) {
 		return 0, io.EOF
 	}
 
