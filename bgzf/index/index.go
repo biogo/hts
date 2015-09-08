@@ -59,7 +59,7 @@ func (r *ChunkReader) Read(p []byte) (int, error) {
 	// beyond the end of the block because the bgzf.Reader is in
 	// blocked mode and so will stop there anyway.
 	if r.r.LastChunk().End.File == r.chunks[0].End.File {
-		p = p[:r.chunks[0].End.Block-r.r.LastChunk().End.Block]
+		p = p[:min(len(p), int(r.chunks[0].End.Block-r.r.LastChunk().End.Block))]
 	}
 
 	n, err := r.r.Read(p)
@@ -78,6 +78,13 @@ func (r *ChunkReader) Read(p []byte) (int, error) {
 
 func vOffset(o bgzf.Offset) int64 {
 	return o.File<<16 | int64(o.Block)
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 // Close returns the bgzf.Reader to its original blocking mode and releases it.
