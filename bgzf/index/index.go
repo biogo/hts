@@ -70,8 +70,11 @@ func (r *ChunkReader) Read(p []byte) (int, error) {
 		return n, err
 	}
 	if len(r.chunks) != 0 && vOffset(r.r.LastChunk().End) >= vOffset(r.chunks[0].End) {
-		err = r.r.Seek(r.chunks[0].Begin)
 		r.chunks = r.chunks[1:]
+		if len(r.chunks) == 0 {
+			return n, io.EOF
+		}
+		err = r.r.Seek(r.chunks[0].Begin)
 	}
 	return n, err
 }

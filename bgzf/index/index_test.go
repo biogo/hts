@@ -7,6 +7,7 @@ package index
 import (
 	"bytes"
 	"flag"
+	"io"
 	"testing"
 
 	"github.com/biogo/hts/bgzf"
@@ -87,4 +88,29 @@ func (s *S) TestChunkReader(c *check.C) {
 	n, err := cr.Read(make([]byte, 2))
 	c.Check(n, check.Equals, 2)
 	c.Check(err, check.Equals, nil)
+}
+
+// Test for issue #8 https://github.com/biogo/hts/issues/8
+func (s *S) TestIssue8(c *check.C) {
+	br, err := bgzf.NewReader(bytes.NewReader(conceptualBAMdata), *conc)
+	c.Assert(err, check.Equals, nil)
+	defer br.Close()
+	cr, err := NewChunkReader(br, conceptualChunks[:2])
+	c.Assert(err, check.Equals, nil)
+	defer cr.Close()
+	var last []byte
+	for {
+		p := make([]byte, 1024)
+		n, err := cr.Read(p)
+		if n != 0 {
+			c.Check(p[:n], check.Not(check.DeepEquals), last[:min(n, len(last))])
+		}
+		last = p
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			c.Fatalf("unexpected error: %v", err)
+		}
+	}
 }
