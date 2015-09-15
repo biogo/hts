@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"flag"
 	"io"
+	"strings"
 	"testing"
 
 	"github.com/biogo/hts/bgzf"
@@ -111,6 +112,168 @@ func (s *S) TestIssue8(c *check.C) {
 				break
 			}
 			c.Fatalf("unexpected error: %v", err)
+		}
+	}
+}
+
+// issue10Tests are test cases for https://github.com/biogo/hts/issues/10.
+var issue10Tests = []struct {
+	words     []wordBlocks
+	chunks    []string
+	canSquash bool
+	canTrunc  bool
+}{
+	{
+		// This is semantically identical to the test case given in issue 10.
+		words:     commonWords,
+		chunks:    []string{"<three>", "<five>"},
+		canSquash: true,
+		canTrunc:  false,
+	},
+	{
+		words:     commonWords,
+		chunks:    []string{"<one>", "<two>", "<three>"},
+		canSquash: true,
+		canTrunc:  false,
+	},
+	{
+		words:     commonWords,
+		chunks:    []string{"<two>", "<three>", "<four>", "<five>"},
+		canSquash: true,
+		canTrunc:  true,
+	},
+	{
+		words:     commonWords,
+		chunks:    []string{"<three>", "<four>"},
+		canSquash: true,
+		canTrunc:  true,
+	},
+	{
+		words:     commonWords,
+		chunks:    []string{"<seven>", "<eight>"},
+		canSquash: true,
+		canTrunc:  true,
+	},
+	{
+		words:     commonWords,
+		chunks:    []string{"<zero>", "<one>", "<two>", "<three>", "<four>", "<five>", "<six>", "<seven>", "<eight>"},
+		canSquash: true,
+		canTrunc:  true,
+	},
+	{
+		// This case would never happen with an htslib-like index, but
+		// it is a possible use case and not prohibited, so test it.
+		words:  commonWords,
+		chunks: []string{"<three>", "<zero>", "<five>", "<seven>", "<two>", "<eight>", "<five>"},
+
+		// Not in order.
+		canSquash: false,
+		canTrunc:  false,
+	},
+}
+
+var commonWords = []wordBlocks{
+	// Begin:{File:0 Block:0} End:{File:0 Block:6}
+	// Begin:{File:0 Block:6} End:{File:0 Block:11}
+	{word: "<zero>"}, {word: "<one>", flush: true},
+	// Begin:{File:43 Block:0} End:{File:43 Block:5}
+	// Begin:{File:43 Block:5} End:{File:43 Block:12}
+	// Begin:{File:43 Block:12} End:{File:43 Block:18}
+	{word: "<two>"}, {word: "<three>"}, {word: "<four>", flush: true},
+	// Begin:{File:93 Block:0} End:{File:93 Block:6}
+	// Begin:{File:93 Block:6} End:{File:93 Block:11}
+	{word: "<five>"}, {word: "<six>"}, {word: "<seven>", flush: true},
+	// Begin:{File:142 Block:0} End:{File:142 Block:7}
+	{word: "<eight>"},
+}
+
+type wordBlocks struct {
+	word  string
+	flush bool
+}
+
+type word int
+
+func (w word) RefID() int { return 0 }
+func (w word) Start() int { return int(w) }
+func (w word) End() int   { return int(w + 1) }
+
+func (s *S) TestIssue10(c *check.C) {
+	for _, test := range issue10Tests {
+		var buf bytes.Buffer
+
+		// Write the set of words to a bgzf stream.
+		w := bgzf.NewWriter(&buf, *conc)
+		for _, wb := range test.words {
+			w.Write([]byte(wb.word))
+			if wb.flush {
+				w.Flush()
+			}
+		}
+		w.Close()
+
+		for _, strategy := range []MergeStrategy{nil, adjacent} {
+			if strategy != nil && !test.canSquash {
+				continue
+			}
+			for _, clean := range []bool{false, true} {
+				for _, truncFinal := range []bool{false, true} {
+					if truncFinal && !test.canTrunc {
+						continue
+					}
+					// Build an index into the words.
+					r, err := bgzf.NewReader(bytes.NewReader(buf.Bytes()), *conc)
+					c.Assert(err, check.Equals, nil)
+					idx := make(map[string]bgzf.Chunk)
+					for i, wb := range test.words {
+						p := make([]byte, len(wb.word))
+						n, err := r.Read(p)
+						c.Assert(err, check.Equals, nil)
+						c.Assert(string(p[:n]), check.Equals, wb.word)
+
+						last := r.LastChunk()
+						if !clean {
+							// This simulates the index construction behaviour
+							// that appears to be what is done by htslib. The
+							// behaviour of bgzf is to elide seeks that will not
+							// result in a productive read.
+							if i != 0 && test.words[i-1].flush {
+								last.Begin = idx[test.words[i-1].word].End
+							}
+						}
+						idx[wb.word] = last
+					}
+
+					var chunks []bgzf.Chunk
+					for _, w := range test.chunks {
+						chunks = append(chunks, idx[w])
+					}
+					var want string
+					if truncFinal {
+						want = strings.Join(test.chunks[:len(test.chunks)-1], "")
+						chunks[len(chunks)-2].End = chunks[len(chunks)-1].Begin
+						chunks = chunks[:len(chunks)-1]
+					} else {
+						want = strings.Join(test.chunks, "")
+					}
+
+					if strategy != nil {
+						chunks = strategy(chunks)
+					}
+					cr, err := NewChunkReader(r, chunks)
+					c.Assert(err, check.Equals, nil)
+
+					var got bytes.Buffer
+					io.Copy(&got, cr)
+					gotString := got.String()
+					c.Check(strings.Contains(gotString, want), check.Equals, true,
+						check.Commentf("clean=%t merge=%t trunc=%t chunks=%+v", clean, strategy != nil, truncFinal, chunks),
+					)
+					if gotString != want {
+						c.Logf("read over-run clean=%t merge=%t trunc=%t:\n\tgot: %q\n\twant:%q", clean, strategy != nil, truncFinal, gotString, want)
+					}
+				}
+			}
 		}
 	}
 }

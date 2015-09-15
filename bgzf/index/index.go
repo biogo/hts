@@ -50,7 +50,11 @@ func NewChunkReader(r *bgzf.Reader, chunks []bgzf.Chunk) (*ChunkReader, error) {
 
 // Read satisfies the io.Reader interface.
 func (r *ChunkReader) Read(p []byte) (int, error) {
-	if len(r.chunks) == 0 || vOffset(r.r.LastChunk().End) >= vOffset(r.chunks[0].End) {
+	if len(r.chunks) == 0 {
+		return 0, io.EOF
+	}
+	last := r.r.LastChunk()
+	if vOffset(last.End) >= vOffset(r.chunks[0].End) {
 		return 0, io.EOF
 	}
 
@@ -58,24 +62,42 @@ func (r *ChunkReader) Read(p []byte) (int, error) {
 	// the current chunk. We do not need to consider reading
 	// beyond the end of the block because the bgzf.Reader is in
 	// blocked mode and so will stop there anyway.
-	if r.r.LastChunk().End.File == r.chunks[0].End.File {
-		p = p[:min(len(p), int(r.chunks[0].End.Block-r.r.LastChunk().End.Block))]
+	want := int(r.chunks[0].End.Block)
+	if r.chunks[0].End.Block == 0 && r.chunks[0].End.File > last.End.File {
+		// Special case for when the current end block offset is zero.
+		// We pick an arbitrary length (the maximum progression).
+		// Because we must move past the current bgzf block to get
+		// to the current chunk end this is safe since the bgzf
+		// Reader is in blocked mode.
+		want = len(p)
 	}
-
-	n, err := r.r.Read(p)
+	var cursor int
+	if last.End.File == r.chunks[0].End.File {
+		// Our end is in the same block as the last chunk end
+		// so set the cursor to the chunk block end to prevent
+		// reading past the end of the chunk.
+		cursor = int(last.End.Block)
+	}
+	n, err := r.r.Read(p[:min(len(p), want-cursor)])
 	if err != nil {
 		if n != 0 && err == io.EOF {
 			err = nil
 		}
 		return n, err
 	}
-	if len(r.chunks) != 0 && vOffset(r.r.LastChunk().End) >= vOffset(r.chunks[0].End) {
+
+	// Check whether we are at or past the end of the current
+	// chunk or we have not made progress for reasons other than
+	// zero length p.
+	this := r.r.LastChunk()
+	if (len(p) != 0 && this == last) || vOffset(this.End) >= vOffset(r.chunks[0].End) {
 		r.chunks = r.chunks[1:]
 		if len(r.chunks) == 0 {
 			return n, io.EOF
 		}
 		err = r.r.Seek(r.chunks[0].Begin)
 	}
+
 	return n, err
 }
 
