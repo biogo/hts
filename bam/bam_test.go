@@ -44,6 +44,8 @@ type S struct{}
 
 var _ = check.Suite(&S{})
 
+const maxInt = int(^uint(0) >> 1)
+
 var (
 	file = flag.String("bench.file", "", "file to read for benchmarking")
 	conc = flag.Int("conc", 1, "sets the level of concurrency for compression")
@@ -1258,8 +1260,9 @@ var baiTestData = []struct {
 					Intervals: []bgzf.Offset{{File: 98, Block: 0}},
 				},
 			},
-			Unmapped: uint64ptr(1),
-			IsSorted: true,
+			Unmapped:   uint64ptr(1),
+			IsSorted:   true,
+			LastRecord: maxInt,
 		}},
 		err: nil,
 	},
@@ -1320,8 +1323,9 @@ var baiTestData = []struct {
 					Intervals: []bgzf.Offset{{File: 98, Block: 0}},
 				},
 			},
-			Unmapped: nil,
-			IsSorted: true,
+			Unmapped:   nil,
+			IsSorted:   true,
+			LastRecord: maxInt,
 		}},
 		err: nil,
 	},
@@ -1367,8 +1371,9 @@ var baiTestData = []struct {
 					Intervals: []bgzf.Offset{{File: 98, Block: 0}},
 				},
 			},
-			Unmapped: uint64ptr(1),
-			IsSorted: true,
+			Unmapped:   uint64ptr(1),
+			IsSorted:   true,
+			LastRecord: maxInt,
 		}},
 		err: nil,
 	},
@@ -1411,8 +1416,9 @@ var baiTestData = []struct {
 					Intervals: []bgzf.Offset{{File: 98, Block: 0}},
 				},
 			},
-			Unmapped: nil,
-			IsSorted: true,
+			Unmapped:   nil,
+			IsSorted:   true,
+			LastRecord: maxInt,
 		}},
 		err: nil,
 	},
@@ -1663,8 +1669,9 @@ var baiTestData = []struct {
 				}
 				return idx[:]
 			}(),
-			Unmapped: uint64ptr(932),
-			IsSorted: true,
+			Unmapped:   uint64ptr(932),
+			IsSorted:   true,
+			LastRecord: maxInt,
 		}},
 		err: nil,
 	},

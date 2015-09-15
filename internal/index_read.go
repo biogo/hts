@@ -31,6 +31,15 @@ func ReadIndex(r io.Reader, n int32, typ string) (Index, error) {
 		return idx, err
 	}
 	idx.IsSorted = true
+
+	// Set the index of the last record to max int to
+	// prevent addition of records out of order. This
+	// means that the only way to append to an index is
+	// to re-index and add to that created index.
+	// TODO(kortschak) See if index appending is feasible
+	// and needed.
+	idx.LastRecord = int(^uint(0) >> 1)
+
 	return idx, nil
 }
 
