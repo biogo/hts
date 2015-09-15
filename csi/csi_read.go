@@ -15,7 +15,9 @@ import (
 	"github.com/biogo/hts/bgzf/index"
 )
 
-// ReadFrom reads the CSI index from the given io.Reader.
+// ReadFrom reads the CSI index from the given io.Reader. Note that
+// the csi specification states that the index is stored as BGZF, but
+// ReadFrom does not perform decompression.
 func ReadFrom(r io.Reader) (*Index, error) {
 	var (
 		idx   Index

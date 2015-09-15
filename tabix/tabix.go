@@ -36,7 +36,7 @@ type Index struct {
 }
 
 // New returns a new tabix index.
-func NewTabix() *Index {
+func New() *Index {
 	return &Index{nameMap: make(map[string]int)}
 }
 
@@ -119,8 +119,10 @@ func (i *Index) MergeChunks(s index.MergeStrategy) {
 
 var tbiMagic = [4]byte{'T', 'B', 'I', 0x1}
 
-// ReadTabix reads the tabix index from the given io.Reader.
-func ReadTabix(r io.Reader) (*Index, error) {
+// ReadFrom reads the tabix index from the given io.Reader. Note that
+// the tabix specification states that the index is stored as BGZF, but
+// ReadFrom does not perform decompression.
+func ReadFrom(r io.Reader) (*Index, error) {
 	var (
 		idx   Index
 		magic [4]byte
@@ -213,8 +215,10 @@ func readTabixHeader(r io.Reader, idx *Index) error {
 	return nil
 }
 
-// WriteTabix writes the index to the given io.Writer.
-func WriteTabix(w io.Writer, idx *Index) error {
+// WriteTo writes the index to the given io.Writer. Note that
+// the tabix specification states that the index is stored as BGZF, but
+// WriteTo does not perform compression.
+func WriteTo(w io.Writer, idx *Index) error {
 	err := binary.Write(w, binary.LittleEndian, tbiMagic)
 	if err != nil {
 		return err

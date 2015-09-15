@@ -13,7 +13,9 @@ import (
 	"github.com/biogo/hts/bgzf/index"
 )
 
-// WriteTo writes the CSI index to the given io.Writer.
+// WriteTo writes the CSI index to the given io.Writer. Note that
+// the csi specification states that the index is stored as BGZF, but
+// WriteTo does not perform compression.
 func WriteTo(w io.Writer, idx *Index) error {
 	idx.sort()
 	err := binary.Write(w, binary.LittleEndian, csiMagic)
