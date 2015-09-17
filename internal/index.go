@@ -10,6 +10,7 @@ import (
 	"sort"
 
 	"github.com/biogo/hts/bgzf"
+	"github.com/biogo/hts/bgzf/index"
 )
 
 const (
@@ -66,7 +67,7 @@ type Record interface {
 // Add records the SAM record as having being located at the given chunk.
 func (i *Index) Add(r Record, bin uint32, c bgzf.Chunk, placed, mapped bool) error {
 	if !IsValidIndexPos(r.Start()) || !IsValidIndexPos(r.End()) {
-		return errors.New("bam: attempt to add record outside indexable range")
+		return errors.New("index: attempt to add record outside indexable range")
 	}
 
 	if i.Unmapped == nil {
@@ -79,7 +80,7 @@ func (i *Index) Add(r Record, bin uint32, c bgzf.Chunk, placed, mapped bool) err
 
 	rid := r.RefID()
 	if rid < len(i.Refs)-1 {
-		return errors.New("bam: attempt to add record out of reference ID sort order")
+		return errors.New("index: attempt to add record out of reference ID sort order")
 	}
 	if rid == len(i.Refs) {
 		i.Refs = append(i.Refs, RefIndex{})
@@ -115,13 +116,13 @@ found:
 	// Record interval tile information.
 	biv := r.Start() / TileWidth
 	if r.Start() < i.LastRecord {
-		return errors.New("bam: attempt to add record out of position sort order")
+		return errors.New("index: attempt to add record out of position sort order")
 	}
 	i.LastRecord = r.Start()
 	eiv := r.End() / TileWidth
 	if eiv == len(ref.Intervals) {
 		if eiv > biv {
-			panic("bam: unexpected alignment length")
+			panic("index: unexpected alignment length")
 		}
 		ref.Intervals = append(ref.Intervals, c.Begin)
 	} else if eiv > len(ref.Intervals) {
@@ -131,7 +132,7 @@ found:
 		}
 		for iv, offset := range intvs[biv:eiv] {
 			if !isZero(offset) {
-				panic("bam: unexpected non-zero offset")
+				panic("index: unexpected non-zero offset")
 			}
 			intvs[iv+biv] = c.Begin
 		}
@@ -156,22 +157,17 @@ found:
 	return nil
 }
 
-var (
-	ErrNoReference = errors.New("index: no reference")
-	ErrInvalid     = errors.New("index: invalid interval")
-)
-
 // Chunks returns a []bgzf.Chunk that corresponds to the given genomic interval.
 func (i *Index) Chunks(rid, beg, end int) ([]bgzf.Chunk, error) {
 	if rid < 0 || rid >= len(i.Refs) {
-		return nil, ErrNoReference
+		return nil, index.ErrNoReference
 	}
 	i.sort()
 	ref := i.Refs[rid]
 
 	iv := beg / TileWidth
 	if iv >= len(ref.Intervals) {
-		return nil, ErrInvalid
+		return nil, index.ErrInvalid
 	}
 
 	// Collect candidate chunks according to the scheme described in

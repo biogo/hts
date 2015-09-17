@@ -6,9 +6,15 @@
 package index
 
 import (
+	"errors"
 	"io"
 
 	"github.com/biogo/hts/bgzf"
+)
+
+var (
+	ErrNoReference = errors.New("index: no reference")
+	ErrInvalid     = errors.New("index: invalid interval")
 )
 
 // ReferenceStats holds mapping statistics for a genomic reference.

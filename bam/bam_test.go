@@ -1823,7 +1823,7 @@ var chunkTests = []struct {
 	{
 		beg: 80740352, end: 81788928, // 77m78m - Not in covered region.
 		expect: nil,
-		err:    internal.ErrInvalid,
+		err:    index.ErrInvalid,
 	},
 }
 

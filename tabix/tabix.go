@@ -101,7 +101,7 @@ func (i *Index) Chunks(r Record) ([]bgzf.Chunk, error) {
 	refName := r.RefName()
 	id, ok := i.nameMap[refName]
 	if !ok {
-		return nil, internal.ErrNoReference
+		return nil, index.ErrNoReference
 	}
 	chunks, err := i.idx.Chunks(id, r.Start(), r.End())
 	if err != nil {
