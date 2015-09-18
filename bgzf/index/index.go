@@ -70,12 +70,9 @@ func (r *ChunkReader) Read(p []byte) (int, error) {
 	// blocked mode and so will stop there anyway.
 	want := int(r.chunks[0].End.Block)
 	if r.chunks[0].End.Block == 0 && r.chunks[0].End.File > last.End.File {
-		// Special case for when the current end block offset is zero.
-		// We pick an arbitrary length (the maximum progression).
-		// Because we must move past the current bgzf block to get
-		// to the current chunk end this is safe since the bgzf
-		// Reader is in blocked mode.
-		want = len(p)
+		// Special case for when the current end block offset
+		// is zero.
+		want = r.r.BlockLen()
 	}
 	var cursor int
 	if last.End.File == r.chunks[0].End.File {

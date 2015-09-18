@@ -265,13 +265,9 @@ func (s *S) TestIssue10(c *check.C) {
 
 					var got bytes.Buffer
 					io.Copy(&got, cr)
-					gotString := got.String()
-					c.Check(strings.Contains(gotString, want), check.Equals, true,
+					c.Check(got.String(), check.Equals, want,
 						check.Commentf("clean=%t merge=%t trunc=%t chunks=%+v", clean, strategy != nil, truncFinal, chunks),
 					)
-					if gotString != want {
-						c.Logf("read over-run clean=%t merge=%t trunc=%t:\n\tgot: %q\n\twant:%q", clean, strategy != nil, truncFinal, gotString, want)
-					}
 				}
 			}
 		}

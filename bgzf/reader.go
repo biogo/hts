@@ -487,6 +487,10 @@ func (bg *Reader) Seek(off Offset) error {
 // seek operation.
 func (bg *Reader) LastChunk() Chunk { return bg.lastChunk }
 
+// BlockLen returns the number of bytes remaining to be read from the
+// current BGZF block.
+func (bg *Reader) BlockLen() int { return bg.current.len() }
+
 // Close closes the reader and releases resources.
 func (bg *Reader) Close() error {
 	if bg.control != nil {
@@ -521,9 +525,6 @@ func (bg *Reader) Read(p []byte) (int, error) {
 	for n < len(p) && bg.err == nil {
 		var _n int
 		_n, bg.err = bg.current.Read(p[n:])
-		if _n > 0 {
-			bg.lastChunk.End = bg.current.txOffset()
-		}
 		n += _n
 		if bg.err == io.EOF {
 			if n == len(p) {
@@ -533,6 +534,7 @@ func (bg *Reader) Read(p []byte) (int, error) {
 
 			if bg.Blocked {
 				bg.err = nil
+				bg.lastChunk.End = bg.current.txOffset()
 				return n, io.EOF
 			}
 
@@ -543,6 +545,7 @@ func (bg *Reader) Read(p []byte) (int, error) {
 		}
 	}
 
+	bg.lastChunk.End = bg.current.txOffset()
 	return n, bg.err
 }
 
