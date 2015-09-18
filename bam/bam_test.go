@@ -1789,8 +1789,10 @@ var chunkTests = []struct {
 }{
 	{
 		beg: 65000, end: 71000, // Not in covered region.
-		expect: nil,
-		err:    nil,
+		expect: []bgzf.Chunk{
+			{Begin: bgzf.Offset{File: 101, Block: 0}, End: bgzf.Offset{File: 101, Block: 52}},
+		},
+		err: nil,
 	},
 	{
 		beg: 77594624, end: 80740352, // 73m77m:bin2+bin18 - This is the equivalent to the given example.

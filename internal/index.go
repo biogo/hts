@@ -182,16 +182,21 @@ func (i *Index) Chunks(rid, beg, end int) ([]bgzf.Chunk, error) {
 				// that we only need to check tiles that contain beg. That is
 				// not correct since we may have no alignments at the left end
 				// of the query region.
+				chunkEndOffset := vOffset(chunk.End)
+				haveNonZero := false
 				for j, tile := range ref.Intervals[iv:] {
-					if isZero(tile) {
+					// If we have found a non-zero tile, all subsequent active
+					// tiles must also be non-zero, so skip zero tiles.
+					if haveNonZero && isZero(tile) {
 						continue
 					}
+					haveNonZero = true
 					tbeg := (j + iv) * TileWidth
 					tend := tbeg + TileWidth
 					// We allow adjacent alignment since samtools behaviour here
 					// has always irritated me and it is cheap to discard these
 					// later if they are not wanted.
-					if tend >= beg && tbeg <= end && vOffset(chunk.End) > vOffset(tile) {
+					if tend >= beg && tbeg <= end && chunkEndOffset > vOffset(tile) {
 						chunks = append(chunks, chunk)
 						break
 					}
