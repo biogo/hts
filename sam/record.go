@@ -35,8 +35,8 @@ func NewRecord(name string, ref, mRef *Reference, p, mPos, tLen int, mapQ byte, 
 	if !(validPos(p) && validPos(mPos) && validTmpltLen(tLen) && validLen(len(seq)) && (qual == nil || validLen(len(qual)))) {
 		return nil, errors.New("sam: value out of range")
 	}
-	if len(name) < 1 || len(name) > 255 {
-		return nil, errors.New("sam: name too long")
+	if len(name) == 0 || len(name) > 254 {
+		return nil, errors.New("sam: name absent or too long")
 	}
 	if qual != nil && len(qual) != len(seq) {
 		return nil, errors.New("sam: sequence/quality length mismatch")

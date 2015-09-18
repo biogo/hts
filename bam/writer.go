@@ -74,6 +74,9 @@ func (bw *Writer) writeHeader(h *sam.Header) error {
 
 // Write writes r to the BAM stream.
 func (bw *Writer) Write(r *sam.Record) error {
+	if len(r.Name) == 0 || len(r.Name) > 254 {
+		return errors.New("bam: name absent or too long")
+	}
 	if r.Qual != nil && len(r.Qual) != r.Seq.Length {
 		return errors.New("bam: sequence/quality length mismatch")
 	}
