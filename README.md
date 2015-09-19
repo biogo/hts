@@ -2,6 +2,8 @@
 
 #HTS
 
+[![Build Status](https://travis-ci.org/biogo/hts.svg?branch=master)](https://travis-ci.org/biogo/hts)
+
 ##Installation
 
         $ go get github.com/biogo/hts/...
