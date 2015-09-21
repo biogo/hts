@@ -51,6 +51,12 @@ func (i *Index) Names() []string {
 	return i.refNames
 }
 
+// IDs returns a map of strings to integer IDs. The returned
+// map should not be altered.
+func (i *Index) IDs() map[string]int {
+	return i.nameMap
+}
+
 // ReferenceStats returns the index statistics for the given reference and true
 // if the statistics are valid.
 func (i *Index) ReferenceStats(id int) (stats index.ReferenceStats, ok bool) {
