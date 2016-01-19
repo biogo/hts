@@ -131,6 +131,7 @@ func (bh *Header) Clone() *Header {
 	c := &Header{
 		Version:    bh.Version,
 		SortOrder:  bh.SortOrder,
+		GroupOrder: bh.GroupOrder,
 		Comments:   append([]string(nil), bh.Comments...),
 		refs:       make([]*Reference, len(bh.refs)),
 		rgs:        make([]*ReadGroup, len(bh.rgs)),
