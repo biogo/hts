@@ -94,13 +94,21 @@ type Header struct {
 	Version    string
 	SortOrder  SortOrder
 	GroupOrder GroupOrder
-	Comments   []string
+	otherTags  []tagPair
+
 	refs       []*Reference
 	rgs        []*ReadGroup
 	progs      []*Program
 	seenRefs   set
 	seenGroups set
 	seenProgs  set
+
+	Comments []string
+}
+
+type tagPair struct {
+	tag   Tag
+	value string
 }
 
 // NewHeader returns a new Header based on the given text and list
@@ -126,12 +134,85 @@ func NewHeader(text []byte, r []*Reference) (*Header, error) {
 	return bh, nil
 }
 
+// Get returns the string representation of the value associated with the
+// given header line tag. If the tag is not present the empty string is returned.
+func (bh *Header) Get(t Tag) string {
+	switch t {
+	case versionTag:
+		return bh.Version
+	case sortOrderTag:
+		return bh.SortOrder.String()
+	case groupOrderTag:
+		return bh.GroupOrder.String()
+	}
+	for _, tp := range bh.otherTags {
+		if t == tp.tag {
+			return tp.value
+		}
+	}
+	return ""
+}
+
+// Set sets the value associated with the given header line tag to the specified
+// value. If value is the empty string and the tag may be absent, it is deleted
+// or set to a meaningful default (SO:UnknownOrder and GO:GroupUnspecified),
+// otherwise an error is returned.
+func (bh *Header) Set(t Tag, value string) error {
+	switch t {
+	case versionTag:
+		if value == "" {
+			return errBadHeader
+		}
+		bh.Version = value
+	case sortOrderTag:
+		if value == "" {
+			bh.SortOrder = UnknownOrder
+			return nil
+		}
+		sortOrder, ok := sortOrderMap[value]
+		if !ok {
+			return errBadHeader
+		}
+		bh.SortOrder = sortOrder
+	case groupOrderTag:
+		if value == "" {
+			bh.GroupOrder = GroupUnspecified
+			return nil
+		}
+		groupOrder, ok := groupOrderMap[value]
+		if !ok {
+			return errBadHeader
+		}
+		bh.GroupOrder = groupOrder
+	default:
+		if value == "" {
+			for i, tp := range bh.otherTags {
+				if t == tp.tag {
+					copy(bh.otherTags[i:], bh.otherTags[i+1:])
+					bh.otherTags = bh.otherTags[:len(bh.otherTags)-1]
+					return nil
+				}
+			}
+		} else {
+			for i, tp := range bh.otherTags {
+				if t == tp.tag {
+					bh.otherTags[i].value = value
+					return nil
+				}
+			}
+			bh.otherTags = append(bh.otherTags, tagPair{tag: t, value: value})
+		}
+	}
+	return nil
+}
+
 // Clone returns a deep copy of the receiver.
 func (bh *Header) Clone() *Header {
 	c := &Header{
 		Version:    bh.Version,
 		SortOrder:  bh.SortOrder,
 		GroupOrder: bh.GroupOrder,
+		otherTags:  append([]tagPair(nil), bh.otherTags...),
 		Comments:   append([]string(nil), bh.Comments...),
 		refs:       make([]*Reference, len(bh.refs)),
 		rgs:        make([]*ReadGroup, len(bh.rgs)),
@@ -174,10 +255,14 @@ func (bh *Header) MarshalText() ([]byte, error) {
 	var buf bytes.Buffer
 	if bh.Version != "" {
 		if bh.GroupOrder == GroupUnspecified {
-			fmt.Fprintf(&buf, "@HD\tVN:%s\tSO:%s\n", bh.Version, bh.SortOrder)
+			fmt.Fprintf(&buf, "@HD\tVN:%s\tSO:%s", bh.Version, bh.SortOrder)
 		} else {
-			fmt.Fprintf(&buf, "@HD\tVN:%s\tSO:%s\tGO:%s\n", bh.Version, bh.SortOrder, bh.GroupOrder)
+			fmt.Fprintf(&buf, "@HD\tVN:%s\tSO:%s\tGO:%s", bh.Version, bh.SortOrder, bh.GroupOrder)
 		}
+		for _, tp := range bh.otherTags {
+			fmt.Fprintf(&buf, "\t%s:%s", tp.tag, tp.value)
+		}
+		buf.WriteByte('\n')
 	}
 	for _, r := range bh.refs {
 		fmt.Fprintf(&buf, "%s\n", r)
@@ -312,9 +397,9 @@ func (bh *Header) Progs() []*Program {
 func (bh *Header) AddReference(r *Reference) error {
 	if dupID, dup := bh.seenRefs[r.name]; dup {
 		er := bh.refs[dupID]
-		if *er == *r {
+		if equalRefs(er, r) {
 			return nil
-		} else if tr := (Reference{id: er.id, name: er.name, lRef: er.lRef}); *r != tr {
+		} else if !equalRefs(r, &Reference{id: er.id, name: er.name, lRef: er.lRef}) {
 			return errDupReference
 		}
 		if r.md5 == "" {

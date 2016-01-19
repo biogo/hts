@@ -633,3 +633,63 @@ func (s *S) TestAux(c *check.C) {
 		c.Check(recs, check.DeepEquals, test.want)
 	}
 }
+
+func (s *S) TestIssue26(c *check.C) {
+	fuTag := NewTag("fu")
+
+	var issue26 = struct {
+		data   []byte
+		header Header
+		ref    Reference
+		rg     ReadGroup
+		prog   Program
+	}{
+		// This is a Pacific Biosciences header line. The SO is invalid.
+		data: []byte(`@HD	VN:1.5	SO:UNKNOWN	pb:3.0b7
+@SQ	SN:ref	LN:45	fu:bar
+@RG	ID:group	fu:bar
+@PG	ID:program	fu:bar
+`),
+		header: Header{
+			Version:    "1.5",
+			SortOrder:  UnknownOrder,
+			GroupOrder: GroupUnspecified,
+		},
+		ref: Reference{
+			name:      "ref",
+			lRef:      45,
+			otherTags: []tagPair{{tag: fuTag, value: "bar"}},
+		},
+		rg: ReadGroup{
+			name:      "group",
+			otherTags: []tagPair{{tag: fuTag, value: "bar"}},
+		},
+		prog: Program{
+			uid:       "program",
+			otherTags: []tagPair{{tag: fuTag, value: "bar"}},
+		},
+	}
+
+	sr, err := NewReader(bytes.NewReader(issue26.data))
+	c.Assert(err, check.Equals, nil)
+	h := sr.Header()
+	c.Check(h.Version, check.Equals, issue26.header.Version)
+	c.Check(h.SortOrder, check.Equals, issue26.header.SortOrder)
+	c.Check(h.GroupOrder, check.Equals, issue26.header.GroupOrder)
+	c.Assert(len(h.Refs()), check.Equals, 1)
+	ref := h.Refs()[0]
+	c.Check(equalRefs(ref, &issue26.ref), check.Equals, true)
+	c.Check(ref.Get(refNameTag), check.Equals, "ref")
+	c.Check(ref.Get(refLengthTag), check.Equals, "45")
+	c.Check(ref.Get(fuTag), check.Equals, "bar")
+	c.Assert(len(h.RGs()), check.Equals, 1)
+	rg := h.RGs()[0]
+	c.Check(*rg, check.DeepEquals, issue26.rg)
+	c.Check(rg.Get(idTag), check.Equals, "group")
+	c.Check(rg.Get(fuTag), check.Equals, "bar")
+	c.Assert(len(h.Progs()), check.Equals, 1)
+	prog := h.Progs()[0]
+	c.Check(*prog, check.DeepEquals, issue26.prog)
+	c.Check(prog.Get(idTag), check.Equals, "program")
+	c.Check(prog.Get(fuTag), check.Equals, "bar")
+}

@@ -121,16 +121,16 @@ func (bh *Header) UnmarshalText(text []byte) error {
 		}
 		copy(t[:], l[1:3])
 		var err error
-		switch {
-		case t == headerTag:
+		switch t {
+		case headerTag:
 			err = headerLine(l, bh)
-		case t == refDictTag:
+		case refDictTag:
 			err = referenceLine(l, bh)
-		case t == readGroupTag:
+		case readGroupTag:
 			err = readGroupLine(l, bh)
-		case t == programTag:
+		case programTag:
 			err = programLine(l, bh)
-		case t == commentTag:
+		case commentTag:
 			err = commentLine(l, bh)
 		default:
 			return errBadHeader
@@ -156,24 +156,24 @@ func headerLine(l []byte, bh *Header) error {
 		}
 		copy(t[:], f[:2])
 		fs := string(f[3:])
-		switch {
-		case t == versionTag:
+		switch t {
+		case versionTag:
 			if bh.Version != "" {
 				return errBadHeader
 			}
 			bh.Version = fs
-		case t == sortOrderTag:
+		case sortOrderTag:
 			if bh.SortOrder != UnknownOrder {
 				return errBadHeader
 			}
 			bh.SortOrder = sortOrderMap[fs]
-		case t == groupOrderTag:
+		case groupOrderTag:
 			if bh.GroupOrder != GroupUnspecified {
 				return errBadHeader
 			}
 			bh.GroupOrder = groupOrderMap[fs]
 		default:
-			return errBadHeader
+			bh.otherTags = append(bh.otherTags, tagPair{tag: t, value: fs})
 		}
 	}
 
@@ -209,12 +209,12 @@ func referenceLine(l []byte, bh *Header) error {
 		}
 		seen[t] = struct{}{}
 		fs := string(f[3:])
-		switch {
-		case t == refNameTag:
+		switch t {
+		case refNameTag:
 			dupID, dup = bh.seenRefs[fs]
 			rf.name = fs
 			nok = true
-		case t == refLengthTag:
+		case refLengthTag:
 			l, err := strconv.Atoi(fs)
 			if err != nil {
 				return errBadHeader
@@ -224,9 +224,9 @@ func referenceLine(l []byte, bh *Header) error {
 			}
 			rf.lRef = int32(l)
 			lok = true
-		case t == assemblyIDTag:
+		case assemblyIDTag:
 			rf.assemID = fs
-		case t == md5Tag:
+		case md5Tag:
 			hb := [16]byte{}
 			n, err := hex.Decode(hb[:], f[3:])
 			if err != nil {
@@ -236,9 +236,9 @@ func referenceLine(l []byte, bh *Header) error {
 				return errBadHeader
 			}
 			rf.md5 = string(hb[:])
-		case t == speciesTag:
+		case speciesTag:
 			rf.species = fs
-		case t == uriTag:
+		case uriTag:
 			var err error
 			rf.uri, err = url.Parse(fs)
 			if err != nil {
@@ -248,14 +248,14 @@ func referenceLine(l []byte, bh *Header) error {
 				rf.uri.Scheme = "file"
 			}
 		default:
-			return errBadHeader
+			rf.otherTags = append(rf.otherTags, tagPair{tag: t, value: fs})
 		}
 	}
 
 	if dup {
-		if er := bh.refs[dupID]; *er == *rf {
+		if er := bh.refs[dupID]; equalRefs(er, rf) {
 			return nil
-		} else if tr := (Reference{id: er.id, name: er.name, lRef: er.lRef}); *er != tr {
+		} else if !equalRefs(er, &Reference{id: er.id, name: er.name, lRef: er.lRef}) {
 			return errDupReference
 		}
 		bh.refs[dupID] = rf
@@ -310,18 +310,18 @@ L:
 		}
 		seen[t] = struct{}{}
 		fs := string(f[3:])
-		switch {
-		case t == idTag:
+		switch t {
+		case idTag:
 			if _, ok := bh.seenRefs[fs]; ok {
 				return errDupReadGroup
 			}
 			rg.name = fs
 			idok = true
-		case t == centerTag:
+		case centerTag:
 			rg.center = fs
-		case t == descriptionTag:
+		case descriptionTag:
 			rg.description = fs
-		case t == dateTag:
+		case dateTag:
 			var err error
 			for _, tf := range iso8601 {
 				rg.date, err = time.ParseInLocation(tf, fs, nil)
@@ -330,15 +330,15 @@ L:
 				}
 			}
 			return err
-		case t == flowOrderTag:
+		case flowOrderTag:
 			rg.flowOrder = fs
-		case t == keySequenceTag:
+		case keySequenceTag:
 			rg.keySeq = fs
-		case t == libraryTag:
+		case libraryTag:
 			rg.library = fs
-		case t == programTag:
+		case programTag:
 			rg.program = fs
-		case t == insertSizeTag:
+		case insertSizeTag:
 			i, err := strconv.Atoi(fs)
 			if err != nil {
 				return err
@@ -347,14 +347,14 @@ L:
 				return errBadLen
 			}
 			rg.insertSize = i
-		case t == platformTag:
+		case platformTag:
 			rg.platform = fs
-		case t == platformUnitTag:
+		case platformUnitTag:
 			rg.platformUnit = fs
-		case t == sampleTag:
+		case sampleTag:
 			rg.sample = fs
 		default:
-			return errBadHeader
+			rg.otherTags = append(rg.otherTags, tagPair{tag: t, value: fs})
 		}
 	}
 
@@ -392,23 +392,23 @@ func programLine(l []byte, bh *Header) error {
 		}
 		seen[t] = struct{}{}
 		fs := string(f[3:])
-		switch {
-		case t == idTag:
+		switch t {
+		case idTag:
 			if _, ok := bh.seenProgs[fs]; ok {
 				return errDupProgram
 			}
 			p.uid = fs
 			idok = true
-		case t == programNameTag:
+		case programNameTag:
 			p.name = fs
-		case t == commandLineTag:
+		case commandLineTag:
 			p.command = fs
-		case t == previousProgTag:
+		case previousProgTag:
 			p.previous = fs
-		case t == versionTag:
+		case versionTag:
 			p.version = fs
 		default:
-			return errBadHeader
+			p.otherTags = append(p.otherTags, tagPair{tag: t, value: fs})
 		}
 	}
 

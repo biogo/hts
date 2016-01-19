@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 )
 
@@ -26,6 +27,7 @@ type ReadGroup struct {
 	platform     string
 	platformUnit string
 	sample       string
+	otherTags    []tagPair
 }
 
 // NewReadGroup returns a ReadGroup with the given name, center, description,
@@ -74,6 +76,8 @@ func (r *ReadGroup) Clone() *ReadGroup {
 		return nil
 	}
 	cr := *r
+	cr.otherTags = make([]tagPair, len(cr.otherTags))
+	copy(cr.otherTags, r.otherTags)
 	cr.id = -1
 	return &cr
 }
@@ -86,6 +90,124 @@ func (r *ReadGroup) PlatformUnit() string { return r.platformUnit }
 
 // Time returns the time the read group was produced.
 func (r *ReadGroup) Time() time.Time { return r.date }
+
+// Get returns the string representation of the value associated with the
+// given read group line tag. If the tag is not present the empty string is returned.
+func (r *ReadGroup) Get(t Tag) string {
+	switch t {
+	case idTag:
+		return r.Name()
+	case centerTag:
+		return r.center
+	case descriptionTag:
+		return r.description
+	case dateTag:
+		return r.date.Format(iso8601TimeDateN)
+	case flowOrderTag:
+		if r.flowOrder == "" {
+			return "*"
+		}
+		return r.flowOrder
+	case keySequenceTag:
+		return r.keySeq
+	case libraryTag:
+		return r.library
+	case programTag:
+		return r.program
+	case insertSizeTag:
+		return fmt.Sprint(r.insertSize)
+	case platformTag:
+		return r.platform
+	case platformUnitTag:
+		return r.platformUnit
+	case sampleTag:
+		return r.sample
+	}
+	for _, tp := range r.otherTags {
+		if t == tp.tag {
+			return tp.value
+		}
+	}
+	return ""
+}
+
+// Set sets the value associated with the given read group line tag to the specified
+// value. If value is the empty string and the tag may be absent, it is deleted.
+func (r *ReadGroup) Set(t Tag, value string) error {
+	switch t {
+	case idTag:
+		r.name = value
+	case centerTag:
+		r.center = value
+	case descriptionTag:
+		r.description = value
+	case dateTag:
+		if value == "" {
+			r.date = time.Time{}
+			return nil
+		}
+		var err error
+		for _, tf := range iso8601 {
+			var date time.Time
+			date, err = time.ParseInLocation(tf, value, nil)
+			if err == nil {
+				r.date = date
+				break
+			}
+		}
+		return err
+	case flowOrderTag:
+		if value == "" || value == "*" {
+			r.flowOrder = ""
+			return nil
+		}
+		r.flowOrder = value
+	case keySequenceTag:
+		r.keySeq = value
+	case libraryTag:
+		r.library = value
+	case programTag:
+		r.program = value
+	case insertSizeTag:
+		if value == "" {
+			r.insertSize = 0
+			return nil
+		}
+		i, err := strconv.Atoi(value)
+		if err != nil {
+			return err
+		}
+		if !validInt32(i) {
+			return errBadLen
+		}
+		r.insertSize = i
+	case platformTag:
+		r.platform = value
+	case platformUnitTag:
+		r.platformUnit = value
+	case sampleTag:
+		r.sample = value
+	default:
+		if value == "" {
+			for i, tp := range r.otherTags {
+				if t == tp.tag {
+					copy(r.otherTags[i:], r.otherTags[i+1:])
+					r.otherTags = r.otherTags[:len(r.otherTags)-1]
+					return nil
+				}
+			}
+		} else {
+			for i, tp := range r.otherTags {
+				if t == tp.tag {
+					r.otherTags[i].value = value
+					return nil
+				}
+			}
+			r.otherTags = append(r.otherTags, tagPair{tag: t, value: value})
+		}
+	}
+	return nil
+}
 
 // String returns a string representation of the read group according to the
 // SAM specification section 1.3,
@@ -124,6 +246,9 @@ func (r *ReadGroup) String() string {
 	}
 	if r.sample != "" {
 		fmt.Fprintf(&buf, "\tSM:%s", r.sample)
+	}
+	for _, tp := range r.otherTags {
+		fmt.Fprintf(&buf, "\t%s:%s", tp.tag, tp.value)
 	}
 	return buf.String()
 }
