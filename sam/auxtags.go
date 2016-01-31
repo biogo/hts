@@ -177,7 +177,7 @@ func ParseAux(text []byte) (Aux, error) {
 		if err != nil {
 			return nil, fmt.Errorf("sam: invalid aux tag field: %v", err)
 		}
-		value = f
+		value = float32(f)
 	case 'Z':
 		value = Text(tf[2])
 	case 'H':
