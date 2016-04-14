@@ -27,7 +27,8 @@ type Reader struct {
 
 // NewReader returns a new Reader using the given io.Reader
 // and setting the read concurrency to rd. If rd is zero
-// concurrency is set to GOMAXPROCS.
+// concurrency is set to GOMAXPROCS. The returned Reader
+// should be closed after use to avoid leaking resources.
 func NewReader(r io.Reader, rd int) (*Reader, error) {
 	bg, err := bgzf.NewReader(r, rd)
 	if err != nil {

@@ -356,7 +356,8 @@ type Reader struct {
 // NewReader returns a new BGZF reader.
 //
 // The number of concurrent read decompressors is specified by rd.
-// If rd is 0, GOMAXPROCS concurrent will be created.
+// If rd is 0, GOMAXPROCS concurrent will be created. The returned
+// Reader should be closed after use to avoid leaking resources.
 func NewReader(r io.Reader, rd int) (*Reader, error) {
 	if rd == 0 {
 		rd = runtime.GOMAXPROCS(0)
