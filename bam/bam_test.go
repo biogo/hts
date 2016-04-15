@@ -63,32 +63,35 @@ func (s *S) TestRead(c *check.C) {
 			lines:  1000,
 		},
 	} {
-		br, err := NewReader(bytes.NewBuffer(t.in), *conc)
-		c.Assert(err, check.Equals, nil)
-
-		c.Check(br.Header().Version, check.Equals, t.header.Version)
-		c.Check(br.Header().SortOrder, check.Equals, t.header.SortOrder)
-		c.Check(br.Header().GroupOrder, check.Equals, t.header.GroupOrder)
-		c.Check(br.Header().Comments, check.DeepEquals, t.header.Comments)
-		c.Check(br.Header().Refs(), check.DeepEquals, t.header.Refs())
-		c.Check(br.Header().RGs(), check.DeepEquals, t.header.RGs())
-		c.Check(br.Header().Progs(), check.DeepEquals, t.header.Progs())
-
-		var lines int
-		for {
-			_, err := br.Read()
-			if err != nil {
-				c.Assert(err, check.Equals, io.EOF)
-				break
-			}
-			lines++
-		}
-		c.Check(lines, check.Equals, t.lines)
-		if ok := reflect.DeepEqual(br.Header(), t.header) && lines == t.lines; *bam && !ok || *allbam {
-			bf, err := os.Create(fmt.Sprintf("read-%d-%s.bam", i, failure(!ok)))
+		for omit := None; omit <= AllVariableLengthData; omit++ {
+			br, err := NewReader(bytes.NewBuffer(t.in), *conc)
 			c.Assert(err, check.Equals, nil)
-			bf.Write(t.in)
-			bf.Close()
+
+			c.Check(br.Header().Version, check.Equals, t.header.Version)
+			c.Check(br.Header().SortOrder, check.Equals, t.header.SortOrder)
+			c.Check(br.Header().GroupOrder, check.Equals, t.header.GroupOrder)
+			c.Check(br.Header().Comments, check.DeepEquals, t.header.Comments)
+			c.Check(br.Header().Refs(), check.DeepEquals, t.header.Refs())
+			c.Check(br.Header().RGs(), check.DeepEquals, t.header.RGs())
+			c.Check(br.Header().Progs(), check.DeepEquals, t.header.Progs())
+
+			var lines int
+			for {
+				_, err := br.Read()
+				if err != nil {
+					c.Assert(err, check.Equals, io.EOF)
+					break
+				}
+				lines++
+			}
+			c.Check(lines, check.Equals, t.lines,
+				check.Commentf("got:%d expected:%d when omit=%d", lines, t.lines, omit))
+			if ok := reflect.DeepEqual(br.Header(), t.header) && lines == t.lines; *bam && !ok || *allbam {
+				bf, err := os.Create(fmt.Sprintf("read-%d-%s.bam", i, failure(!ok)))
+				c.Assert(err, check.Equals, nil)
+				bf.Write(t.in)
+				bf.Close()
+			}
 		}
 	}
 }
@@ -179,6 +182,60 @@ func BenchmarkRead(b *testing.B) {
 	}
 	b.StartTimer()
 
+	for i := 0; i < b.N; i++ {
+		for {
+			_, err := br.Read()
+			if err != nil {
+				break
+			}
+		}
+	}
+	f.Close()
+}
+
+func BenchmarkReadCoreAndSeq(b *testing.B) {
+	if *file == "" {
+		b.Skip("no file specified")
+	}
+	b.StopTimer()
+	f, err := os.Open(*file)
+	if err != nil {
+		b.Fatalf("Open failed: %v", err)
+	}
+	br, err := NewReader(f, *conc)
+	if err != nil {
+		b.Fatalf("NewReader failed: %v", err)
+	}
+	b.StartTimer()
+
+	br.Omit(AuxTags)
+	for i := 0; i < b.N; i++ {
+		for {
+			_, err := br.Read()
+			if err != nil {
+				break
+			}
+		}
+	}
+	f.Close()
+}
+
+func BenchmarkReadCoreOnly(b *testing.B) {
+	if *file == "" {
+		b.Skip("no file specified")
+	}
+	b.StopTimer()
+	f, err := os.Open(*file)
+	if err != nil {
+		b.Fatalf("Open failed: %v", err)
+	}
+	br, err := NewReader(f, *conc)
+	if err != nil {
+		b.Fatalf("NewReader failed: %v", err)
+	}
+	b.StartTimer()
+
+	br.Omit(AllVariableLengthData)
 	for i := 0; i < b.N; i++ {
 		for {
 			_, err := br.Read()

@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"unsafe"
 
 	"github.com/biogo/hts/bgzf"
@@ -21,6 +22,11 @@ type Reader struct {
 	r *bgzf.Reader
 	h *sam.Header
 	c *bgzf.Chunk
+
+	// omit specifies how much of the
+	// record should be omitted during
+	// a read of the BAM input.
+	omit int
 
 	lastChunk bgzf.Chunk
 }
@@ -78,7 +84,26 @@ func vOffset(o bgzf.Offset) int64 {
 	return o.File<<16 | int64(o.Block)
 }
 
-// Read returns the next sam.Record in the BAM stream.
+// Omit specifies what portions of the Record to omit reading.
+// When o is None, a full sam.Record is returned by Read, when o
+// is AuxTags the auxiliary tag data is omitted and when o is
+// AllVariableLengthData, sequence, quality and auxiliary data
+// is omitted.
+func (br *Reader) Omit(o int) {
+	br.omit = o
+}
+
+// None, AuxTags and AllVariableLengthData are values taken
+// by the Reader Omit method.
+const (
+	None                  = iota // Omit no field data from the record.
+	AuxTags                      // Omit auxiliary tag data.
+	AllVariableLengthData        // Omit sequence, quality and auxiliary data.
+)
+
+// Read returns the next sam.Record in the BAM stream. The sam.Record
+// returned will not contain the sequence, quality or auxiliary tag
+// data if CoreOnly(true) has been called.
 func (br *Reader) Read() (*sam.Record, error) {
 	if br.c != nil && vOffset(br.r.LastChunk().End) >= vOffset(br.c.End) {
 		return nil, io.EOF
@@ -127,7 +152,12 @@ func (br *Reader) Read() (*sam.Record, error) {
 		return nil, r.err
 	}
 
-	seq := make(doublets, (lSeq+1)>>1)
+	var seq doublets
+	var auxTags []byte
+	if br.omit >= 2 {
+		goto done
+	}
+	seq = make(doublets, (lSeq+1)>>1)
 	if nf, _ := r.Read(seq.Bytes()); nf != int((lSeq+1)>>1) {
 		return nil, errors.New("bam: truncated sequence")
 	}
@@ -138,10 +168,13 @@ func (br *Reader) Read() (*sam.Record, error) {
 		return nil, errors.New("bam: truncated quality")
 	}
 
-	auxTags := make([]byte, blockSize-r.n)
+	if br.omit >= 1 {
+		goto done
+	}
+	auxTags = make([]byte, blockSize-r.n)
 	r.Read(auxTags)
 	if r.n != blockSize {
-		return nil, errors.New("bam: truncated auxilliary data")
+		return nil, errors.New("bam: truncated auxiliary data")
 	}
 	rec.AuxFields = parseAux(auxTags)
 
@@ -149,6 +182,17 @@ func (br *Reader) Read() (*sam.Record, error) {
 		return nil, r.err
 	}
 
+done:
+	if br.omit > 0 {
+		// Discard unused record data.
+		_, err := io.CopyN(ioutil.Discard, &r, int64(blockSize-r.n))
+		if err != nil {
+			return nil, errors.New("bam: truncated record")
+		}
+		if r.err != nil {
+			return nil, r.err
+		}
+	}
 	refs := int32(len(br.h.Refs()))
 	if refID != -1 {
 		if refID < -1 || refID >= refs {
