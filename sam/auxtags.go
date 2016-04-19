@@ -24,7 +24,7 @@ type Hex []byte
 // Text is a byte slice represented as a string in an Aux tag.
 type Text []byte
 
-// An Aux represents an auxilliary data field from a SAM alignment record.
+// An Aux represents an auxiliary data field from a SAM alignment record.
 type Aux []byte
 
 // NewAux returns a new Aux with the given tag, type and value. Acceptable value
@@ -330,7 +330,7 @@ func (sa samAux) String() string {
 	return fmt.Sprintf("%s:%c:%v", []byte(a[:2]), a.Kind(), a.Value())
 }
 
-// A Tag represents an auxilliary tag label.
+// A Tag represents an auxiliary tag label.
 type Tag [2]byte
 
 var (
@@ -379,15 +379,15 @@ func (t Tag) String() string { return string(t[:]) }
 // Tag returns the Tag representation of the Aux tag ID.
 func (a Aux) Tag() Tag { var t Tag; copy(t[:], a[:2]); return t }
 
-// Type returns a byte corresponding to the type of the auxilliary tag.
+// Type returns a byte corresponding to the type of the auxiliary tag.
 // Returned values are in {'A', 'c', 'C', 's', 'S', 'i', 'I', 'f', 'Z', 'H', 'B'}.
 func (a Aux) Type() byte { return a[2] }
 
-// Kind returns a byte corresponding to the kind of the auxilliary tag.
+// Kind returns a byte corresponding to the kind of the auxiliary tag.
 // Returned values are in {'A', 'i', 'f', 'Z', 'H', 'B'}.
 func (a Aux) Kind() byte { return auxKind[a[2]] }
 
-// Value returns v containing the value of the auxilliary tag.
+// Value returns v containing the value of the auxiliary tag.
 func (a Aux) Value() interface{} {
 	switch t := a.Type(); t {
 	case 'A':
