@@ -201,6 +201,10 @@ done:
 		rec.Ref = br.h.Refs()[refID]
 	}
 	if nextRefID != -1 {
+		if refID == nextRefID {
+			rec.MateRef = rec.Ref
+			return &rec, nil
+		}
 		if nextRefID < -1 || nextRefID >= refs {
 			return nil, errors.New("bam: mate reference id out of range")
 		}
