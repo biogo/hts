@@ -263,7 +263,11 @@ type Iterator struct {
 // NewIterator returns a Iterator to read from r, limiting the reads to the provided
 // chunks.
 //
-//  i, err := NewIterator(r, bai.Chunks(ref, beg, end))
+//  chunks, err := idx.Chunks(ref, beg, end)
+//  if err != nil {
+//  	return err
+//  }
+//  i, err := NewIterator(r, chunks)
 //  if err != nil {
 //  	return err
 //  }
