@@ -312,7 +312,7 @@ L:
 		fs := string(f[3:])
 		switch t {
 		case idTag:
-			if _, ok := bh.seenRefs[fs]; ok {
+			if _, ok := bh.seenGroups[fs]; ok {
 				return errDupReadGroup
 			}
 			rg.name = fs
