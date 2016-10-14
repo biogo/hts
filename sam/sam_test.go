@@ -310,6 +310,20 @@ var endTests = []struct {
 	{
 		cigar: Cigar{
 			NewCigarOp(CigarMatch, 3),
+			NewCigarOp(CigarSkipped, 10),
+		},
+		end: 13,
+	},
+	{
+		cigar: Cigar{
+			NewCigarOp(CigarSkipped, 10),
+			NewCigarOp(CigarMatch, 3),
+		},
+		end: 13,
+	},
+	{
+		cigar: Cigar{
+			NewCigarOp(CigarMatch, 3),
 			NewCigarOp(CigarSoftClipped, 10),
 			NewCigarOp(CigarHardClipped, 10),
 		},

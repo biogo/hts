@@ -152,14 +152,10 @@ func max(a, b int) int {
 // is false.
 func (r *Record) End() int {
 	pos := r.Pos
-	end := r.Pos
-	var con Consume
+	end := pos
 	for _, co := range r.Cigar {
-		con = co.Type().Consumes()
-		pos += co.Len() * con.Reference
-		if con.Query != 0 {
-			end = max(end, pos)
-		}
+		pos += co.Len() * co.Type().Consumes().Reference
+		end = max(end, pos)
 	}
 	return end
 }
