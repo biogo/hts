@@ -52,6 +52,19 @@ func (c Cigar) String() string {
 	return b.String()
 }
 
+// Lengths returns the number of reference and read bases described by the Cigar.
+func (c Cigar) Lengths() (ref, read int) {
+	var con Consume
+	for _, co := range c {
+		con = co.Type().Consumes()
+		if co.Type() != CigarBack {
+			ref += co.Len() * con.Reference
+		}
+		read += co.Len() * con.Query
+	}
+	return ref, read
+}
+
 // CigarOp is a single CIGAR operation including the operation type and the
 // length of the operation.
 type CigarOp uint32
