@@ -719,3 +719,21 @@ func (s *S) TestLengths(c *check.C) {
 		c.Check(read, check.Equals, ct.read)
 	}
 }
+
+func (s *S) TestIssue32(c *check.C) {
+	sam := []byte(`@HD	VN:1.5	SO:coordinate
+@SQ	SN:name	LN:1
+@RG	ID:name
+@PG	ID:name
+`)
+
+	r, err := NewReader(bytes.NewReader(sam))
+	c.Check(err, check.Equals, nil)
+	h := r.Header()
+	c.Assert(len(h.Refs()), check.Equals, 1)
+	c.Check(h.Refs()[0].Name(), check.Equals, "name")
+	c.Assert(len(h.RGs()), check.Equals, 1)
+	c.Check(h.RGs()[0].Name(), check.Equals, "name")
+	c.Assert(len(h.Progs()), check.Equals, 1)
+	c.Check(h.Progs()[0].UID(), check.Equals, "name")
+}
