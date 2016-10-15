@@ -697,6 +697,29 @@ func (s *S) TestIssue26(c *check.C) {
 	c.Check(prog.Get(fuTag), check.Equals, "bar")
 }
 
+var cigTests = []struct {
+	cig  []byte
+	ref  int
+	read int
+}{
+	{[]byte("151M"), 151, 151},
+	{[]byte("10S10M"), 10, 20},
+	{[]byte("11H11M"), 11, 11},
+	{[]byte("11H1D11M"), 12, 11},
+	{[]byte("5M21N5M"), 31, 10},
+	{[]byte("21N"), 21, 0},
+}
+
+func (s *S) TestLengths(c *check.C) {
+	for _, ct := range cigTests {
+		cig, err := ParseCigar(ct.cig)
+		c.Check(err, check.IsNil)
+		ref, read := cig.Lengths()
+		c.Check(ref, check.Equals, ct.ref)
+		c.Check(read, check.Equals, ct.read)
+	}
+}
+
 func (s *S) TestIssue32(c *check.C) {
 	sam := []byte(`@HD	VN:1.5	SO:coordinate
 @SQ	SN:name	LN:1
