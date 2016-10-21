@@ -461,6 +461,10 @@ func (a Aux) Value() interface{} {
 	}
 }
 
+func (a Aux) matches(tag []byte) bool {
+	return a[1] == tag[1] && a[0] == tag[0]
+}
+
 // AuxFields is a set of auxiliary fields.
 type AuxFields []Aux
 
