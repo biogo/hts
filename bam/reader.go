@@ -178,7 +178,7 @@ func (br *Reader) Read() (*sam.Record, error) {
 	}
 	rec.AuxFields = parseAux(auxTags)
 
-	if r.err != nil {
+	if r.err != nil && r.err != io.EOF {
 		return nil, r.err
 	}
 
@@ -239,6 +239,8 @@ func (br *Reader) SetChunk(c *bgzf.Chunk) error {
 }
 
 // LastChunk returns the bgzf.Chunk corresponding to the last Read operation.
+// The bgzf.Chunk returned is only valid if the last Read operation returned a
+// nil error.
 func (br *Reader) LastChunk() bgzf.Chunk {
 	return br.lastChunk
 }

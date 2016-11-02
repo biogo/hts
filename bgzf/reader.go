@@ -483,9 +483,9 @@ func (bg *Reader) Seek(off Offset) error {
 	return bg.err
 }
 
-// LastChunk returns the region of the BGZF file read by the last read
-// operation or the resulting virtual offset of the last successful
-// seek operation.
+// LastChunk returns the region of the BGZF file read by the last
+// successful read operation or the resulting virtual offset of
+// the last successful seek operation.
 func (bg *Reader) LastChunk() Chunk { return bg.lastChunk }
 
 // BlockLen returns the number of bytes remaining to be read from the
