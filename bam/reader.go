@@ -28,6 +28,9 @@ type Reader struct {
 	omit int
 
 	lastChunk bgzf.Chunk
+
+	// buf is used to read the block size of each record.
+	buf [4]byte
 }
 
 // NewReader returns a new Reader using the given io.Reader
@@ -383,8 +386,7 @@ func (b *buffer) readUint32() uint32 {
 // newBuffer returns a new buffer reading from the Reader's underlying bgzf.Reader and
 // updates the Reader's lastChunk field.
 func newBuffer(br *Reader) (*buffer, error) {
-	var buf [4]byte
-	n, err := io.ReadFull(br.r, buf[:4])
+	n, err := io.ReadFull(br.r, br.buf[:4])
 	// br.r.Chunk() is only valid after the call the Read(), so this
 	// must come after the first read in the record.
 	tx := br.r.Begin()
@@ -397,7 +399,7 @@ func newBuffer(br *Reader) (*buffer, error) {
 	if n != 4 {
 		return nil, errors.New("bam: invalid record: short block size")
 	}
-	b := &buffer{data: buf[:4]}
+	b := &buffer{data: br.buf[:4]}
 	size := int(b.readInt32())
 	b.off, b.data = 0, make([]byte, size)
 	n, err = io.ReadFull(br.r, b.data)
