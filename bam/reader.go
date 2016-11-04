@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"unsafe"
 
 	"github.com/biogo/hts/bgzf"
@@ -50,7 +49,6 @@ func NewReader(r io.Reader, rd int) (*Reader, error) {
 		return nil, err
 	}
 	br.lastChunk.End = br.r.LastChunk().End
-
 	return br, nil
 }
 
@@ -109,90 +107,48 @@ func (br *Reader) Read() (*sam.Record, error) {
 		return nil, io.EOF
 	}
 
-	r := errReader{r: br.r}
-	bin := binaryReader{r: &r}
-
-	// Read record header data.
-	blockSize := int(bin.readInt32())
-	r.n = 0 // The blocksize field is not included in the blocksize.
-
-	// br.r.Chunk() is only valid after the call the Read(), so this
-	// must come after the first read in the record.
-	tx := br.r.Begin()
-	defer func() {
-		br.lastChunk = tx.End()
-	}()
+	b, err := newBuffer(br)
+	if err != nil {
+		return nil, err
+	}
 
 	var rec sam.Record
-
-	refID := bin.readInt32()
-	rec.Pos = int(bin.readInt32())
-	nLen := bin.readUint8()
-	rec.MapQ = bin.readUint8()
-	_ = bin.readUint16()
-	nCigar := bin.readUint16()
-	rec.Flags = sam.Flags(bin.readUint16())
-	lSeq := bin.readInt32()
-	nextRefID := bin.readInt32()
-	rec.MatePos = int(bin.readInt32())
-	rec.TempLen = int(bin.readInt32())
-	if r.err != nil {
-		return nil, r.err
-	}
-
+	refID := b.readInt32()
+	rec.Pos = int(b.readUint32())
+	nLen := b.readUint8()
+	rec.MapQ = b.readUint8()
+	b.discard(2)
+	nCigar := b.readUint16()
+	rec.Flags = sam.Flags(b.readUint16())
+	lSeq := int32(b.readUint32())
+	nextRefID := int32(b.readUint32())
+	rec.MatePos = int(b.readInt32())
+	rec.TempLen = int(b.readInt32())
 	// Read variable length data.
-	name := make([]byte, nLen)
-	if nf, _ := r.Read(name); nf != int(nLen) {
-		return nil, errors.New("bam: truncated record name")
-	}
-	rec.Name = string(name[:len(name)-1]) // The BAM spec indicates name is null terminated.
+	rec.Name = string(b.bytes(int(nLen) - 1))
+	b.discard(1)
 
-	rec.Cigar = readCigarOps(&bin, nCigar)
-	if r.err != nil {
-		return nil, r.err
-	}
+	rec.Cigar = readCigarOps(b.bytes(int(nCigar) * 4))
 
 	var seq doublets
 	var auxTags []byte
 	if br.omit >= 2 {
 		goto done
 	}
-	seq = make(doublets, (lSeq+1)>>1)
-	if nf, _ := r.Read(seq.Bytes()); nf != int((lSeq+1)>>1) {
-		return nil, errors.New("bam: truncated sequence")
-	}
-	rec.Seq = sam.Seq{Length: int(lSeq), Seq: seq}
 
-	rec.Qual = make([]byte, lSeq)
-	if nf, _ := r.Read(rec.Qual); nf != int(lSeq) {
-		return nil, errors.New("bam: truncated quality")
-	}
+	seq = make(doublets, (lSeq+1)>>1)
+	*(*[]byte)(unsafe.Pointer(&seq)) = b.bytes(int(lSeq+1) >> 1)
+
+	rec.Seq = sam.Seq{Length: int(lSeq), Seq: seq}
+	rec.Qual = b.bytes(int(lSeq))
 
 	if br.omit >= 1 {
 		goto done
 	}
-	auxTags = make([]byte, blockSize-r.n)
-	r.Read(auxTags)
-	if r.n != blockSize {
-		return nil, errors.New("bam: truncated auxiliary data")
-	}
+	auxTags = b.bytes(b.len())
 	rec.AuxFields = parseAux(auxTags)
 
-	if r.err != nil && r.err != io.EOF {
-		return nil, r.err
-	}
-
 done:
-	if br.omit > 0 {
-		// Discard unused record data.
-		_, err := io.CopyN(ioutil.Discard, &r, int64(blockSize-r.n))
-		if err != nil {
-			return nil, errors.New("bam: truncated record")
-		}
-		if r.err != nil {
-			return nil, r.err
-		}
-	}
 	refs := int32(len(br.h.Refs()))
 	if refID != -1 {
 		if refID < -1 || refID >= refs {
@@ -323,13 +279,11 @@ func (i *Iterator) Close() error {
 	return i.Error()
 }
 
-func readCigarOps(br *binaryReader, n uint16) []sam.CigarOp {
-	co := make([]sam.CigarOp, n)
+// len(cb) must be a multiple of 4.
+func readCigarOps(cb []byte) []sam.CigarOp {
+	co := make([]sam.CigarOp, len(cb)/4)
 	for i := range co {
-		co[i] = sam.CigarOp(br.readUint32())
-		if br.r.err != nil {
-			return nil
-		}
+		co[i] = sam.CigarOp(binary.LittleEndian.Uint32(cb[i*4 : (i+1)*4]))
 	}
 	return co
 }
@@ -386,6 +340,71 @@ func parseAux(aux []byte) (aa []sam.Aux) {
 	return
 }
 
+// buffer is light-weight read buffer.
+type buffer struct {
+	off  int
+	data []byte
+}
+
+func (b *buffer) bytes(n int) []byte {
+	s := b.off
+	b.off += n
+	return b.data[s:b.off]
+}
+
+func (b *buffer) len() int {
+	return len(b.data) - b.off
+}
+
+func (b *buffer) discard(n int) {
+	b.off += n
+}
+
+func (b *buffer) readUint8() uint8 {
+	b.off++
+	return b.data[b.off-1]
+}
+
+func (b *buffer) readUint16() uint16 {
+	return binary.LittleEndian.Uint16(b.bytes(2))
+}
+
+func (b *buffer) readInt32() int32 {
+	return int32(binary.LittleEndian.Uint32(b.bytes(4)))
+}
+
+func (b *buffer) readUint32() uint32 {
+	return binary.LittleEndian.Uint32(b.bytes(4))
+}
+
+// newBuffer returns a new buffer reading from the Reader's underlying bgzf.Reader and
+// updates the Reader's lastChunk field.
+func newBuffer(br *Reader) (*buffer, error) {
+	var buf [4]byte
+	n, err := io.ReadFull(br.r, buf[:4])
+	// br.r.Chunk() is only valid after the call the Read(), so this
+	// must come after the first read in the record.
+	tx := br.r.Begin()
+	if err != nil {
+		return nil, err
+	}
+	if n != 4 {
+		return nil, errors.New("bam: invalid record: short block size")
+	}
+	b := &buffer{data: buf[:4]}
+	size := int(b.readInt32())
+	b.off, b.data = 0, make([]byte, size)
+	n, err = io.ReadFull(br.r, b.data)
+	br.lastChunk = tx.End()
+	if err != nil {
+		return nil, err
+	}
+	if n != size {
+		return nil, errors.New("bam: truncated record")
+	}
+	return b, nil
+}
+
 // buildAux constructs a single byte slice that represents a slice of sam.Aux.
 func buildAux(aa []sam.Aux) (aux []byte) {
 	for _, a := range aa {
@@ -397,52 +416,6 @@ func buildAux(aa []sam.Aux) (aux []byte) {
 		}
 	}
 	return
-}
-
-type errReader struct {
-	r   *bgzf.Reader
-	n   int
-	err error
-}
-
-func (r *errReader) Read(p []byte) (int, error) {
-	if r.err != nil {
-		return 0, r.err
-	}
-	var n int
-	n, r.err = r.r.Read(p)
-	for n < len(p) && r.err == nil {
-		var _n int
-		_n, r.err = r.r.Read(p[n:])
-		n += _n
-	}
-	r.n += n
-	return n, r.err
-}
-
-type binaryReader struct {
-	r   *errReader
-	buf [4]byte
-}
-
-func (r *binaryReader) readUint8() uint8 {
-	r.r.Read(r.buf[:1])
-	return r.buf[0]
-}
-
-func (r *binaryReader) readUint16() uint16 {
-	r.r.Read(r.buf[:2])
-	return binary.LittleEndian.Uint16(r.buf[:2])
-}
-
-func (r *binaryReader) readInt32() int32 {
-	r.r.Read(r.buf[:4])
-	return int32(binary.LittleEndian.Uint32(r.buf[:4]))
-}
-
-func (r *binaryReader) readUint32() uint32 {
-	r.r.Read(r.buf[:4])
-	return binary.LittleEndian.Uint32(r.buf[:4])
 }
 
 type doublets []sam.Doublet
