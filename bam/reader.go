@@ -388,6 +388,9 @@ func newBuffer(br *Reader) (*buffer, error) {
 	// br.r.Chunk() is only valid after the call the Read(), so this
 	// must come after the first read in the record.
 	tx := br.r.Begin()
+	defer func() {
+		br.lastChunk = tx.End()
+	}()
 	if err != nil {
 		return nil, err
 	}
@@ -398,7 +401,6 @@ func newBuffer(br *Reader) (*buffer, error) {
 	size := int(b.readInt32())
 	b.off, b.data = 0, make([]byte, size)
 	n, err = io.ReadFull(br.r, b.data)
-	br.lastChunk = tx.End()
 	if err != nil {
 		return nil, err
 	}
