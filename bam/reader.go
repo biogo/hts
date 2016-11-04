@@ -99,9 +99,12 @@ const (
 	AllVariableLengthData        // Omit sequence, quality and auxiliary data.
 )
 
-// Read returns the next sam.Record in the BAM stream. The sam.Record
-// returned will not contain the sequence, quality or auxiliary tag
-// data if CoreOnly(true) has been called.
+// Read returns the next sam.Record in the BAM stream.
+//
+// The sam.Record returned will not contain the sequence, quality or
+// auxiliary tag data if Omit(AllVariableLengthData) has been called
+// prior to the Read call and will not contain the auxiliary tag data
+// is Omit(AuxTags) has been called.
 func (br *Reader) Read() (*sam.Record, error) {
 	if br.c != nil && vOffset(br.r.LastChunk().End) >= vOffset(br.c.End) {
 		return nil, io.EOF
@@ -132,7 +135,7 @@ func (br *Reader) Read() (*sam.Record, error) {
 
 	var seq doublets
 	var auxTags []byte
-	if br.omit >= 2 {
+	if br.omit >= AllVariableLengthData {
 		goto done
 	}
 
@@ -142,7 +145,7 @@ func (br *Reader) Read() (*sam.Record, error) {
 	rec.Seq = sam.Seq{Length: int(lSeq), Seq: seq}
 	rec.Qual = b.bytes(int(lSeq))
 
-	if br.omit >= 1 {
+	if br.omit >= AuxTags {
 		goto done
 	}
 	auxTags = b.bytes(b.len())
