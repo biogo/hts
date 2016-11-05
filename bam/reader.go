@@ -307,7 +307,11 @@ var jumps = [256]int{
 
 // parseAux examines the data of a SAM record's OPT fields,
 // returning a slice of sam.Aux that are backed by the original data.
-func parseAux(aux []byte) (aa []sam.Aux) {
+func parseAux(aux []byte) []sam.Aux {
+	if len(aux) == 0 {
+		return nil
+	}
+	aa := make([]sam.Aux, 0, 4)
 	for i := 0; i+2 < len(aux); {
 		t := aux[i+2]
 		switch j := jumps[t]; {
@@ -343,7 +347,7 @@ func parseAux(aux []byte) (aa []sam.Aux) {
 			panic(fmt.Sprintf("bam: unrecognised optional field type: %q", t))
 		}
 	}
-	return
+	return aa
 }
 
 // buffer is light-weight read buffer.
