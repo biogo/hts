@@ -317,7 +317,7 @@ func parseAux(aux []byte) []sam.Aux {
 		switch j := jumps[t]; {
 		case j > 0:
 			j += 3
-			aa = append(aa, sam.Aux(aux[i:i+j]))
+			aa = append(aa, sam.Aux(aux[i:i+j:i+j]))
 			i += j
 		case j < 0:
 			switch t {
@@ -331,7 +331,7 @@ func parseAux(aux []byte) []sam.Aux {
 						break // Truncate terminal zero.
 					}
 				}
-				aa = append(aa, sam.Aux(aux[i:i+j]))
+				aa = append(aa, sam.Aux(aux[i:i+j:i+j]))
 				i += j + 1
 			case 'B':
 				var length int32
@@ -340,7 +340,7 @@ func parseAux(aux []byte) []sam.Aux {
 					panic(fmt.Sprintf("bam: binary.Read failed: %v", err))
 				}
 				j = int(length)*jumps[aux[i+3]] + int(unsafe.Sizeof(length)) + 4
-				aa = append(aa, sam.Aux(aux[i:i+j]))
+				aa = append(aa, sam.Aux(aux[i:i+j:i+j]))
 				i += j
 			}
 		default:
