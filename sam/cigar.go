@@ -7,7 +7,6 @@ package sam
 import (
 	"bytes"
 	"fmt"
-	"strconv"
 )
 
 // Cigar is a set of CIGAR operations.
@@ -197,6 +196,21 @@ func init() {
 	}
 }
 
+var powers = []int{1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8}
+
+// atoi returns the integer interpretation of b which must be an ASCII decimal number representation.
+func atoi(b []byte, i int) (int, error) {
+	n := 0
+	k := len(b) - 1
+	for i, v := range b {
+		n += int(v-'0') * powers[k-i]
+	}
+	if n < 0 || 1<<28 <= n {
+		return n, fmt.Errorf("sam: invalid cigar operation count: %q at %d", b, i)
+	}
+	return n, nil
+}
+
 // ParseCigar returns a Cigar parsed from the provided byte slice.
 func ParseCigar(b []byte) (Cigar, error) {
 	if len(b) == 1 && b[0] == '*' {
@@ -211,9 +225,9 @@ func ParseCigar(b []byte) (Cigar, error) {
 	for i := 0; i < len(b); i++ {
 		for j := i; j < len(b); j++ {
 			if b[j] < '0' || '9' < b[j] {
-				n, err = strconv.Atoi(string(b[i:j]))
+				n, err = atoi(b[i:j], i)
 				if err != nil {
-					return nil, fmt.Errorf("sam: failed to parse cigar string %q: %v", b, err)
+					return nil, err
 				}
 				op = cigarOpTypeLookup[b[j]]
 				i = j
