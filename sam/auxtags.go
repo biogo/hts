@@ -53,27 +53,27 @@ func NewAux(t Tag, value interface{}) (Aux, error) {
 		a = Aux{t[0], t[1], 'A', byte(v)}
 	case int:
 		switch {
-		case v <= math.MaxInt8:
+		case math.MinInt8 <= v && v <= math.MaxInt8:
 			a = Aux{t[0], t[1], 'c', byte(v)}
-		case v <= math.MaxInt16:
-			a = Aux{t[0], t[1], 's', 0, 0, 0}
-			binary.LittleEndian.PutUint16(a[4:6], uint16(v))
-		case v <= math.MaxInt32:
-			a = Aux{t[0], t[1], 'i', 0, 0, 0, 0, 0}
-			binary.LittleEndian.PutUint32(a[4:8], uint32(v))
+		case math.MinInt16 <= v && v <= math.MaxInt16:
+			a = Aux{t[0], t[1], 's', 0, 0}
+			binary.LittleEndian.PutUint16(a[3:5], uint16(v))
+		case math.MinInt32 <= v && v <= math.MaxInt32:
+			a = Aux{t[0], t[1], 'i', 0, 0, 0, 0}
+			binary.LittleEndian.PutUint32(a[3:7], uint32(v))
 		default:
 			return nil, fmt.Errorf("sam: integer value out of range %d > %d", v, math.MaxInt32)
 		}
 	case uint:
 		switch {
-		case v <= math.MaxInt8:
+		case v <= math.MaxUint8:
 			a = Aux{t[0], t[1], 'C', byte(v)}
-		case v <= math.MaxInt16:
-			a = Aux{t[0], t[1], 'S', 0, 0, 0}
-			binary.LittleEndian.PutUint16(a[4:6], uint16(v))
-		case v <= math.MaxInt32:
-			a = Aux{t[0], t[1], 'I', 0, 0, 0, 0, 0}
-			binary.LittleEndian.PutUint32(a[4:8], uint32(v))
+		case v <= math.MaxUint16:
+			a = Aux{t[0], t[1], 'S', 0, 0}
+			binary.LittleEndian.PutUint16(a[3:5], uint16(v))
+		case v <= math.MaxUint32:
+			a = Aux{t[0], t[1], 'I', 0, 0, 0, 0}
+			binary.LittleEndian.PutUint32(a[3:7], uint32(v))
 		default:
 			return nil, fmt.Errorf("sam: unsigned integer value out of range %d > %d", v, uint(math.MaxUint32))
 		}
@@ -82,20 +82,20 @@ func NewAux(t Tag, value interface{}) (Aux, error) {
 	case uint8:
 		a = Aux{t[0], t[1], 'C', v}
 	case int16:
-		a = Aux{t[0], t[1], 's', 0, 0, 0}
-		binary.LittleEndian.PutUint16(a[4:6], uint16(v))
+		a = Aux{t[0], t[1], 's', 0, 0}
+		binary.LittleEndian.PutUint16(a[3:5], uint16(v))
 	case uint16:
-		a = Aux{t[0], t[1], 'S', 0, 0, 0}
-		binary.LittleEndian.PutUint16(a[4:6], v)
+		a = Aux{t[0], t[1], 'S', 0, 0}
+		binary.LittleEndian.PutUint16(a[3:5], v)
 	case int32:
-		a = Aux{t[0], t[1], 'i', 0, 0, 0, 0, 0}
-		binary.LittleEndian.PutUint32(a[4:8], uint32(v))
+		a = Aux{t[0], t[1], 'i', 0, 0, 0, 0}
+		binary.LittleEndian.PutUint32(a[3:7], uint32(v))
 	case uint32:
-		a = Aux{t[0], t[1], 'I', 0, 0, 0, 0, 0}
-		binary.LittleEndian.PutUint32(a[4:8], v)
+		a = Aux{t[0], t[1], 'I', 0, 0, 0, 0}
+		binary.LittleEndian.PutUint32(a[3:7], v)
 	case float32:
-		a = Aux{t[0], t[1], 'f', 0, 0, 0, 0, 0}
-		binary.LittleEndian.PutUint32(a[4:8], math.Float32bits(v))
+		a = Aux{t[0], t[1], 'f', 0, 0, 0, 0}
+		binary.LittleEndian.PutUint32(a[3:7], math.Float32bits(v))
 	case Text:
 		a = append(Aux{t[0], t[1], 'Z'}, v...)
 	case string:
@@ -114,7 +114,7 @@ func NewAux(t Tag, value interface{}) (Aux, error) {
 		if uint(l) > math.MaxUint32 {
 			return nil, fmt.Errorf("sam: array too long")
 		}
-		a = Aux{t[0], t[1], 'B', 0, 0, 0, 0, 0}
+		a = Aux{t[0], t[1], 'B', 0xff, 0, 0, 0, 0}
 		binary.LittleEndian.PutUint32([]byte(a[4:8]), uint32(l))
 
 		switch rt.Elem().Kind() {
@@ -397,15 +397,15 @@ func (a Aux) Value() interface{} {
 	case 'C':
 		return uint8(a[3])
 	case 's':
-		return int16(binary.LittleEndian.Uint16(a[4:6]))
+		return int16(binary.LittleEndian.Uint16(a[3:5]))
 	case 'S':
-		return binary.LittleEndian.Uint16(a[4:6])
+		return binary.LittleEndian.Uint16(a[3:5])
 	case 'i':
-		return int32(binary.LittleEndian.Uint32(a[4:8]))
+		return int32(binary.LittleEndian.Uint32(a[3:7]))
 	case 'I':
-		return binary.LittleEndian.Uint32(a[4:8])
+		return binary.LittleEndian.Uint32(a[3:7])
 	case 'f':
-		return math.Float32frombits(binary.LittleEndian.Uint32(a[4:8]))
+		return math.Float32frombits(binary.LittleEndian.Uint32(a[3:7]))
 	case 'Z': // Z and H Require that parsing stops before the terminating zero.
 		return string(a[3:])
 	case 'H':

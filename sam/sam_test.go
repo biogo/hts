@@ -563,6 +563,7 @@ var auxTests = []struct {
 	{
 		sam: `1f001i8gk#GGCG#AA	0	*	0	0	*	*	0	0	*	*	NH:i:2	HI:i:1	AS:i:13	nM:i:4	NM:i:4	MD:Z:2C0T2T1C13	jM:B:c,-1	jI:B:i,-1
 1f001i8gk#GGCG#AA	0	*	0	0	*	*	0	0	*	*	NH:i:2	HI:i:2	AS:i:12	nM:i:0	NM:i:0	MD:Z:22	jM:B:c,0	jI:B:i,629,1095	fT:f:3.14
+1f001i8gk#GGCG#AA	0	*	0	0	*	*	0	0	*	*	NE:i:-100	MN:i:-1000
 `,
 		want: []*Record{
 			{
@@ -626,7 +627,20 @@ var auxTests = []struct {
 						0x6a, 0x49, 0x42, 0x69, 0x02, 0x00, 0x00, 0x00, 0x75, 0x02, 0x00, 0x00, 0x47, 0x04, 0x00, 0x00, // |jIBi....u...G...|
 					},
 					{
-						0x66, 0x54, 0x66, 0x00, 0xc3, 0xf5, 0x48, 0x40, // |fTf...H@|
+						0x66, 0x54, 0x66, 0xc3, 0xf5, 0x48, 0x40, // |fTf..H@|
+					},
+				},
+			},
+			{
+				Name:    "1f001i8gk#GGCG#AA",
+				Pos:     -1,
+				MatePos: -1,
+				AuxFields: AuxFields{
+					{
+						0x4e, 0x45, 0x63, 0x9c, // |NEc.|
+					},
+					{
+						0x4d, 0x4e, 0x73, 0x18, 0xfc, // |MNs..|
 					},
 				},
 			},
