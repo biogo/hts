@@ -241,13 +241,14 @@ type Iterator struct {
 //  return i.Close()
 //
 func NewIterator(r *Reader, chunks []bgzf.Chunk) (*Iterator, error) {
-	if len(chunks) != 0 {
-		err := r.SetChunk(&chunks[0])
-		if err != nil {
-			return nil, err
-		}
-		chunks = chunks[1:]
+	if len(chunks) == 0 {
+		return &Iterator{r: r, err: io.EOF}, nil
 	}
+	err := r.SetChunk(&chunks[0])
+	if err != nil {
+		return nil, err
+	}
+	chunks = chunks[1:]
 	return &Iterator{r: r, chunks: chunks}, nil
 }
 
