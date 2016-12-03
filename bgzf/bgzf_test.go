@@ -186,7 +186,7 @@ func TestRoundTrip(t *testing.T) {
 		t.Errorf("comment is %q, want %q", r.Comment, "comment")
 	}
 	if bl := ExpectedMemberSize(r.Header); bl != len(MagicBlock) {
-		t.Errorf("expectedMemberSize is %d, want %d", bl, wbl)
+		t.Errorf("expectedMemberSize is %d, want %d", bl, len(MagicBlock))
 	}
 	if string(r.Extra) != "BC\x02\x00\x1b\x00" {
 		t.Errorf("extra is %q, want %q", r.Extra, "BC\x02\x00\x1b\x00")

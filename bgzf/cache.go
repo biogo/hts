@@ -170,7 +170,8 @@ func (b *block) NextBase() int64 {
 func (b *block) setHeader(h gzip.Header) {
 	b.h = h
 	b.magic = h.OS == 0xff &&
-		h.ModTime.Equal(unixEpoch) &&
+		// Test for zero time and old compress/gzip behaviour.
+		(h.ModTime.IsZero() || h.ModTime.Equal(unixEpoch)) &&
 		h.Name == "" &&
 		h.Comment == "" &&
 		bytes.Equal(h.Extra, []byte("BC\x02\x00\x1b\x00"))
