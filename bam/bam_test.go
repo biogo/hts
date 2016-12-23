@@ -47,8 +47,9 @@ var _ = check.Suite(&S{})
 const maxInt = int(^uint(0) >> 1)
 
 var (
-	file = flag.String("bench.file", "", "file to read for benchmarking")
-	conc = flag.Int("conc", 1, "sets the level of concurrency for compression")
+	file   = flag.String("bench.file", "", "file to read for benchmarking")
+	findex = flag.String("bench.index", "", "index file to read for benchmarking")
+	conc   = flag.Int("conc", 1, "sets the level of concurrency for compression")
 )
 
 func (s *S) TestRead(c *check.C) {
@@ -191,6 +192,26 @@ func BenchmarkRead(b *testing.B) {
 		}
 	}
 	f.Close()
+}
+
+func BenchmarkReadIndex(b *testing.B) {
+	if *findex == "" {
+		b.Skip("no index file specified")
+	}
+	buf, err := ioutil.ReadFile(*findex)
+	if err != nil {
+		b.Fatalf("Index read failed: %v", err)
+	}
+	r := bytes.NewReader(buf)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		r.Seek(0, os.SEEK_SET)
+		_, err = ReadIndex(r)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
 }
 
 func BenchmarkReadCoreAndSeq(b *testing.B) {
