@@ -106,22 +106,16 @@ func readChunks(r io.Reader, n int32, typ string) ([]bgzf.Chunk, error) {
 	if n == 0 {
 		return nil, nil
 	}
-	var (
-		vOff uint64
-		err  error
-	)
 	chunks := make([]bgzf.Chunk, n)
+	var buf [16]byte
 	for i := range chunks {
-		err = binary.Read(r, binary.LittleEndian, &vOff)
+		// Get the begin and end offset in a single read.
+		_, err := io.ReadFull(r, buf[:])
 		if err != nil {
-			return nil, fmt.Errorf("%s: failed to read chunk begin virtual offset: %v", typ, err)
+			return nil, fmt.Errorf("%s: failed to read chunk virtual offset: %v", typ, err)
 		}
-		chunks[i].Begin = makeOffset(vOff)
-		err = binary.Read(r, binary.LittleEndian, &vOff)
-		if err != nil {
-			return nil, fmt.Errorf("%s: failed to read chunk end virtual offset: %v", typ, err)
-		}
-		chunks[i].End = makeOffset(vOff)
+		chunks[i].Begin = makeOffset(binary.LittleEndian.Uint64(buf[:8]))
+		chunks[i].End = makeOffset(binary.LittleEndian.Uint64(buf[8:]))
 	}
 	if !sort.IsSorted(byBeginOffset(chunks)) {
 		sort.Sort(byBeginOffset(chunks))
@@ -165,17 +159,30 @@ func readIntervals(r io.Reader, typ string) ([]bgzf.Offset, error) {
 	if n == 0 {
 		return nil, nil
 	}
-	var vOff uint64
 	offsets := make([]bgzf.Offset, n)
-	for i := range offsets {
-		err := binary.Read(r, binary.LittleEndian, &vOff)
+	// chunkSize determines the number of offsets consumed by each binary.Read.
+	const chunkSize = 512
+	var vOffs [chunkSize]uint64
+	for i := 0; i < int(n); i += chunkSize {
+		l := min(int(n)-i, len(vOffs))
+		err = binary.Read(r, binary.LittleEndian, vOffs[:l])
 		if err != nil {
 			return nil, fmt.Errorf("%s: failed to read tile interval virtual offset: %v", typ, err)
 		}
-		offsets[i] = makeOffset(vOff)
+		for k := 0; k < l; k++ {
+			offsets[i+k] = makeOffset(vOffs[k])
+		}
 	}
+
 	if !sort.IsSorted(byVirtOffset(offsets)) {
 		sort.Sort(byVirtOffset(offsets))
 	}
 	return offsets, nil
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
