@@ -125,15 +125,41 @@ func (b *block) Read(p []byte) (int, error) {
 	return n, err
 }
 
+// readToEOF will exhaust r or fill buf.
+// If r does not EOF upon reading up to len(buf) bytes then readToEOF will return
+// io.ErrShortBuffer and an additional byte will be discarded from the reader.
+func readToEOF(r io.Reader, buf []byte) (n int, err error) {
+	for err == nil && n < len(buf) {
+		var nn int
+		nn, err = r.Read(buf[n:])
+		n += nn
+	}
+	switch {
+	case err == io.EOF:
+		return n, nil
+	case n == MaxBlockSize && err == nil:
+		// This is paranoic, but some readers will return
+		// quickly when passed a zero-length byte slice.
+		var dummy [1]byte
+		_, err = r.Read(dummy[:])
+		if err == nil {
+			return n, io.ErrShortBuffer
+		}
+		if err == io.EOF {
+			err = nil
+		}
+	}
+	return n, err
+}
+
 func (b *block) readFrom(r io.ReadCloser) error {
 	o := b.owner
 	b.owner = nil
-	buf := bytes.NewBuffer(b.data[:0])
-	_, err := io.Copy(buf, r)
+	n, err := readToEOF(r, b.data[:])
 	if err != nil {
 		return err
 	}
-	b.buf = bytes.NewReader(buf.Bytes())
+	b.buf = bytes.NewReader(b.data[:n])
 	b.owner = o
 	b.magic = b.magic && b.len() == 0
 	return r.Close()
