@@ -27,7 +27,10 @@ import (
 	"github.com/biogo/hts/bgzf/cache"
 )
 
-var conc = flag.Int("conc", 1, "sets the level of concurrency for compression")
+var (
+	conc = flag.Int("conc", 1, "sets the level of concurrency for compression")
+	file = flag.String("bench.file", "", "bgzf file to read for benchmarking decompression")
+)
 
 type countWriter struct {
 	bytes int64
@@ -1032,5 +1035,37 @@ func BenchmarkWrite(b *testing.B) {
 			bg.Write(block)
 		}
 		bg.Wait()
+	}
+}
+
+func BenchmarkRead(b *testing.B) {
+	if *file == "" {
+		b.Skip("no bgzf file specified")
+	}
+	f, err := os.Open(*file)
+	if err != nil {
+		b.Fatalf("file open failed: %v", err)
+	}
+	defer f.Close()
+
+	buf := make([]byte, 16384)
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		f.Seek(0, os.SEEK_SET)
+		bg, err := NewReader(f, *conc)
+		if err != nil {
+			b.Fatalf("bgzf open failed: %v", err)
+		}
+		for {
+			_, err = bg.Read(buf)
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				b.Fatalf("bgzf read failed: %v", err)
+			}
+		}
+		bg.Close()
 	}
 }
