@@ -12,6 +12,12 @@ import (
 	"sync"
 )
 
+// BUG(kortschak): Because of limitations in the C htslib BGZF implementation
+// and constraints imposed by the SAM specification, if a BGZF file is to be
+// used with the tabix program, the gzip.Header fields, Name and Comment may
+// not be set, the OS field must be set to 0xff and, if using Go prior to
+// version 1.8, the ModTime must be set to time.Unix(0, 0).
+
 // Writer implements BGZF blocked gzip compression.
 type Writer struct {
 	gzip.Header

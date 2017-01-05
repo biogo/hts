@@ -28,6 +28,8 @@ import (
 )
 
 var (
+	go1_8 bool
+
 	conc = flag.Int("conc", 1, "sets the level of concurrency for compression")
 	file = flag.String("bench.file", "", "bgzf file to read for benchmarking decompression")
 )
@@ -284,6 +286,29 @@ func TestRoundTripMulti(t *testing.T) {
 		t.Errorf("Read: %v", err)
 	}
 	r.Close()
+}
+
+// See https://github.com/biogo/hts/issues/57
+func TestHeaderIssue57(t *testing.T) {
+	var stamp time.Time
+	if !go1_8 {
+		unixEpoch := time.Unix(0, 0)
+		stamp = unixEpoch
+	}
+
+	var buf bytes.Buffer
+	bg := NewWriter(&buf, *conc)
+	bg.ModTime = stamp
+	bg.OS = 0xff
+	err := bg.Close()
+	if err != nil {
+		t.Fatal("error closing Writer")
+	}
+	got := buf.Bytes()[:16]
+	want := []byte(MagicBlock[:16])
+	if !bytes.Equal(got, want) {
+		t.Fatalf("unexpected header:\ngot: %0#2v\nwant:%0#2v", got, want)
+	}
 }
 
 // TestRoundTripMultiSeek tests that bgzipping and then bgunzipping is the identity
