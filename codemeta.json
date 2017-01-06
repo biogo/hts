@@ -1,0 +1,37 @@
+{
+  "@context": "https://raw.githubusercontent.com/mbjones/codemeta/master/codemeta.jsonld",
+  "@type": "Code",
+  "author": [
+    {
+      "@id": "http://orcid.org/0000-0001-8295-2301",
+      "@type": "Person",
+      "email": "dan.kortschak@adelaide.edu.au",
+      "name": "R Daniel Kortschak",
+      "affiliation": "School of Biological Sciences, The University of Adelaide"
+    },
+    {
+      "@id": "https://orcid.org/0000-0003-1786-2216",
+      "@type": "Person",
+      "email": "brentp@genetics.utah.edu",
+      "name": "Brent S Pedersen",
+      "affiliation": "Department of Human Genetics, University of Utah"
+    },
+    {
+      "@id": "http://orcid.org/0000-0003-2404-5636",
+      "@type": "Person",
+      "email": "david.adelson@adelaide.edu.au",
+      "name": "David L Adelson",
+      "affiliation": "School of Biological Sciences, The University of Adelaide"
+    }
+  ],
+  "identifier": "",
+  "codeRepository": "https://github.com/biogo/hts",
+  "datePublished": "2017-01-06",
+  "dateModified": "2017-01-06",
+  "dateCreated": "2017-01-06",
+  "description": "high throughput sequence handling for the Go language",
+  "keywords": "bioinformatics, high throughput sequencing, golang",
+  "license": "BSD-3 like",
+  "title": "bíogo/hts",
+  "version": "v1.0.0"
+}
