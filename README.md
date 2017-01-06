@@ -2,7 +2,7 @@
 
 #HTS
 
-[![Build Status](https://travis-ci.org/biogo/hts.svg?branch=master)](https://travis-ci.org/biogo/hts)
+[![Build Status](https://travis-ci.org/biogo/hts.svg?branch=master)](https://travis-ci.org/biogo/hts) [![GoDoc](https://godoc.org/github.com/biogo/hts?status.svg)](https://godoc.org/github.com/biogo/hts)
 
 ##Installation
 
