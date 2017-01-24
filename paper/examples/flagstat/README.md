@@ -2,7 +2,7 @@ flagstat
 ========
 
 This example replicates most of the output of [samtools](https://samtools.github.io) flagstat command.
-With a single core, the program is 20-30% slower, but the go program becomes faster when using 2 cores.
+With a single core, the program is 20-30% slower, but the Go program becomes faster when using 2 cores.
 
 On an example bam the output of samtools is:
 ```
@@ -51,7 +51,7 @@ and with 3 processors:
 
 ```
 $ go build -o flagstat flagstat.go
-$ export GOMAXPROCS=1
+$ export GOMAXPROCS=3
 $ ./flagstat $bam
 0 + 0 in total secondary
 9319 + 0 in total supplementary

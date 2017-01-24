@@ -1,27 +1,40 @@
+// Copyright ©2017 The bíogo Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+//
+// This package tabulates statistics on a bam file from the sam flag.
+// It replicates functionality in samtools flagstat.
 package main
 
 import (
 	"fmt"
 	"io"
-	"math"
+	"log"
 	"os"
 
 	"github.com/biogo/hts/bam"
 	"github.com/biogo/hts/sam"
 )
 
+const (
+	pass = iota
+	fail
+
+	mask = sam.Secondary | sam.ProperPair | sam.Supplementary | sam.Unmapped
+)
+
 func main() {
 	if len(os.Args) != 2 {
-		panic("Expecting a single bam argument")
+		log.Fatal("Expecting a single bam argument")
 	}
 	f, err := os.Open(os.Args[1])
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	defer f.Close()
 	b, err := bam.NewReader(f, 0)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	defer b.Close()
 	b.Omit(2)
@@ -30,56 +43,68 @@ func main() {
 	var counts [2][12]uint64
 	// track mates on different chromosomes.
 	var mates [2][2]uint64
-	var fail int
+	var qc int
 	for {
 		read, err := b.Read()
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 		if read.Flags&sam.QCFail == 0 {
-			fail = 0
+			qc = pass
 		} else {
-			fail = 1
+			qc = fail
 		}
 
-		counts[fail][0]++
+		counts[qc][0]++
 		if read.Flags&sam.Supplementary != 0 {
-			counts[fail][11]++
+			counts[qc][11]++
 		} else if read.Flags&sam.Secondary != 0 {
-			counts[fail][log2(sam.Secondary)]++
+			counts[qc][Secondary]++
 		} else {
-			for i := 1; i < 12; i++ {
-				if read.Flags&(1<<uint(i)) != 0 {
-					counts[fail][i]++
+			for i := uint(1); i < 12; i++ {
+				if read.Flags&(1<<i) != 0 {
+					counts[qc][i]++
 				}
 			}
 		}
-		if read.Flags&(sam.Secondary|sam.ProperPair|sam.Supplementary|sam.Unmapped) == 0 {
+		if read.Flags&mask == 0 {
 			if read.MateRef != read.Ref && read.MateRef != nil && read.Ref != nil {
 				if read.MapQ > 4 {
-					mates[fail][1]++
+					mates[qc][1]++
 				}
-				mates[fail][0]++
+				mates[qc][0]++
 			}
 		}
 	}
 	// extract counts to match output from samtools flagstat.
-	fmt.Printf("%d + %d in total (QC-passed reads + QC-failed reads)\n", counts[0][0], counts[1][0])
-	fmt.Printf("%d + %d in total secondary\n", counts[0][log2(sam.Secondary)], counts[1][log2(sam.Secondary)])
-	fmt.Printf("%d + %d in total supplementary\n", counts[0][log2(sam.Supplementary)], counts[1][log2(sam.Supplementary)])
-	fmt.Printf("%d + %d duplicates\n", counts[0][log2(sam.Duplicate)], counts[1][log2(sam.Duplicate)])
-	fmt.Printf("%d + %d mapped\n", counts[0][0]-counts[0][log2(sam.Unmapped)], counts[1][0]-counts[1][log2(sam.Unmapped)])
-	fmt.Printf("%d + %d read1\n", counts[0][log2(sam.Read1)], counts[1][log2(sam.Read1)])
-	fmt.Printf("%d + %d read2\n", counts[0][log2(sam.Read2)], counts[1][log2(sam.Read2)])
-	fmt.Printf("%d + %d properly paired\n", counts[0][log2(sam.ProperPair)], counts[1][log2(sam.ProperPair)])
-	fmt.Printf("%d + %d singletons\n", counts[0][log2(sam.MateUnmapped)], counts[1][log2(sam.MateUnmapped)])
-	fmt.Printf("%d + %d with mate mapped to a different chr\n", mates[0][0], mates[1][0])
-	fmt.Printf("%d + %d with mate mapped to a different chr\n", mates[0][1], mates[1][1])
+	fmt.Printf("%d + %d in total (QC-passed reads + QC-failed reads)\n", counts[pass][Paired], counts[fail][Paired])
+	fmt.Printf("%d + %d in total secondary\n", counts[pass][Secondary], counts[fail][Secondary])
+	fmt.Printf("%d + %d in total supplementary\n", counts[pass][Supplementary], counts[fail][Supplementary])
+	fmt.Printf("%d + %d duplicates\n", counts[pass][Duplicate], counts[fail][Duplicate])
+	fmt.Printf("%d + %d mapped\n", counts[pass][Paired]-counts[pass][Unmapped], counts[fail][Paired]-counts[fail][Unmapped])
+	fmt.Printf("%d + %d read1\n", counts[pass][Read1], counts[fail][Read1])
+	fmt.Printf("%d + %d read2\n", counts[pass][Read2], counts[fail][Read2])
+	fmt.Printf("%d + %d properly paired\n", counts[pass][ProperPair], counts[fail][ProperPair])
+	fmt.Printf("%d + %d singletons\n", counts[pass][MateUnmapped], counts[fail][MateUnmapped])
+	fmt.Printf("%d + %d with mate mapped to a different chr\n", mates[pass][0], mates[fail][0])
+	fmt.Printf("%d + %d with mate mapped to a different chr\n", mates[pass][1], mates[fail][1])
 }
 
-func log2(s sam.Flags) int {
-	return int(math.Log2(float64(s)))
-}
+// The flag indexes for SAM flags. Reflects sam.Flag order.
+const (
+	Paired        = iota // The read is paired in sequencing, no matter whether it is mapped in a pair.
+	ProperPair           // The read is mapped in a proper pair.
+	Unmapped             // The read itself is unmapped; conflictive with ProperPair.
+	MateUnmapped         // The mate is unmapped.
+	Reverse              // The read is mapped to the reverse strand.
+	MateReverse          // The mate is mapped to the reverse strand.
+	Read1                // This is read1.
+	Read2                // This is read2.
+	Secondary            // Not primary alignment.
+	QCFail               // QC failure.
+	Duplicate            // Optical or PCR duplicate.
+	Supplementary        // Supplementary alignment, indicates alignment is part of a chimeric alignment.
+)
