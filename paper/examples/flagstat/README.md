@@ -30,7 +30,8 @@ and of this command on the same bam is:
 ```
 $ go build -o flagstat flagstat.go
 $ export GOMAXPROCS=1
-$ ./flagstat $bam
+$ time ./flagstat $bam
+4284701 + 0 in total (QC-passed reads + QC-failed reads)
 0 + 0 in total secondary
 9319 + 0 in total supplementary
 206489 + 0 duplicates
@@ -40,33 +41,11 @@ $ ./flagstat $bam
 4230981 + 0 properly paired
 11298 + 0 singletons
 16955 + 0 with mate mapped to a different chr
-10934 + 0 with mate mapped to a different chr
+10934 + 0 with mate mapped to a different chr (mapQ >= 5)
 
-real	0m12.254s
-user	0m12.168s
-sys	0m0.092s
+real	0m12.350s
+user	0m12.164s
+sys	0m0.116s
 ```
 
-and with 3 processors:
-
-```
-$ go build -o flagstat flagstat.go
-$ export GOMAXPROCS=3
-$ ./flagstat $bam
-0 + 0 in total secondary
-9319 + 0 in total supplementary
-206489 + 0 duplicates
-4273403 + 0 mapped
-2137869 + 0 read1
-2137513 + 0 read2
-4230981 + 0 properly paired
-11298 + 0 singletons
-16955 + 0 with mate mapped to a different chr
-10934 + 0 with mate mapped to a different chr
-
-real	0m12.254s
-user	0m12.168s
-sys	0m0.092s
-```
-
-with 3 processors, this completes in about 6.6 seconds of user time and 18 seconds of user time.
+with 2 and 3 processors, this gives identical output in about 7.2 and 6.6 seconds of real time respectively.

@@ -1,7 +1,7 @@
 // Copyright ©2017 The bíogo Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
-//
+
 // This package tabulates statistics on a bam file from the sam flag.
 // It replicates functionality in samtools flagstat.
 package main
@@ -19,8 +19,6 @@ import (
 const (
 	pass = iota
 	fail
-
-	mask = sam.Secondary | sam.ProperPair | sam.Supplementary | sam.Unmapped
 )
 
 func main() {
@@ -42,7 +40,7 @@ func main() {
 	// counts is indexed by [pass/fail][sam.Flag] where we have 12 possible sam Flags.
 	var counts [2][12]uint64
 	// track mates on different chromosomes.
-	var mates [2][2]uint64
+	var mates [2]struct{ low, high uint64 }
 	var qc int
 	for {
 		read, err := b.Read()
@@ -60,7 +58,7 @@ func main() {
 
 		counts[qc][0]++
 		if read.Flags&sam.Supplementary != 0 {
-			counts[qc][11]++
+			counts[qc][Supplementary]++
 		} else if read.Flags&sam.Secondary != 0 {
 			counts[qc][Secondary]++
 		} else {
@@ -70,12 +68,14 @@ func main() {
 				}
 			}
 		}
+
+		const mask = sam.Secondary | sam.ProperPair | sam.Supplementary | sam.Unmapped
 		if read.Flags&mask == 0 {
 			if read.MateRef != read.Ref && read.MateRef != nil && read.Ref != nil {
 				if read.MapQ > 4 {
-					mates[qc][1]++
+					mates[qc].high++
 				}
-				mates[qc][0]++
+				mates[qc].low++
 			}
 		}
 	}
@@ -89,8 +89,8 @@ func main() {
 	fmt.Printf("%d + %d read2\n", counts[pass][Read2], counts[fail][Read2])
 	fmt.Printf("%d + %d properly paired\n", counts[pass][ProperPair], counts[fail][ProperPair])
 	fmt.Printf("%d + %d singletons\n", counts[pass][MateUnmapped], counts[fail][MateUnmapped])
-	fmt.Printf("%d + %d with mate mapped to a different chr\n", mates[pass][0], mates[fail][0])
-	fmt.Printf("%d + %d with mate mapped to a different chr\n", mates[pass][1], mates[fail][1])
+	fmt.Printf("%d + %d with mate mapped to a different chr\n", mates[pass].low, mates[fail].low)
+	fmt.Printf("%d + %d with mate mapped to a different chr (mapQ >= 5)\n", mates[pass].high, mates[fail].high)
 }
 
 // The flag indexes for SAM flags. Reflects sam.Flag order.
