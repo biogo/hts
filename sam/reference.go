@@ -282,6 +282,9 @@ func equalRefs(a, b *Reference) bool {
 	if a.uri != nil && b.uri != nil && a.uri.String() != b.uri.String() {
 		return false
 	}
+	if len(a.otherTags) != len(b.otherTags) {
+		return false
+	}
 	aOther := make(tagPairs, len(a.otherTags))
 	copy(aOther, a.otherTags)
 	sort.Sort(aOther)
