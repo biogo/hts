@@ -1,51 +1,76 @@
 flagstat
 ========
 
-This example replicates most of the output of [samtools](https://samtools.github.io) flagstat command.
-With a single core, the program is 20-30% slower, but the Go program becomes faster when using 2 cores.
+This example replicates the output of [samtools](https://samtools.github.io) flagstat command.
+With a single core, the program is significantly slower, but the Go program comparable performance with 4 cores and surpassing the C implementation with 8.
 
-On an example bam the output of samtools is:
+On an example BAM file the output of samtools (1.3.2-199-gec1d68e/htslib 1.3.2-199-gec1d68e) is:
 ```
-$ time samtools flagstat $bam
-4284701 + 0 in total (QC-passed reads + QC-failed reads)
+$ time samtools flagstat 9827_2#49.bam
+56463236 + 0 in total (QC-passed reads + QC-failed reads)
 0 + 0 secondary
-9319 + 0 supplementary
-206663 + 0 duplicates
-4273403 + 0 mapped (99.74% : N/A)
-4275382 + 0 paired in sequencing
-2137869 + 0 read1
-2137513 + 0 read2
-4230981 + 0 properly paired (98.96% : N/A)
-4252786 + 0 with itself and mate mapped
-11298 + 0 singletons (0.26% : N/A)
-16955 + 0 with mate mapped to a different chr
-10934 + 0 with mate mapped to a different chr (mapQ>=5)
+0 + 0 supplementary
+269248 + 0 duplicates
+55357963 + 0 mapped (98.04% : N/A)
+56463236 + 0 paired in sequencing
+28231618 + 0 read1
+28231618 + 0 read2
+54363468 + 0 properly paired (96.28% : N/A)
+55062652 + 0 with itself and mate mapped
+295311 + 0 singletons (0.52% : N/A)
+360264 + 0 with mate mapped to a different chr
+300699 + 0 with mate mapped to a different chr (mapQ>=5)
 
-real    0m10.301s
-user    0m10.232s
-sys 0m0.052s
+real	1m31.517s
+user	1m30.268s
+sys	0m1.180s
 ```
 
-and of this command on the same bam is:
+and of this command (Go 1.8) on the same file is:
 ```
-$ go build -o flagstat flagstat.go
+$ go build github.com/biogo/hts/paper/examples/flagstat
 $ export GOMAXPROCS=1
-$ time ./flagstat $bam
-4284701 + 0 in total (QC-passed reads + QC-failed reads)
+$ time ./flagstat 9827_2#49.bam
+56463236 + 0 in total (QC-passed reads + QC-failed reads)
 0 + 0 in total secondary
-9319 + 0 in total supplementary
-206489 + 0 duplicates
-4273403 + 0 mapped
-2137869 + 0 read1
-2137513 + 0 read2
-4230981 + 0 properly paired
-11298 + 0 singletons
-16955 + 0 with mate mapped to a different chr
-10934 + 0 with mate mapped to a different chr (mapQ >= 5)
+0 + 0 in total supplementary
+269248 + 0 duplicates
+55357963 + 0 mapped (98.04% : N/A)
+56463236 + 0 paired in sequencing
+28231618 + 0 read1
+28231618 + 0 read2
+54363468 + 0 properly paired (96.28% : N/A)
+55062652 + 0 with itself and mate mapped
+295311 + 0 singletons (0.52% : N/A)
+360264 + 0 with mate mapped to a different chr
+300699 + 0 with mate mapped to a different chr (mapQ >= 5)
 
-real	0m12.350s
-user	0m12.164s
-sys	0m0.116s
+real	5m2.323s
+user	5m0.312s
+sys	0m2.148s
 ```
 
-with 2 and 3 processors, this gives identical output in about 7.2 and 6.6 seconds of real time respectively.
+The following give the same flagstat output, but with reduced time.
+
+GOMAXPROCS=2
+```
+real	2m41.310s
+user	5m18.948s
+sys	0m2.600s
+```
+
+GOMAXPROCS=4
+```
+real	1m40.957s
+user	6m21.232s
+sys	0m3.688s
+```
+
+GOMAXPROCS=8
+```
+real	1m28.465s
+user	9m7.480s
+sys	0m8.056s
+```
+
+The file used in the benchmark was 9827_2#49.bam, available from ftp://ftp.sra.ebi.ac.uk/vol1/ERA242/ERA242167/bam/9827_2%2349.bam
