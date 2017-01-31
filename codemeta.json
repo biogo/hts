@@ -27,11 +27,11 @@
   "identifier": "",
   "codeRepository": "https://github.com/biogo/hts",
   "datePublished": "2017-01-06",
-  "dateModified": "2017-01-06",
+  "dateModified": "2017-02-01",
   "dateCreated": "2017-01-06",
   "description": "high throughput sequence handling for the Go language",
   "keywords": "bioinformatics, high throughput sequencing, golang",
   "license": "BSD-3 like",
   "title": "bíogo/hts",
-  "version": "v1.0.0"
+  "version": "v1.0.1"
 }
