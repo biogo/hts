@@ -2,7 +2,7 @@ flagstat
 ========
 
 This example replicates the output of [samtools](https://samtools.github.io) flagstat command.
-With a single core, the program is significantly slower, but the Go program comparable performance with 4 cores and surpassing the C implementation with 8.
+Core-for-core the C implementation outperforms the Go implementation.
 
 On an example BAM file the output of samtools (1.3.2-199-gec1d68e/htslib 1.3.2-199-gec1d68e) is:
 ```
@@ -24,6 +24,29 @@ $ time samtools flagstat 9827_2#49.bam
 real	1m31.517s
 user	1m30.268s
 sys	0m1.180s
+```
+
+The following give the same flagstat output, but with reduced time.
+
+`--input-fmt-option nthreads=2`
+```
+real	0m46.057s
+user	1m49.684s
+sys	0m4.432s
+```
+
+`--input-fmt-option nthreads=4`
+```
+real	0m26.816s
+user	1m55.148s
+sys	0m3.856s
+```
+
+`--input-fmt-option nthreads=8`
+```
+real	0m23.006s
+user	2m10.352s
+sys	0m5.648s
 ```
 
 and of this command (Go 1.8) on the same file is:
