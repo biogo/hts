@@ -125,7 +125,7 @@ https://groups.google.com/forum/#!forum/biogo-dev
 
 ##Citing
 
-If you use bíogo, please cite Kortschak and Adelson "bíogo: a simple high-performance bioinformatics toolkit for the Go language", doi:[10.1101/005033](http://biorxiv.org/content/early/2014/05/12/005033).
+If you use bíogo/hts, please cite Kortschak, Pedersen and Adelson "bíogo/hts: high throughput sequence handling for the Go language", doi:[10.21105/joss.00168](http://dx.doi.org/10.21105/joss.00168).
 
 ##Library Structure and Coding Style
 
