@@ -26,11 +26,11 @@ The `hts/cram` Reader should match the `hts/bam` API as closely as is reasonable
 
 import "biogo/hts/cram"
 
-var cr *cram.CRAM 
+var cr *cram.Reader 
 var err error
 
-cr, err = cram.NewReader(rdr, io.Reader, rd int, reference *sam.Reference)
-cr.Omit(bam.AllVariableLengthData)
+cr, err = cram.NewReader(r io.Reader, rd int, reference *sam.Reference)
+cr.Omit(cram.AllVariableLengthData)
 
 var hdr *cram.Header = cr.Header()
 
@@ -39,10 +39,11 @@ rec, err = cr.Read()
 ```
 
 The difference from the `hts/bam` API is the requirement of the `reference` argument to the constructor.
-Note that extracting the sequence is costly, especially in CRAM. While the `Omit` method in `hts/bam`
+Extracting the sequence is costly, especially in CRAM. While the `Omit` method in `hts/bam`
 provides a global level of control over if this cost is incurred, we may wish to add a finer level 
 `Record.Sequence(r *sam.Reference)` method so that the user has full control over exactly when
-to incur this cost.
+to incur this cost. We will also want control over base-qualities since it is a common use to extracting
+tags without needing access to the base sequence or qualities.
 
 If the `sam.Reference` must be passed to the `Sequence()` method, then the `cram.NewReader` function would not
 need that value.
@@ -50,14 +51,7 @@ need that value.
 We will need to understand how this would work with the regional query method in `hts/bam` that gets a slice of
 `[]bgzf.Chunk` to be sent to a `bam.Iterator`.
 
-the cram.Header will be identical to extend `sam.Header`:
-
-```Go
-type Header struct {
-    *sam.Header
-}
-```
-
+the cram.Header will be identical to `sam.Header`.
 
 ## Internals
 
@@ -74,13 +68,14 @@ The CRAM specification lists a number of codecs. However, we will limit to those
 Namely, those [are](https://github.com/biogo/hts/issues/54#issuecomment-275359197) :
 
 + gzip
-+ bzip2
-+ lzma
++ bzip2 [htslib1.4+]
++ lzma [htslib1.4+]
 + rANS
 + huffman in single-code-only mode (?)
 
 `gzip` and `bzip2` are already available in the go standard library as `io.Reader`s; the rest
-should be implemented as `io.Reader`.
+should be implemented as `io.Reader`. LZMA anb bzip2 are only added in samtools 1.4 and so already
+less used than the other codecs.
 
 ### itf8
 
