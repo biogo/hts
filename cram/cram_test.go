@@ -66,7 +66,13 @@ func TestReadEOFContainer(t *testing.T) {
 	if err != nil {
 		t.Errorf("failed to read container: %v\n%#v", err, c)
 	}
+	var b block
+	err = b.readFrom(c.blockData)
+	if err != nil {
+		t.Errorf("failed to read block: %v\n%#v", err, b)
+	}
 
+	c.blockData = nil
 	wantContainer := container{
 		blockLen:  15,
 		refID:     -1,
@@ -76,18 +82,11 @@ func TestReadEOFContainer(t *testing.T) {
 		recCount:  0,
 		bases:     0,
 		blocks:    1,
-		landmarks: []int32{0},
+		landmarks: nil,
 		crc32:     0x4fd9bd05,
-		blockData: []byte{0x0, 0x1, 0x0, 0x6, 0x6, 0x1, 0x0, 0x1, 0x0, 0x1, 0x0, 0xee, 0x63, 0x1, 0x4b},
 	}
 	if !reflect.DeepEqual(c, wantContainer) {
 		t.Errorf("unexpected EOF container value:\ngot: %#v\nwant:%#v", c, wantContainer)
-	}
-
-	var b block
-	err = b.readFrom(bytes.NewReader(c.blockData))
-	if err != nil {
-		t.Errorf("failed to read block: %v\n%#v", err, b)
 	}
 
 	wantBlock := block{

@@ -52,10 +52,10 @@ type container struct {
 	nRec      int32
 	recCount  int64
 	bases     int64
-	blocks    int
+	blocks    int32
 	landmarks []int32
 	crc32     uint32
-	blockData []byte
+	blockData io.Reader
 }
 
 func (c *container) readFrom(r io.Reader) error {
@@ -70,8 +70,8 @@ func (c *container) readFrom(r io.Reader) error {
 	c.nRec = er.itf8()
 	c.recCount = er.ltf8()
 	c.bases = er.ltf8()
+	c.blocks = er.itf8()
 	c.landmarks = er.itf8slice()
-	c.blocks = len(c.landmarks)
 	sum := crc.Sum32()
 	_, err := io.ReadFull(&er, buf[:])
 	if err != nil {
@@ -79,17 +79,16 @@ func (c *container) readFrom(r io.Reader) error {
 	}
 	c.crc32 = binary.LittleEndian.Uint32(buf[:])
 	if c.crc32 != sum {
-		return fmt.Errorf("cram: crc32 mismatch got:%08x want:%08x", sum, c.crc32)
+		return fmt.Errorf("cram: container crc32 mismatch got:0x%08x want:0x%08x", sum, c.crc32)
 	}
-	if c.blockLen == 0 {
-		return nil
+	if er.err != nil {
+		return er.err
 	}
 	// The spec says T[] is {itf8, element...}.
 	// This is not true for byte[] according to
 	// the EOF block.
-	c.blockData = make([]byte, c.blockLen)
-	_, err = io.ReadFull(&er, c.blockData)
-	return err
+	c.blockData = &io.LimitedReader{R: r, N: int64(c.blockLen)}
+	return nil
 }
 
 // CRAM spec section 8.
@@ -136,7 +135,7 @@ func (b *block) readFrom(r io.Reader) error {
 	// The spec says T[] is {itf8, element...}.
 	// This is not true for byte[] according to
 	// the EOF block.
-	b.blockData = make([]byte, b.rawSize)
+	b.blockData = make([]byte, b.compressedSize)
 	_, err := io.ReadFull(&er, b.blockData)
 	if err != nil {
 		return err
