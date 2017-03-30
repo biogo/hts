@@ -27,8 +27,9 @@ func nlo(x byte) int {
 	return int(pop[x>>4])
 }
 
-// Uint64Len returns the number of bytes required to encode u.
-func Uint64Len(u uint64) int {
+// Len returns the number of bytes required to encode v.
+func Len(v int64) int {
+	u := uint64(v)
 	switch {
 	case u < 0x80:
 		return 1
@@ -51,11 +52,11 @@ func Uint64Len(u uint64) int {
 	}
 }
 
-// DecodeUint64 decodes the LTF-8 encoding in b and returns the uint64 value,
-// its width in bytes and whether the decoding was successful. If the encoding
+// Decode decodes the LTF-8 encoding in b and returns the int64 value, its
+// width in bytes and whether the decoding was successful. If the encoding
 // is invalid, the expected length of b and false are returned. If b has zero
 // length, zero, zero and false are returned.
-func DecodeUint64(b []byte) (u uint64, n int, ok bool) {
+func Decode(b []byte) (v int64, n int, ok bool) {
 	if len(b) == 0 {
 		return 0, 0, false
 	}
@@ -65,44 +66,31 @@ func DecodeUint64(b []byte) (u uint64, n int, ok bool) {
 	}
 	switch n {
 	case 1:
-		u = uint64(b[0])
+		v = int64(b[0])
 	case 2:
-		u = uint64(b[1]) | uint64(b[0]&0x3f)<<8
+		v = int64(b[1]) | int64(b[0]&0x3f)<<8
 	case 3:
-		u = uint64(b[2]) | uint64(b[1])<<8 | uint64(b[0]&0x1f)<<16
+		v = int64(b[2]) | int64(b[1])<<8 | int64(b[0]&0x1f)<<16
 	case 4:
-		u = uint64(b[3]) | uint64(b[2])<<8 | uint64(b[1])<<16 | uint64(b[0]&0x0f)<<24
+		v = int64(b[3]) | int64(b[2])<<8 | int64(b[1])<<16 | int64(b[0]&0x0f)<<24
 	case 5:
-		u = uint64(b[4]) | uint64(b[3])<<8 | uint64(b[2])<<16 | uint64(b[1])<<24 | uint64(b[0]&0x07)<<32
+		v = int64(b[4]) | int64(b[3])<<8 | int64(b[2])<<16 | int64(b[1])<<24 | int64(b[0]&0x07)<<32
 	case 6:
-		u = uint64(b[5]) | uint64(b[4])<<8 | uint64(b[3])<<16 | uint64(b[2])<<24 | uint64(b[1])<<32 | uint64(b[0]&0x03)<<40
+		v = int64(b[5]) | int64(b[4])<<8 | int64(b[3])<<16 | int64(b[2])<<24 | int64(b[1])<<32 | int64(b[0]&0x03)<<40
 	case 7:
-		u = uint64(b[6]) | uint64(b[5])<<8 | uint64(b[4])<<16 | uint64(b[3])<<24 | uint64(b[2])<<32 | uint64(b[1])<<40 | uint64(b[0]&0x01)<<48
+		v = int64(b[6]) | int64(b[5])<<8 | int64(b[4])<<16 | int64(b[3])<<24 | int64(b[2])<<32 | int64(b[1])<<40 | int64(b[0]&0x01)<<48
 	case 8:
-		u = uint64(b[7]) | uint64(b[6])<<8 | uint64(b[5])<<16 | uint64(b[4])<<24 | uint64(b[3])<<32 | uint64(b[2])<<40 | uint64(b[1])<<48
+		v = int64(b[7]) | int64(b[6])<<8 | int64(b[5])<<16 | int64(b[4])<<24 | int64(b[3])<<32 | int64(b[2])<<40 | int64(b[1])<<48
 	case 9:
-		u = uint64(b[8]) | uint64(b[7])<<8 | uint64(b[6])<<16 | uint64(b[5])<<24 | uint64(b[4])<<32 | uint64(b[3])<<40 | uint64(b[2])<<48 | uint64(b[1])<<56
+		v = int64(b[8]) | int64(b[7])<<8 | int64(b[6])<<16 | int64(b[5])<<24 | int64(b[4])<<32 | int64(b[3])<<40 | int64(b[2])<<48 | int64(b[1])<<56
 	}
-	return u, n, true
+	return v, n, true
 }
 
-// Int64Len returns the number of bytes required to encode i.
-func Int64Len(i int64) int {
-	return Uint64Len(uint64(i))
-}
-
-// DecodeInt64 decodes the LTF-8 encoding in b and returns the int64 value,
-// its width in bytes and whether the decoding was successful. If the encoding
-// is invalid, the expected length of b and false are returned. If b has zero
-// length, zero, zero and false are returned.
-func DecodeInt64(b []byte) (i int64, n int, ok bool) {
-	u, n, ok := DecodeUint64(b)
-	return int64(u), n, ok
-}
-
-// EncodeUint64 encodes u as an LTF-8 into b, which must be large enough, and
+// Encode encodes v as an LTF-8 into b, which must be large enough, and
 // and returns the number of bytes written.
-func EncodeUint64(b []byte, u uint64) int {
+func Encode(b []byte, v int64) int {
+	u := uint64(v)
 	switch {
 	case u < 0x80:
 		b[0] = byte(u)
@@ -176,10 +164,4 @@ func EncodeUint64(b []byte, u uint64) int {
 		b[8] = byte(u)
 		return 9
 	}
-}
-
-// EncodeInt64 encodes u as an LTF-8 into b, which must be large enough, and
-// and returns the number of bytes written.
-func EncodeInt64(b []byte, i int64) int {
-	return EncodeUint64(b, uint64(i))
 }
