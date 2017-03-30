@@ -1,0 +1,150 @@
+// Copyright ©2017 The bíogo Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+package cram
+
+import (
+	"encoding/binary"
+	"fmt"
+	"hash/crc32"
+	"io"
+
+	"github.com/biogo/hts/cram/encoding/itf8"
+	"github.com/biogo/hts/cram/encoding/ltf8"
+)
+
+var cramEOFmarker = []byte{
+	0x0f, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, // |........|
+	0x0f, 0xe0, 0x45, 0x4f, 0x46, 0x00, 0x00, 0x00, // |..EOF...|
+	0x00, 0x01, 0x00, 0x05, 0xbd, 0xd9, 0x4f, 0x00, // |......O.|
+	0x01, 0x00, 0x06, 0x06, 0x01, 0x00, 0x01, 0x00, // |........|
+	0x01, 0x00, 0xee, 0x63, 0x01, 0x4b, /*       */ // |...c.K|
+}
+
+// CRAM spec section 6.
+type definition struct {
+	magic   [4]byte `contain:"CRAM"`
+	version [2]byte
+	id      [20]byte
+}
+
+// CRAM spec section 7.
+type container struct {
+	blockLen  int32
+	refID     int32
+	start     int32
+	span      int32
+	nRec      int32
+	recCount  int64
+	bases     int64
+	blocks    int
+	landmarks []int32
+	crc32     uint32
+	blockData []byte
+}
+
+func (c *container) readFrom(r io.Reader) error {
+	crc := crc32.NewIEEE()
+	er := errorReader{r: io.TeeReader(r, crc)}
+	var buf [4]byte
+	io.ReadFull(&er, buf[:])
+	c.blockLen = int32(binary.LittleEndian.Uint32(buf[:]))
+	c.refID = er.itf8()
+	c.start = er.itf8()
+	c.span = er.itf8()
+	c.nRec = er.itf8()
+	c.recCount = er.ltf8()
+	c.bases = er.ltf8()
+	c.landmarks = er.itf8slice()
+	c.blocks = len(c.landmarks)
+	sum := crc.Sum32()
+	_, err := io.ReadFull(&er, buf[:])
+	if err != nil {
+		return err
+	}
+	c.crc32 = binary.LittleEndian.Uint32(buf[:])
+	if c.crc32 != sum {
+		return fmt.Errorf("cram: crc32 mismatch got:%08x want:%08x", sum, c.crc32)
+	}
+	if c.blockLen == 0 {
+		return nil
+	}
+	c.blockData = make([]byte, c.blockLen)
+	_, err = io.ReadFull(&er, c.blockData)
+	return err
+}
+
+type errorReader struct {
+	r   io.Reader
+	err error
+}
+
+func (r *errorReader) Read(b []byte) (int, error) {
+	if r.err != nil {
+		return 0, r.err
+	}
+	var n int
+	n, r.err = r.r.Read(b)
+	return n, r.err
+}
+
+func (r *errorReader) itf8() int32 {
+	var buf [5]byte
+	_, r.err = io.ReadFull(r, buf[:1])
+	if r.err != nil {
+		return 0
+	}
+	i, n, ok := itf8.DecodeInt32(buf[:1])
+	if ok {
+		return i
+	}
+	_, r.err = io.ReadFull(r, buf[1:n])
+	if r.err != nil {
+		return 0
+	}
+	i, _, ok = itf8.DecodeInt32(buf[:n])
+	if !ok {
+		r.err = fmt.Errorf("cram: failed to decode itf-8 stream %#v", buf[:n])
+	}
+	return i
+}
+
+func (r *errorReader) itf8slice() []int32 {
+	n := r.itf8()
+	if r.err != nil {
+		return nil
+	}
+	if n == 0 {
+		return nil
+	}
+	s := make([]int32, n)
+	for i := range s {
+		s[i] = r.itf8()
+		if r.err != nil {
+			return s[:i]
+		}
+	}
+	return s
+}
+
+func (r *errorReader) ltf8() int64 {
+	var buf [9]byte
+	_, r.err = io.ReadFull(r, buf[:1])
+	if r.err != nil {
+		return 0
+	}
+	i, n, ok := ltf8.DecodeInt64(buf[:1])
+	if ok {
+		return i
+	}
+	_, r.err = io.ReadFull(r, buf[1:n])
+	if r.err != nil {
+		return 0
+	}
+	i, _, ok = ltf8.DecodeInt64(buf[:n])
+	if !ok {
+		r.err = fmt.Errorf("cram: failed to decode ltf-8 stream %#v", buf[:n])
+	}
+	return i
+}
