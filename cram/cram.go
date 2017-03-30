@@ -95,7 +95,7 @@ func (r *errorReader) itf8() int32 {
 	if r.err != nil {
 		return 0
 	}
-	i, n, ok := itf8.DecodeInt32(buf[:1])
+	i, n, ok := itf8.Decode(buf[:1])
 	if ok {
 		return i
 	}
@@ -103,7 +103,7 @@ func (r *errorReader) itf8() int32 {
 	if r.err != nil {
 		return 0
 	}
-	i, _, ok = itf8.DecodeInt32(buf[:n])
+	i, _, ok = itf8.Decode(buf[:n])
 	if !ok {
 		r.err = fmt.Errorf("cram: failed to decode itf-8 stream %#v", buf[:n])
 	}
@@ -134,7 +134,7 @@ func (r *errorReader) ltf8() int64 {
 	if r.err != nil {
 		return 0
 	}
-	i, n, ok := ltf8.DecodeInt64(buf[:1])
+	i, n, ok := ltf8.Decode(buf[:1])
 	if ok {
 		return i
 	}
@@ -142,7 +142,7 @@ func (r *errorReader) ltf8() int64 {
 	if r.err != nil {
 		return 0
 	}
-	i, _, ok = ltf8.DecodeInt64(buf[:n])
+	i, _, ok = ltf8.Decode(buf[:n])
 	if !ok {
 		r.err = fmt.Errorf("cram: failed to decode ltf-8 stream %#v", buf[:n])
 	}

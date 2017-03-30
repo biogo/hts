@@ -27,41 +27,17 @@ func loopNLO(x byte) int {
 	return n
 }
 
-func TestUint32RoundTrip(t *testing.T) {
-	b := make([]byte, 6)
-	for i := uint(0); i < 32; i++ {
-		for off := -1; off <= 1; off++ {
-			in := uint32(1<<i + off)
-			inn := EncodeUint32(b, in)
-			wantn := Uint32Len(in)
-			if wantn != inn {
-				t.Errorf("disagreement in number of encoded bytes required: want=%d need=%d", wantn, inn)
-			}
-			out, outn, ok := DecodeUint32(b)
-			if !ok {
-				t.Error("failed to decode ITF-8 bytes: %08b", b[:inn])
-			}
-			if inn != outn {
-				t.Errorf("disagreement in number of encoded bytes: in=%d out=%d", inn, outn)
-			}
-			if in != out {
-				t.Errorf("disagreement in encoded value: in=%d (0x%[1]x) out=%d (0x%[2]x)\nencoding=%08b", in, out, b[:inn])
-			}
-		}
-	}
-}
-
-func TestInt32RoundTrip(t *testing.T) {
+func TestRoundTrip(t *testing.T) {
 	b := make([]byte, 6)
 	for i := uint(0); i < 32; i++ {
 		for off := -1; off <= 1; off++ {
 			in := int32(1<<i + off)
-			inn := EncodeInt32(b, in)
-			wantn := Int32Len(in)
+			inn := Encode(b, in)
+			wantn := Len(in)
 			if wantn != inn {
 				t.Errorf("disagreement in number of encoded bytes required: want=%d need=%d", wantn, inn)
 			}
-			out, outn, ok := DecodeInt32(b)
+			out, outn, ok := Decode(b)
 			if !ok {
 				t.Error("failed to decode ITF-8 bytes: %08b", b[:inn])
 			}
@@ -85,7 +61,7 @@ func TestKnownValues(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		got, n, ok := DecodeInt32(test.bytes)
+		got, n, ok := Decode(test.bytes)
 		if !ok {
 			t.Error("failed to decode ITF-8 bytes: %08b", test.bytes)
 		}
