@@ -207,7 +207,7 @@ func readTabixHeader(r io.Reader, idx *Index) error {
 		return fmt.Errorf("tabix: failed to read name lengths: %v", err)
 	}
 	nameBytes := make([]byte, n)
-	_, err = r.Read(nameBytes)
+	_, err = io.ReadFull(r, nameBytes)
 	if err != nil {
 		return fmt.Errorf("tabix: failed to read names: %v", err)
 	}
