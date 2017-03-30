@@ -5,10 +5,12 @@
 package cram
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"hash/crc32"
 	"io"
+	"reflect"
 
 	"github.com/biogo/hts/cram/encoding/itf8"
 	"github.com/biogo/hts/cram/encoding/ltf8"
@@ -24,9 +26,21 @@ var cramEOFmarker = []byte{
 
 // CRAM spec section 6.
 type definition struct {
-	magic   [4]byte `contain:"CRAM"`
-	version [2]byte
-	id      [20]byte
+	Magic   [4]byte `is:"CRAM"`
+	Version [2]byte
+	ID      [20]byte
+}
+
+func (d *definition) readFrom(r io.Reader) error {
+	err := binary.Read(r, binary.LittleEndian, d)
+	if err != nil {
+		return err
+	}
+	magic := reflect.TypeOf(*d).Field(0).Tag.Get("is")
+	if !bytes.Equal(d.Magic[:], []byte(magic)) {
+		return fmt.Errorf("cram: not a cram file: magic bytes %q", d.Magic)
+	}
+	return nil
 }
 
 // CRAM spec section 7.
@@ -70,9 +84,73 @@ func (c *container) readFrom(r io.Reader) error {
 	if c.blockLen == 0 {
 		return nil
 	}
+	// The spec says T[] is {itf8, element...}.
+	// This is not true for byte[] according to
+	// the EOF block.
 	c.blockData = make([]byte, c.blockLen)
 	_, err = io.ReadFull(&er, c.blockData)
 	return err
+}
+
+// CRAM spec section 8.
+type block struct {
+	method         byte
+	typ            byte
+	contentID      int32
+	compressedSize int32
+	rawSize        int32
+	blockData      []byte
+	crc32          uint32
+}
+
+const (
+	rawMethod = iota
+	gzipMethod
+	bzip2Method
+	lzmaMethod
+	ransMethod
+)
+
+const (
+	fileHeader = iota
+	compressionHeader
+	mappedSliceHeader
+	_ // reserved
+	externalData
+	coreData
+)
+
+func (b *block) readFrom(r io.Reader) error {
+	crc := crc32.NewIEEE()
+	er := errorReader{r: io.TeeReader(r, crc)}
+	var buf [4]byte
+	io.ReadFull(&er, buf[:2])
+	b.method = buf[0]
+	b.typ = buf[1]
+	b.contentID = er.itf8()
+	b.compressedSize = er.itf8()
+	b.rawSize = er.itf8()
+	if b.method == rawMethod && b.compressedSize != b.rawSize {
+		return fmt.Errorf("cram: compressed (%d) != raw (%d) size for raw method", b.compressedSize, b.rawSize)
+	}
+	// The spec says T[] is {itf8, element...}.
+	// This is not true for byte[] according to
+	// the EOF block.
+	b.blockData = make([]byte, b.rawSize)
+	_, err := io.ReadFull(&er, b.blockData)
+	if err != nil {
+		return err
+	}
+	sum := crc.Sum32()
+	_, err = io.ReadFull(&er, buf[:])
+	if err != nil {
+		return err
+	}
+	b.crc32 = binary.LittleEndian.Uint32(buf[:])
+	if b.crc32 != sum {
+		return fmt.Errorf("cram: block crc32 mismatch got:0x%08x want:0x%08x", sum, b.crc32)
+	}
+	return nil
 }
 
 type errorReader struct {
