@@ -165,7 +165,7 @@ func TestRead(t *testing.T) {
 		t.Log(utter.Sdump(c))
 
 		for {
-			var b block
+			b := &block{}
 			err = b.readFrom(blockData)
 			if err == io.EOF {
 				break
@@ -173,14 +173,7 @@ func TestRead(t *testing.T) {
 			if err != nil {
 				t.Errorf("failed to read block: %v\n%#v", err, b)
 			}
-			switch b.typ {
-			case mappedSliceHeader:
-				var s slice
-				s.readFrom(bytes.NewReader(b.blockData))
-				t.Log(utter.Sdump(s))
-			default:
-				t.Log(utter.Sdump(b))
-			}
+			t.Log(utter.Sdump(b.value()))
 		}
 	}
 }
