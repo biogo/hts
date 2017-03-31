@@ -13,6 +13,8 @@ import (
 	"net/http"
 	"reflect"
 	"testing"
+
+	"github.com/kortschak/utter"
 )
 
 func TestReadDefinition(t *testing.T) {
@@ -117,6 +119,62 @@ func TestHasEOF(t *testing.T) {
 	}
 	if !hasEOF {
 		t.Error("failed to identify known EOF block")
+	}
+}
+
+func TestRead(t *testing.T) {
+	utter.Config.BytesWidth = 8
+
+	r, err := get(`https://github.com/samtools/htslib/blob/develop/test/ce%235b_java.cram?raw=true`)
+	if err != nil {
+		t.Fatalf("failed to open test file: %v", err)
+	}
+
+	var d definition
+	err = d.readFrom(r)
+	if err != nil {
+		t.Fatalf("failed to read definition: %v\n%#v", err, d)
+	}
+	wantDefinition := definition{
+		Magic: [4]uint8{
+			0x43, 0x52, 0x41, 0x4d, // |CRAM|
+		},
+		Version: [2]byte{3, 0},
+		ID: [20]byte{
+			0x63, 0x65, 0x23, 0x35, 0x62, 0x2e, 0x73, 0x61, // |ce#5b.sa|
+			0x6d, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // |m.......|
+			0x00, 0x00, 0x00, 0x00, /*                   */ // |....|
+		},
+	}
+	t.Log(utter.Sdump(d))
+	if d != wantDefinition {
+		t.Errorf("unexpected cram definition:\ngot: %#v\nwant:%#v", d, wantDefinition)
+	}
+
+	for {
+		var c container
+		err = c.readFrom(r)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatalf("failed to read container: %v\n%#v", err, c)
+		}
+		blockData := c.blockData
+		c.blockData = nil
+		t.Log(utter.Sdump(c))
+
+		for {
+			var b block
+			err = b.readFrom(blockData)
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				t.Errorf("failed to read block: %v\n%#v", err, b)
+			}
+			t.Log(utter.Sdump(b))
+		}
 	}
 }
 
