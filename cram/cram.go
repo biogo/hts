@@ -17,6 +17,7 @@ import (
 
 	"github.com/biogo/hts/cram/encoding/itf8"
 	"github.com/biogo/hts/cram/encoding/ltf8"
+	"github.com/biogo/hts/sam"
 )
 
 var cramEOFmarker = []byte{
@@ -199,6 +200,25 @@ func (b *block) readFrom(r io.Reader) error {
 		return fmt.Errorf("cram: block crc32 mismatch got:0x%08x want:0x%08x", sum, b.crc32)
 	}
 	return nil
+}
+
+func (b *block) value() interface{} {
+	switch b.typ {
+	case fileHeader:
+		var h sam.Header
+		end := binary.LittleEndian.Uint32(b.blockData[:4])
+		err := h.UnmarshalText(b.blockData[4 : 4+end])
+		if err != nil {
+			return err
+		}
+		return &h
+	case mappedSliceHeader:
+		var s slice
+		s.readFrom(bytes.NewReader(b.blockData))
+		return &s
+	default:
+		return b
+	}
 }
 
 // CRAM spec section 8.5.
