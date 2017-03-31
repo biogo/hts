@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io"
+	"io/ioutil"
 	"os"
 	"reflect"
 
@@ -198,6 +199,38 @@ func (b *block) readFrom(r io.Reader) error {
 		return fmt.Errorf("cram: block crc32 mismatch got:0x%08x want:0x%08x", sum, b.crc32)
 	}
 	return nil
+}
+
+// CRAM spec section 8.5.
+type slice struct {
+	refID         int32
+	start         int32
+	span          int32
+	nRec          int32
+	recCount      int64
+	blocks        int32
+	blockIDs      []int32
+	embeddedRefID int32
+	md5sum        [16]byte
+	tags          []byte
+}
+
+func (s *slice) readFrom(r io.Reader) error {
+	er := errorReader{r: r}
+	s.refID = er.itf8()
+	s.start = er.itf8()
+	s.span = er.itf8()
+	s.nRec = er.itf8()
+	s.recCount = er.ltf8()
+	s.blocks = er.itf8()
+	s.blockIDs = er.itf8slice()
+	s.embeddedRefID = er.itf8()
+	_, err := io.ReadFull(&er, s.md5sum[:])
+	if err != nil {
+		return err
+	}
+	s.tags, err = ioutil.ReadAll(&er)
+	return err
 }
 
 type errorReader struct {
