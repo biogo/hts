@@ -6,6 +6,8 @@ package cram
 
 import (
 	"bytes"
+	"compress/bzip2"
+	"compress/gzip"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -14,6 +16,8 @@ import (
 	"io/ioutil"
 	"os"
 	"reflect"
+
+	"github.com/ulikunitz/xz/lzma"
 
 	"github.com/biogo/hts/cram/encoding/itf8"
 	"github.com/biogo/hts/cram/encoding/ltf8"
@@ -206,8 +210,12 @@ func (b *block) value() interface{} {
 	switch b.typ {
 	case fileHeader:
 		var h sam.Header
-		end := binary.LittleEndian.Uint32(b.blockData[:4])
-		err := h.UnmarshalText(b.blockData[4 : 4+end])
+		blockData, err := b.expandBlockdata()
+		if err != nil {
+			return err
+		}
+		end := binary.LittleEndian.Uint32(blockData[:4])
+		err = h.UnmarshalText(blockData[4 : 4+end])
 		if err != nil {
 			return err
 		}
@@ -217,7 +225,45 @@ func (b *block) value() interface{} {
 		s.readFrom(bytes.NewReader(b.blockData))
 		return &s
 	default:
+		// Experimental.
+		switch b.method {
+		case gzipMethod, bzip2Method, lzmaMethod:
+			var err error
+			b.blockData, err = b.expandBlockdata()
+			if err != nil {
+				return err
+			}
+			b.method |= 0x80
+		default:
+			// Do nothing.
+		}
 		return b
+	}
+}
+
+func (b *block) expandBlockdata() ([]byte, error) {
+	switch b.method {
+	default:
+		panic(fmt.Sprintf("cram: unknown method: %v", b.method))
+	case rawMethod:
+		return b.blockData, nil
+	case gzipMethod:
+		gz, err := gzip.NewReader(bytes.NewReader(b.blockData))
+		if err != nil {
+			return nil, err
+		}
+		return ioutil.ReadAll(gz)
+	case bzip2Method:
+		return ioutil.ReadAll(bzip2.NewReader(bytes.NewReader(b.blockData)))
+	case lzmaMethod:
+		lz, err := lzma.NewReader(bytes.NewReader(b.blockData))
+		if err != nil {
+			return nil, err
+		}
+		return ioutil.ReadAll(lz)
+	case ransMethod:
+		// Unimplemented.
+		return b.blockData, nil
 	}
 }
 
