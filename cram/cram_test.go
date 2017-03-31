@@ -173,7 +173,14 @@ func TestRead(t *testing.T) {
 			if err != nil {
 				t.Errorf("failed to read block: %v\n%#v", err, b)
 			}
-			t.Log(utter.Sdump(b))
+			switch b.typ {
+			case mappedSliceHeader:
+				var s slice
+				s.readFrom(bytes.NewReader(b.blockData))
+				t.Log(utter.Sdump(s))
+			default:
+				t.Log(utter.Sdump(b))
+			}
 		}
 	}
 }
