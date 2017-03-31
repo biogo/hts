@@ -7,9 +7,11 @@ package cram
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"hash/crc32"
 	"io"
+	"os"
 	"reflect"
 
 	"github.com/biogo/hts/cram/encoding/itf8"
@@ -22,6 +24,52 @@ var cramEOFmarker = []byte{
 	0x00, 0x01, 0x00, 0x05, 0xbd, 0xd9, 0x4f, 0x00, // |......O.|
 	0x01, 0x00, 0x06, 0x06, 0x01, 0x00, 0x01, 0x00, // |........|
 	0x01, 0x00, 0xee, 0x63, 0x01, 0x4b, /*       */ // |...c.K|
+}
+
+var ErrNoEnd = errors.New("cram: cannot determine offset from end")
+
+// HasEOF checks for the presence of a CRAM magic EOF block.
+// The magic block is defined in the CRAM specification. A magic block
+// is written by a Writer on calling Close. The ReaderAt must provide
+// some method for determining valid ReadAt offsets.
+func HasEOF(r io.ReaderAt) (bool, error) {
+	type sizer interface {
+		Size() int64
+	}
+	type stater interface {
+		Stat() (os.FileInfo, error)
+	}
+	type lenSeeker interface {
+		io.Seeker
+		Len() int
+	}
+	var size int64
+	switch r := r.(type) {
+	case sizer:
+		size = r.Size()
+	case stater:
+		fi, err := r.Stat()
+		if err != nil {
+			return false, err
+		}
+		size = fi.Size()
+	case lenSeeker:
+		var err error
+		size, err = r.Seek(0, 1)
+		if err != nil {
+			return false, err
+		}
+		size += int64(r.Len())
+	default:
+		return false, ErrNoEnd
+	}
+
+	b := make([]byte, len(cramEOFmarker))
+	_, err := r.ReadAt(b, size-int64(len(cramEOFmarker)))
+	if err != nil {
+		return false, err
+	}
+	return bytes.Equal(b, cramEOFmarker), nil
 }
 
 // CRAM spec section 6.
