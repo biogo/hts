@@ -173,7 +173,11 @@ func TestRead(t *testing.T) {
 			if err != nil {
 				t.Errorf("failed to read block: %v\n%#v", err, b)
 			}
-			t.Log(utter.Sdump(b.value()))
+			v, err := b.value()
+			if err != nil {
+				t.Errorf("failed to get value: %v", err)
+			}
+			t.Log(utter.Sdump(v))
 		}
 	}
 }

@@ -206,24 +206,24 @@ func (b *block) readFrom(r io.Reader) error {
 	return nil
 }
 
-func (b *block) value() interface{} {
+func (b *block) value() (interface{}, error) {
 	switch b.typ {
 	case fileHeader:
 		var h sam.Header
 		blockData, err := b.expandBlockdata()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		end := binary.LittleEndian.Uint32(blockData[:4])
 		err = h.UnmarshalText(blockData[4 : 4+end])
 		if err != nil {
-			return err
+			return nil, err
 		}
-		return &h
+		return &h, nil
 	case mappedSliceHeader:
 		var s slice
 		s.readFrom(bytes.NewReader(b.blockData))
-		return &s
+		return &s, nil
 	default:
 		// Experimental.
 		switch b.method {
@@ -231,13 +231,13 @@ func (b *block) value() interface{} {
 			var err error
 			b.blockData, err = b.expandBlockdata()
 			if err != nil {
-				return err
+				return nil, err
 			}
 			b.method |= 0x80
 		default:
 			// Do nothing.
 		}
-		return b
+		return b, nil
 	}
 }
 
