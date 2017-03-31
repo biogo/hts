@@ -108,6 +108,15 @@ func readRefRecords(r io.Reader, n int32) ([]*Reference, error) {
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (bh *Header) UnmarshalText(text []byte) error {
+	if bh.seenRefs == nil {
+		bh.seenRefs = set{}
+	}
+	if bh.seenGroups == nil {
+		bh.seenGroups = set{}
+	}
+	if bh.seenProgs == nil {
+		bh.seenProgs = set{}
+	}
 	var t Tag
 	for i, l := range bytes.Split(text, []byte{'\n'}) {
 		if len(l) > 0 && l[len(l)-1] == '\r' {
