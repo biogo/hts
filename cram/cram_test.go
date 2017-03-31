@@ -8,6 +8,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"net/http"
 	"reflect"
 	"testing"
 )
@@ -101,4 +104,31 @@ func TestReadEOFContainer(t *testing.T) {
 	if !reflect.DeepEqual(b, wantBlock) {
 		t.Errorf("unexpected EOF block value:\ngot: %#v\nwant:%#v", b, wantBlock)
 	}
+}
+
+func TestHasEOF(t *testing.T) {
+	r, err := get(`https://github.com/samtools/htslib/blob/develop/test/ce%235b_java.cram?raw=true`)
+	if err != nil {
+		t.Fatalf("failed to open test file: %v", err)
+	}
+	hasEOF, err := HasEOF(r)
+	if err != nil {
+		t.Fatalf("failed to read EOF: %v", err)
+	}
+	if !hasEOF {
+		t.Error("failed to identify known EOF block")
+	}
+}
+
+func get(url string) (*bytes.Reader, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	return bytes.NewReader(b), nil
 }
