@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"reflect"
@@ -66,19 +65,19 @@ func TestReadDefinition(t *testing.T) {
 }
 
 func TestReadEOFContainer(t *testing.T) {
-	var c container
+	var c Container
 	err := c.readFrom(bytes.NewReader(cramEOFmarker))
 	if err != nil {
 		t.Errorf("failed to read container: %v\n%#v", err, c)
 	}
-	var b block
+	var b Block
 	err = b.readFrom(c.blockData)
 	if err != nil {
 		t.Errorf("failed to read block: %v\n%#v", err, b)
 	}
 
 	c.blockData = nil
-	wantContainer := container{
+	wantContainer := Container{
 		blockLen:  15,
 		refID:     -1,
 		start:     4542278,
@@ -94,7 +93,7 @@ func TestReadEOFContainer(t *testing.T) {
 		t.Errorf("unexpected EOF container value:\ngot: %#v\nwant:%#v", c, wantContainer)
 	}
 
-	wantBlock := block{
+	wantBlock := Block{
 		method:         rawMethod,
 		typ:            compressionHeader,
 		contentID:      0,
@@ -130,10 +129,9 @@ func TestRead(t *testing.T) {
 		t.Fatalf("failed to open test file: %v", err)
 	}
 
-	var d definition
-	err = d.readFrom(r)
+	cr, err := NewReader(r)
 	if err != nil {
-		t.Fatalf("failed to read definition: %v\n%#v", err, d)
+		t.Fatalf("failed to read definition: %v\n%#v", err, cr.d)
 	}
 	wantDefinition := definition{
 		Magic: [4]uint8{
@@ -146,39 +144,31 @@ func TestRead(t *testing.T) {
 			0x00, 0x00, 0x00, 0x00, /*                   */ // |....|
 		},
 	}
-	t.Log(utter.Sdump(d))
-	if d != wantDefinition {
-		t.Errorf("unexpected cram definition:\ngot: %#v\nwant:%#v", d, wantDefinition)
+	t.Log(utter.Sdump(cr.d))
+	if cr.d != wantDefinition {
+		t.Errorf("unexpected cram definition:\ngot: %#v\nwant:%#v", cr.d, wantDefinition)
 	}
 
-	for {
-		var c container
-		err = c.readFrom(r)
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			t.Fatalf("failed to read container: %v\n%#v", err, c)
-		}
+	for cr.Next() {
+		c := cr.Container()
 		blockData := c.blockData
 		c.blockData = nil
 		t.Log(utter.Sdump(c))
+		c.blockData = blockData
 
-		for {
-			b := &block{}
-			err = b.readFrom(blockData)
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				t.Errorf("failed to read block: %v\n%#v", err, b)
-			}
-			v, err := b.value()
+		for c.Next() {
+			v, err := c.Block().Value()
 			if err != nil {
 				t.Errorf("failed to get value: %v", err)
 			}
 			t.Log(utter.Sdump(v))
 		}
+		if c.Err() != nil {
+			t.Errorf("failed to read block: %v\n%#v", err, c.block)
+		}
+	}
+	if cr.Err() != nil {
+		t.Fatalf("failed to read container: %v\n%#v", err, cr.c)
 	}
 }
 

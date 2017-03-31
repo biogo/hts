@@ -78,6 +78,48 @@ func HasEOF(r io.ReaderAt) (bool, error) {
 	return bytes.Equal(b, cramEOFmarker), nil
 }
 
+type Reader struct {
+	r io.Reader
+
+	d definition
+	c *Container
+
+	err error
+}
+
+func NewReader(r io.Reader) (*Reader, error) {
+	cr := Reader{r: r}
+	err := cr.d.readFrom(r)
+	if err != nil {
+		return nil, err
+	}
+	return &cr, nil
+}
+
+func (r *Reader) Next() bool {
+	if r.err != nil {
+		return false
+	}
+	if r.c != nil {
+		io.Copy(ioutil.Discard, r.c.blockData)
+	}
+	var c Container
+	r.err = c.readFrom(r.r)
+	r.c = &c
+	return r.err == nil
+}
+
+func (r *Reader) Container() *Container {
+	return r.c
+}
+
+func (r *Reader) Err() error {
+	if r.err == io.EOF {
+		return nil
+	}
+	return r.err
+}
+
 // CRAM spec section 6.
 type definition struct {
 	Magic   [4]byte `is:"CRAM"`
@@ -98,7 +140,7 @@ func (d *definition) readFrom(r io.Reader) error {
 }
 
 // CRAM spec section 7.
-type container struct {
+type Container struct {
 	blockLen  int32
 	refID     int32
 	start     int32
@@ -110,9 +152,12 @@ type container struct {
 	landmarks []int32
 	crc32     uint32
 	blockData io.Reader
+
+	block *Block
+	err   error
 }
 
-func (c *container) readFrom(r io.Reader) error {
+func (c *Container) readFrom(r io.Reader) error {
 	crc := crc32.NewIEEE()
 	er := errorReader{r: io.TeeReader(r, crc)}
 	var buf [4]byte
@@ -145,8 +190,32 @@ func (c *container) readFrom(r io.Reader) error {
 	return nil
 }
 
+func (c *Container) Next() bool {
+	if c.err != nil {
+		return false
+	}
+	var b Block
+	c.err = b.readFrom(c.blockData)
+	if c.err == nil {
+		c.block = &b
+		return true
+	}
+	return false
+}
+
+func (c *Container) Block() *Block {
+	return c.block
+}
+
+func (c *Container) Err() error {
+	if c.err == io.EOF {
+		return nil
+	}
+	return c.err
+}
+
 // CRAM spec section 8.
-type block struct {
+type Block struct {
 	method         byte
 	typ            byte
 	contentID      int32
@@ -173,7 +242,7 @@ const (
 	coreData
 )
 
-func (b *block) readFrom(r io.Reader) error {
+func (b *Block) readFrom(r io.Reader) error {
 	crc := crc32.NewIEEE()
 	er := errorReader{r: io.TeeReader(r, crc)}
 	var buf [4]byte
@@ -206,7 +275,7 @@ func (b *block) readFrom(r io.Reader) error {
 	return nil
 }
 
-func (b *block) value() (interface{}, error) {
+func (b *Block) Value() (interface{}, error) {
 	switch b.typ {
 	case fileHeader:
 		var h sam.Header
@@ -221,7 +290,7 @@ func (b *block) value() (interface{}, error) {
 		}
 		return &h, nil
 	case mappedSliceHeader:
-		var s slice
+		var s Slice
 		s.readFrom(bytes.NewReader(b.blockData))
 		return &s, nil
 	default:
@@ -241,7 +310,7 @@ func (b *block) value() (interface{}, error) {
 	}
 }
 
-func (b *block) expandBlockdata() ([]byte, error) {
+func (b *Block) expandBlockdata() ([]byte, error) {
 	switch b.method {
 	default:
 		panic(fmt.Sprintf("cram: unknown method: %v", b.method))
@@ -268,7 +337,7 @@ func (b *block) expandBlockdata() ([]byte, error) {
 }
 
 // CRAM spec section 8.5.
-type slice struct {
+type Slice struct {
 	refID         int32
 	start         int32
 	span          int32
@@ -281,7 +350,7 @@ type slice struct {
 	tags          []byte
 }
 
-func (s *slice) readFrom(r io.Reader) error {
+func (s *Slice) readFrom(r io.Reader) error {
 	er := errorReader{r: r}
 	s.refID = er.itf8()
 	s.start = er.itf8()
