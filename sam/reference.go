@@ -270,7 +270,7 @@ func equalRefs(a, b *Reference) bool {
 	if a == b {
 		return true
 	}
-	if a.id != b.id ||
+	if (a.id != -1 && b.id != -1 && a.id != b.id) ||
 		a.name != b.name ||
 		a.lRef != b.lRef ||
 		a.md5 != b.md5 ||
