@@ -138,6 +138,32 @@ func (r *Reference) SetLen(l int) error {
 	return nil
 }
 
+// Tags applies the function fn to each of the tag-value pairs of the Reference.
+// The function fn must not add or delete tags held by the receiver during
+// iteration.
+func (r *Reference) Tags(fn func(t Tag, value string)) {
+	if fn == nil {
+		return
+	}
+	fn(refNameTag, r.Name())
+	fn(refLengthTag, fmt.Sprint(r.lRef))
+	if r.assemID != "" {
+		fn(assemblyIDTag, r.assemID)
+	}
+	if r.md5 != "" {
+		fn(md5Tag, fmt.Sprintf("%x", []byte(r.md5)))
+	}
+	if r.species != "" {
+		fn(speciesTag, r.species)
+	}
+	if r.uri != nil {
+		fn(uriTag, r.uri.String())
+	}
+	for _, tp := range r.otherTags {
+		fn(tp.tag, tp.value)
+	}
+}
+
 // Get returns the string representation of the value associated with the
 // given reference line tag. If the tag is not present the empty string is returned.
 func (r *Reference) Get(t Tag) string {
@@ -270,7 +296,9 @@ func (r *Reference) Clone() *Reference {
 		return nil
 	}
 	cr := *r
-	cr.otherTags = make([]tagPair, len(cr.otherTags))
+	if len(cr.otherTags) != 0 {
+		cr.otherTags = make([]tagPair, len(cr.otherTags))
+	}
 	copy(cr.otherTags, r.otherTags)
 	cr.owner = nil
 	cr.id = -1
@@ -292,10 +320,10 @@ func equalRefs(a, b *Reference) bool {
 	if (a.id != -1 && b.id != -1 && a.id != b.id) ||
 		a.name != b.name ||
 		a.lRef != b.lRef ||
-		a.md5 != b.md5 ||
-		a.assemID != b.assemID ||
-		a.species != b.species ||
-		a.uri != b.uri {
+		(a.md5 != "" && b.md5 != "" && a.md5 != b.md5) ||
+		(a.assemID != "" && b.assemID != "" && a.assemID != b.assemID) ||
+		(a.species != "" && b.species != "" && a.species != b.species) ||
+		(a.uri != nil && b.uri != nil && a.uri != b.uri) {
 		return false
 	}
 	if a.uri != nil && b.uri != nil && a.uri.String() != b.uri.String() {

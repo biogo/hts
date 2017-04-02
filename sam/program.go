@@ -106,11 +106,38 @@ func (p *Program) Clone() *Program {
 		return nil
 	}
 	cp := *p
-	cp.otherTags = make([]tagPair, len(cp.otherTags))
+	if len(cp.otherTags) != 0 {
+		cp.otherTags = make([]tagPair, len(cp.otherTags))
+	}
 	copy(cp.otherTags, p.otherTags)
 	cp.id = -1
 	cp.owner = nil
 	return &cp
+}
+
+// Tags applies the function fn to each of the tag-value pairs of the Program.
+// The function fn must not add or delete tags held by the receiver during
+// iteration.
+func (p *Program) Tags(fn func(t Tag, value string)) {
+	if fn == nil {
+		return
+	}
+	fn(idTag, p.UID())
+	if p.name != "" {
+		fn(programNameTag, p.name)
+	}
+	if p.command != "" {
+		fn(commandLineTag, p.command)
+	}
+	if p.previous != "" {
+		fn(previousProgTag, p.previous)
+	}
+	if p.version != "" {
+		fn(versionTag, p.version)
+	}
+	for _, tp := range p.otherTags {
+		fn(tp.tag, tp.value)
+	}
 }
 
 // Get returns the string representation of the value associated with the

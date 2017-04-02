@@ -94,7 +94,9 @@ func (r *ReadGroup) Clone() *ReadGroup {
 		return nil
 	}
 	cr := *r
-	cr.otherTags = make([]tagPair, len(cr.otherTags))
+	if len(cr.otherTags) != 0 {
+		cr.otherTags = make([]tagPair, len(cr.otherTags))
+	}
 	copy(cr.otherTags, r.otherTags)
 	cr.id = -1
 	cr.owner = nil
@@ -109,6 +111,52 @@ func (r *ReadGroup) PlatformUnit() string { return r.platformUnit }
 
 // Time returns the time the read group was produced.
 func (r *ReadGroup) Time() time.Time { return r.date }
+
+// Tags applies the function fn to each of the tag-value pairs of the read group.
+// The function fn must not add or delete tags held by the receiver during
+// iteration.
+func (r *ReadGroup) Tags(fn func(t Tag, value string)) {
+	if fn == nil {
+		return
+	}
+	fn(idTag, r.name)
+	if r.center != "" {
+		fn(centerTag, r.center)
+	}
+	if r.description != "" {
+		fn(descriptionTag, r.description)
+	}
+	if !r.date.IsZero() {
+		fn(dateTag, r.date.Format(iso8601TimeDateN))
+	}
+	if r.flowOrder != "" {
+		fn(flowOrderTag, r.flowOrder)
+	}
+	if r.keySeq != "" {
+		fn(keySequenceTag, r.keySeq)
+	}
+	if r.library != "" {
+		fn(libraryTag, r.library)
+	}
+	if r.program != "" {
+		fn(programTag, r.program)
+	}
+	if r.insertSize != 0 {
+		fn(insertSizeTag, fmt.Sprint(r.insertSize))
+	}
+	if r.platform != "" {
+		fn(platformTag, r.platform)
+	}
+	if r.platformUnit != "" {
+		fn(platformUnitTag, r.platformUnit)
+	}
+	if r.sample != "" {
+		fn(sampleTag, r.sample)
+	}
+	for _, tp := range r.otherTags {
+		fn(tp.tag, tp.value)
+	}
+}
 
 // Get returns the string representation of the value associated with the
 // given read group line tag. If the tag is not present the empty string is returned.

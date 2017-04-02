@@ -8,7 +8,10 @@ import (
 	"bytes"
 	"errors"
 	"flag"
+	"fmt"
 	"io"
+	"reflect"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -831,6 +834,173 @@ func (s *S) TestRenames(c *check.C) {
 
 	prog := NewProgram("prog", "", "", "", "")
 	c.Assert(prog.SetUID("new prog"), check.Equals, nil)
+}
+
+func (s *S) TestSort(c *check.C) {
+	sr, err := NewReader(bytes.NewReader(specExamples.data))
+	c.Assert(err, check.Equals, nil)
+	i := NewIterator(sr)
+	var recs []*Record
+	for i.Next() {
+		recs = append(recs, i.Record())
+	}
+	c.Assert(i.Error(), check.Equals, nil)
+	recs = append(recs, &Record{Name: "000", Ref: nil, Pos: -1})
+
+	wantPos := []int{6, 8, 8, 15, 28, 36, -1}
+	sort.Sort(byCoordinate(recs))
+	for i, r := range recs {
+		c.Check(r.Pos, check.Equals, wantPos[i])
+	}
+
+	wantName := []string{"000", "r001", "r001", "r002", "r003", "r003", "r004"}
+	sort.Sort(byName(recs))
+	for i, r := range recs {
+		c.Check(r.Name, check.Equals, wantName[i])
+	}
+}
+
+type byName []*Record
+
+func (r byName) Len() int           { return len(r) }
+func (r byName) Less(i, j int) bool { return r[i].LessByName(r[j]) }
+func (r byName) Swap(i, j int)      { r[i], r[j] = r[j], r[i] }
+
+type byCoordinate []*Record
+
+func (r byCoordinate) Len() int           { return len(r) }
+func (r byCoordinate) Less(i, j int) bool { return r[i].LessByCoordinate(r[j]) }
+func (r byCoordinate) Swap(i, j int)      { r[i], r[j] = r[j], r[i] }
+
+func (s *S) TestRemoveReference(c *check.C) {
+	h := headerHG00096_1000.Clone()
+	h.RemoveReference(h.Refs()[2])
+	c.Check(len(h.Refs()), check.Equals, len(headerHG00096_1000.Refs())-1)
+	c.Check(fmt.Sprint(h.Refs()[1]), check.Equals, fmt.Sprint(headerHG00096_1000.Refs()[1]))
+	c.Check(fmt.Sprint(h.Refs()[2]), check.Equals, fmt.Sprint(headerHG00096_1000.Refs()[3]))
+	r := headerHG00096_1000.Refs()[2].Clone()
+	c.Check(h.AddReference(r), check.Equals, nil)
+	c.Check(len(h.Refs()), check.Equals, len(headerHG00096_1000.Refs()))
+}
+
+func (s *S) TestRemoveReadGroup(c *check.C) {
+	h := headerHG00096_1000.Clone()
+	h.RemoveReadGroup(h.RGs()[1])
+	c.Check(len(h.RGs()), check.Equals, len(headerHG00096_1000.RGs())-1)
+	c.Check(fmt.Sprint(h.RGs()[0]), check.Equals, fmt.Sprint(headerHG00096_1000.RGs()[0]))
+	c.Check(fmt.Sprint(h.RGs()[1]), check.Equals, fmt.Sprint(headerHG00096_1000.RGs()[2]))
+	r := headerHG00096_1000.RGs()[1].Clone()
+	c.Check(h.AddReadGroup(r), check.Equals, nil)
+	c.Check(len(h.RGs()), check.Equals, len(headerHG00096_1000.RGs()))
+}
+
+func (s *S) TestRemoveProgram(c *check.C) {
+	h := headerHG00096_1000.Clone()
+	h.RemoveProgram(h.Progs()[2])
+	c.Check(len(h.Progs()), check.Equals, len(headerHG00096_1000.Progs())-1)
+	c.Check(fmt.Sprint(h.Progs()[1]), check.Equals, fmt.Sprint(headerHG00096_1000.Progs()[1]))
+	c.Check(fmt.Sprint(h.Progs()[2]), check.Equals, fmt.Sprint(headerHG00096_1000.Progs()[3]))
+	p := headerHG00096_1000.Progs()[2].Clone()
+	c.Check(h.AddProgram(p), check.Equals, nil)
+	c.Check(len(h.Progs()), check.Equals, len(headerHG00096_1000.Progs()))
+}
+
+func (s *S) TestMergeHeaders(c *check.C) {
+	tests := []struct {
+		src   []*Header
+		want  *Header
+		links [][]*Reference
+		err   error
+	}{
+		{},
+		{
+			src:   []*Header{{}},
+			links: nil,
+			want:  &Header{},
+			err:   nil,
+		},
+		{
+			src: []*Header{
+				{refs: []*Reference{{id: 0, name: "ref", lRef: 45}}, seenRefs: set{"ref": 0}, seenGroups: set{}, seenProgs: set{}},
+				{refs: []*Reference{{id: 0, name: "ref", lRef: 45}}, seenRefs: set{"ref": 0}, seenGroups: set{}, seenProgs: set{}},
+			},
+			links: [][]*Reference{
+				{{id: 0, name: "ref", lRef: 45}},
+				{{id: 0, name: "ref", lRef: 45}},
+			},
+			want: &Header{
+				refs:       []*Reference{{id: 0, name: "ref", lRef: 45}},
+				seenRefs:   set{"ref": 0},
+				seenGroups: set{},
+				seenProgs:  set{},
+			},
+			err: nil,
+		},
+		{
+			src: []*Header{
+				{refs: []*Reference{{id: 0, name: "refa", lRef: 45}}, seenRefs: set{"refa": 0}, seenGroups: set{}, seenProgs: set{}},
+				{refs: []*Reference{{id: 0, name: "refb", lRef: 45}}, seenRefs: set{"refb": 0}, seenGroups: set{}, seenProgs: set{}},
+			},
+			links: [][]*Reference{
+				{{id: 0, name: "refa", lRef: 45}},
+				{{id: 1, name: "refb", lRef: 45}},
+			},
+			want: &Header{
+				refs: []*Reference{
+					{id: 0, name: "refa", lRef: 45},
+					{id: 1, name: "refb", lRef: 45},
+				},
+				seenRefs:   set{"refa": 0, "refb": 1},
+				seenGroups: set{},
+				seenProgs:  set{},
+			},
+			err: nil,
+		},
+		{
+			src: []*Header{
+				{refs: []*Reference{{id: 0, name: "ref", lRef: 45}}, seenRefs: set{"ref": 0}, seenGroups: set{}, seenProgs: set{}},
+				{refs: []*Reference{{id: 0, name: "ref", lRef: 44}}, seenRefs: set{"ref": 0}, seenGroups: set{}, seenProgs: set{}},
+			},
+			links: nil,
+			want:  nil,
+			err:   errors.New("sam: duplicate reference name"),
+		},
+	}
+	for _, test := range tests[3:] {
+		// Prepare the internal links that cannot be expressed statically.
+		if len(test.src) != 0 {
+			for _, r := range test.src[0].refs {
+				r.owner = test.src[0]
+			}
+		}
+		for _, in := range test.links {
+			for _, ref := range in {
+				ref.owner = test.want
+			}
+		}
+		if test.want != nil {
+			for _, r := range test.want.refs {
+				r.owner = test.want
+			}
+		}
+
+		// Set up for identical input case.
+		var identical bool
+		if len(test.src) == 2 {
+			identical = reflect.DeepEqual(test.src[0], test.src[1])
+		}
+
+		got, links, err := MergeHeaders(test.src)
+		c.Check(err, check.DeepEquals, test.err)
+		if err != nil {
+			continue
+		}
+		c.Check(got, check.DeepEquals, test.want)
+		c.Check(links, check.DeepEquals, test.links)
+		if identical {
+			c.Check(links[0][0], check.Equals, links[1][0])
+		}
+	}
 }
 
 func BenchmarkParseCigar(b *testing.B) {

@@ -173,6 +173,25 @@ func (r *Record) Strand() int8 {
 	return 1
 }
 
+// LessByName returns true if the receiver sorts by record name before other.
+func (r *Record) LessByName(other *Record) bool {
+	return r.Name < other.Name
+}
+
+// LessByCoordinate returns true if the receiver sorts by coordinate before other
+// according to the SAM specification.
+func (r *Record) LessByCoordinate(other *Record) bool {
+	rRefName := r.Ref.Name()
+	oRefName := other.Ref.Name()
+	switch {
+	case oRefName == "*":
+		return true
+	case rRefName == "*":
+		return false
+	}
+	return (rRefName < oRefName) || (rRefName == oRefName && r.Pos < other.Pos)
+}
+
 // String returns a string representation of the Record.
 func (r *Record) String() string {
 	end := r.End()

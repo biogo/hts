@@ -13,13 +13,16 @@ import (
 )
 
 var (
-	errDupReference  = errors.New("sam: duplicate reference name")
-	errDupReadGroup  = errors.New("sam: duplicate read group name")
-	errDupProgram    = errors.New("sam: duplicate program name")
-	errUsedReference = errors.New("sam: reference already used")
-	errUsedReadGroup = errors.New("sam: read group already used")
-	errUsedProgram   = errors.New("sam: program already used")
-	errBadLen        = errors.New("sam: reference length out of range")
+	errDupReference     = errors.New("sam: duplicate reference name")
+	errDupReadGroup     = errors.New("sam: duplicate read group name")
+	errDupProgram       = errors.New("sam: duplicate program name")
+	errUsedReference    = errors.New("sam: reference already used")
+	errUsedReadGroup    = errors.New("sam: read group already used")
+	errUsedProgram      = errors.New("sam: program already used")
+	errInvalidReference = errors.New("sam: reference not owned by header")
+	errInvalidReadGroup = errors.New("sam: read group not owned by header")
+	errInvalidProgram   = errors.New("sam: program not owned by header")
+	errBadLen           = errors.New("sam: reference length out of range")
 )
 
 // SortOrder indicates the sort order of a SAM or BAM file.
@@ -138,6 +141,26 @@ func NewHeader(text []byte, r []*Reference) (*Header, error) {
 	return bh, nil
 }
 
+// Tags applies the function fn to each of the tag-value pairs of the Header.
+// The SO and GO tags are only used if they are set to the non-default values.
+// The function fn must not add or delete tags held by the receiver during
+// iteration.
+func (bh *Header) Tags(fn func(t Tag, value string)) {
+	if fn == nil {
+		return
+	}
+	fn(versionTag, bh.Version)
+	if bh.SortOrder != UnknownOrder {
+		fn(sortOrderTag, bh.SortOrder.String())
+	}
+	if bh.GroupOrder != GroupNone {
+		fn(groupOrderTag, bh.GroupOrder.String())
+	}
+	for _, tp := range bh.otherTags {
+		fn(tp.tag, tp.value)
+	}
+}
+
 // Get returns the string representation of the value associated with the
 // given header line tag. If the tag is not present the empty string is returned.
 func (bh *Header) Get(t Tag) string {
@@ -218,12 +241,18 @@ func (bh *Header) Clone() *Header {
 		GroupOrder: bh.GroupOrder,
 		otherTags:  append([]tagPair(nil), bh.otherTags...),
 		Comments:   append([]string(nil), bh.Comments...),
-		refs:       make([]*Reference, len(bh.refs)),
-		rgs:        make([]*ReadGroup, len(bh.rgs)),
-		progs:      make([]*Program, len(bh.progs)),
 		seenRefs:   make(set, len(bh.seenRefs)),
 		seenGroups: make(set, len(bh.seenGroups)),
 		seenProgs:  make(set, len(bh.seenProgs)),
+	}
+	if len(bh.refs) != 0 {
+		c.refs = make([]*Reference, len(bh.refs))
+	}
+	if len(bh.rgs) != 0 {
+		c.rgs = make([]*ReadGroup, len(bh.rgs))
+	}
+	if len(bh.progs) != 0 {
+		c.progs = make([]*Program, len(bh.progs))
 	}
 
 	for i, r := range bh.refs {
@@ -255,6 +284,53 @@ func (bh *Header) Clone() *Header {
 	}
 
 	return c
+}
+
+// MergeHeaders returns a new Header resulting from the merge of the
+// source Headers, and a mapping between the references in the source
+// and the References in the returned Header. Sort order is set to
+// unknown and group order is set to none.
+// The returned Header contains the read groups and programs of the
+// first Header in src.
+func MergeHeaders(src []*Header) (h *Header, reflinks [][]*Reference, err error) {
+	switch len(src) {
+	case 0:
+		return nil, nil, nil
+	case 1:
+		return src[0], nil, nil
+	}
+	reflinks = make([][]*Reference, len(src))
+	h = src[0].Clone()
+	h.SortOrder = UnknownOrder
+	h.GroupOrder = GroupUnspecified
+	for i, add := range src {
+		if i == 0 {
+			reflinks[i] = h.refs
+			continue
+		}
+		links := make([]*Reference, len(add.refs))
+		for id, r := range add.refs {
+			r = r.Clone()
+			err := h.AddReference(r)
+			if err != nil {
+				return nil, nil, err
+			}
+			if r.owner != h {
+				// r was not actually added, so use the ref
+				// that h owns.
+				for _, hr := range h.refs {
+					if equalRefs(r, hr) {
+						r = hr
+						break
+					}
+				}
+			}
+			links[id] = r
+		}
+		reflinks[i] = links
+	}
+
+	return h, reflinks, nil
 }
 
 // MarshalText implements the encoding.TextMarshaler interface.
@@ -406,7 +482,7 @@ func (bh *Header) AddReference(r *Reference) error {
 		er := bh.refs[dupID]
 		if equalRefs(er, r) {
 			return nil
-		} else if !equalRefs(r, &Reference{id: er.id, name: er.name, lRef: er.lRef}) {
+		} else if !equalRefs(r, &Reference{id: -1, name: er.name, lRef: er.lRef}) {
 			return errDupReference
 		}
 		if r.md5 == "" {
@@ -434,6 +510,21 @@ func (bh *Header) AddReference(r *Reference) error {
 	return nil
 }
 
+// RemoveReference removes r from the Header and makes it
+// available to add to another Header.
+func (bh *Header) RemoveReference(r *Reference) error {
+	if r.id < 0 || int(r.id) >= len(bh.refs) || bh.refs[r.id] != r {
+		return errInvalidReference
+	}
+	bh.refs = append(bh.refs[:r.id], bh.refs[r.id+1:]...)
+	for i := range bh.refs[r.id:] {
+		bh.refs[i+int(r.id)].id--
+	}
+	r.id = -1
+	delete(bh.seenRefs, r.name)
+	return nil
+}
+
 // AddReadGroup adds rg to the Header.
 func (bh *Header) AddReadGroup(rg *ReadGroup) error {
 	if _, ok := bh.seenGroups[rg.name]; ok {
@@ -449,6 +540,21 @@ func (bh *Header) AddReadGroup(rg *ReadGroup) error {
 	return nil
 }
 
+// RemoveReadGroup removes rg from the Header and makes it
+// available to add to another Header.
+func (bh *Header) RemoveReadGroup(rg *ReadGroup) error {
+	if rg.id < 0 || int(rg.id) >= len(bh.refs) || bh.rgs[rg.id] != rg {
+		return errInvalidReadGroup
+	}
+	bh.rgs = append(bh.rgs[:rg.id], bh.rgs[rg.id+1:]...)
+	for i := range bh.rgs[rg.id:] {
+		bh.rgs[i+int(rg.id)].id--
+	}
+	rg.id = -1
+	delete(bh.seenGroups, rg.name)
+	return nil
+}
+
 // AddProgram adds p to the Header.
 func (bh *Header) AddProgram(p *Program) error {
 	if _, ok := bh.seenProgs[p.uid]; ok {
@@ -461,5 +567,20 @@ func (bh *Header) AddProgram(p *Program) error {
 	p.id = int32(len(bh.progs))
 	bh.seenProgs[p.uid] = p.id
 	bh.progs = append(bh.progs, p)
+	return nil
+}
+
+// RemoveProgram removes p from the Header and makes it
+// available to add to another Header.
+func (bh *Header) RemoveProgram(p *Program) error {
+	if p.id < 0 || int(p.id) >= len(bh.progs) || bh.progs[p.id] != p {
+		return errInvalidProgram
+	}
+	bh.progs = append(bh.progs[:p.id], bh.progs[p.id+1:]...)
+	for i := range bh.progs[p.id:] {
+		bh.progs[i+int(p.id)].id--
+	}
+	p.id = -1
+	delete(bh.seenProgs, p.uid)
 	return nil
 }
