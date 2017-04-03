@@ -14,6 +14,7 @@ import (
 
 // ReadGroup represents a sequencing read group.
 type ReadGroup struct {
+	owner        *Header
 	id           int32
 	name         string
 	center       string
@@ -70,6 +71,23 @@ func (r *ReadGroup) Name() string {
 	return r.name
 }
 
+// SetName sets the read group's name to n.
+func (r *ReadGroup) SetName(n string) error {
+	if r.owner != nil {
+		id, exists := r.owner.seenGroups[n]
+		if exists {
+			if id != r.id {
+				return errors.New("sam: name exists")
+			}
+			return nil
+		}
+		delete(r.owner.seenGroups, r.name)
+		r.owner.seenGroups[n] = r.id
+	}
+	r.name = n
+	return nil
+}
+
 // Clone returns a deep copy of the ReadGroup.
 func (r *ReadGroup) Clone() *ReadGroup {
 	if r == nil {
@@ -79,6 +97,7 @@ func (r *ReadGroup) Clone() *ReadGroup {
 	cr.otherTags = make([]tagPair, len(cr.otherTags))
 	copy(cr.otherTags, r.otherTags)
 	cr.id = -1
+	cr.owner = nil
 	return &cr
 }
 

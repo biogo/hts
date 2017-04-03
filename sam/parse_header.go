@@ -267,13 +267,18 @@ func referenceLine(l []byte, bh *Header) error {
 		} else if !equalRefs(er, &Reference{id: er.id, name: er.name, lRef: er.lRef}) {
 			return errDupReference
 		}
+		old := bh.refs[dupID]
+		old.owner = nil
+		old.id = -1
 		bh.refs[dupID] = rf
+		rf.owner = bh
 		return nil
 	}
 	if !nok || !lok {
 		return errBadHeader
 	}
 	id := int32(len(bh.refs))
+	rf.owner = bh
 	rf.id = id
 	bh.seenRefs[rf.name] = id
 	bh.refs = append(bh.refs, rf)
@@ -371,6 +376,7 @@ L:
 		return errBadHeader
 	}
 	id := int32(len(bh.rgs))
+	rg.owner = bh
 	rg.id = id
 	bh.seenGroups[rg.name] = id
 	bh.rgs = append(bh.rgs, rg)
@@ -425,6 +431,7 @@ func programLine(l []byte, bh *Header) error {
 		return errBadHeader
 	}
 	id := int32(len(bh.progs))
+	p.owner = bh
 	p.id = id
 	bh.seenProgs[p.uid] = id
 	bh.progs = append(bh.progs, p)

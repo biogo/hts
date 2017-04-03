@@ -6,11 +6,13 @@ package sam
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 )
 
 // Program represents a SAM program.
 type Program struct {
+	owner     *Header
 	id        int32
 	uid       string
 	previous  string
@@ -47,6 +49,23 @@ func (p *Program) UID() string {
 		return ""
 	}
 	return p.uid
+}
+
+// SetUID sets the unique program ID to uid.
+func (r *Program) SetUID(uid string) error {
+	if r.owner != nil {
+		id, exists := r.owner.seenProgs[uid]
+		if exists {
+			if id != r.id {
+				return errors.New("sam: uid exists")
+			}
+			return nil
+		}
+		delete(r.owner.seenProgs, r.uid)
+		r.owner.seenProgs[uid] = r.id
+	}
+	r.uid = uid
+	return nil
 }
 
 // Name returns the program's name.
@@ -90,6 +109,7 @@ func (p *Program) Clone() *Program {
 	cp.otherTags = make([]tagPair, len(cp.otherTags))
 	copy(cp.otherTags, p.otherTags)
 	cp.id = -1
+	cp.owner = nil
 	return &cp
 }
 

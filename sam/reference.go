@@ -16,6 +16,7 @@ import (
 
 // Reference is a mapping reference.
 type Reference struct {
+	owner     *Header
 	id        int32
 	name      string
 	lRef      int32
@@ -68,6 +69,23 @@ func (r *Reference) Name() string {
 		return "*"
 	}
 	return r.name
+}
+
+// SetName sets the reference name to n.
+func (r *Reference) SetName(n string) error {
+	if r.owner != nil {
+		id, exists := r.owner.seenRefs[n]
+		if exists {
+			if id != r.id {
+				return errors.New("sam: name exists")
+			}
+			return nil
+		}
+		delete(r.owner.seenRefs, r.name)
+		r.owner.seenRefs[n] = r.id
+	}
+	r.name = n
+	return nil
 }
 
 // AssemblyID returns the assembly ID of the reference.
@@ -254,6 +272,7 @@ func (r *Reference) Clone() *Reference {
 	cr := *r
 	cr.otherTags = make([]tagPair, len(cr.otherTags))
 	copy(cr.otherTags, r.otherTags)
+	cr.owner = nil
 	cr.id = -1
 	if r.uri != nil {
 		cr.uri = &url.URL{}

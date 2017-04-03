@@ -38,6 +38,30 @@ func (f failure) String() string {
 	return "ok"
 }
 
+func clonedRefs(refs []*sam.Reference) []*sam.Reference {
+	c := make([]*sam.Reference, len(refs))
+	for i, r := range refs {
+		c[i] = r.Clone()
+	}
+	return c
+}
+
+func clonedRGs(rgs []*sam.ReadGroup) []*sam.ReadGroup {
+	c := make([]*sam.ReadGroup, len(rgs))
+	for i, r := range rgs {
+		c[i] = r.Clone()
+	}
+	return c
+}
+
+func clonedProgs(progs []*sam.Program) []*sam.Program {
+	c := make([]*sam.Program, len(progs))
+	for i, p := range progs {
+		c[i] = p.Clone()
+	}
+	return c
+}
+
 func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct{}
@@ -72,9 +96,9 @@ func (s *S) TestRead(c *check.C) {
 			c.Check(br.Header().SortOrder, check.Equals, t.header.SortOrder)
 			c.Check(br.Header().GroupOrder, check.Equals, t.header.GroupOrder)
 			c.Check(br.Header().Comments, check.DeepEquals, t.header.Comments)
-			c.Check(br.Header().Refs(), check.DeepEquals, t.header.Refs())
-			c.Check(br.Header().RGs(), check.DeepEquals, t.header.RGs())
-			c.Check(br.Header().Progs(), check.DeepEquals, t.header.Progs())
+			c.Check(clonedRefs(br.Header().Refs()), check.DeepEquals, clonedRefs(t.header.Refs()))
+			c.Check(clonedRGs(br.Header().RGs()), check.DeepEquals, clonedRGs(t.header.RGs()))
+			c.Check(clonedProgs(br.Header().Progs()), check.DeepEquals, clonedProgs(t.header.Progs()))
 
 			var lines int
 			for {

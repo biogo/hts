@@ -123,6 +123,10 @@ func NewHeader(text []byte, r []*Reference) (*Header, error) {
 		seenProgs:  set{},
 	}
 	for i, r := range bh.refs {
+		if r.owner != nil || r.id >= 0 {
+			return nil, errUsedReference
+		}
+		r.owner = bh
 		r.id = int32(i)
 	}
 	if text != nil {
@@ -417,9 +421,10 @@ func (bh *Header) AddReference(r *Reference) error {
 		bh.refs[dupID] = r
 		return nil
 	}
-	if r.id >= 0 {
+	if r.owner != nil || r.id >= 0 {
 		return errUsedReference
 	}
+	r.owner = bh
 	r.id = int32(len(bh.refs))
 	bh.seenRefs[r.name] = r.id
 	bh.refs = append(bh.refs, r)
@@ -431,9 +436,10 @@ func (bh *Header) AddReadGroup(rg *ReadGroup) error {
 	if _, ok := bh.seenGroups[rg.name]; ok {
 		return errDupReadGroup
 	}
-	if rg.id >= 0 {
+	if rg.owner != nil || rg.id >= 0 {
 		return errUsedReadGroup
 	}
+	rg.owner = bh
 	rg.id = int32(len(bh.rgs))
 	bh.seenGroups[rg.name] = rg.id
 	bh.rgs = append(bh.rgs, rg)
@@ -445,9 +451,10 @@ func (bh *Header) AddProgram(p *Program) error {
 	if _, ok := bh.seenProgs[p.uid]; ok {
 		return errDupProgram
 	}
-	if p.id >= 0 {
+	if p.owner != nil || p.id >= 0 {
 		return errUsedProgram
 	}
+	p.owner = bh
 	p.id = int32(len(bh.progs))
 	bh.seenProgs[p.uid] = p.id
 	bh.progs = append(bh.progs, p)

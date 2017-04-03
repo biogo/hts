@@ -6,10 +6,12 @@ package sam
 
 import (
 	"bytes"
+	"errors"
 	"flag"
 	"io"
 	"strings"
 	"testing"
+	"time"
 
 	"gopkg.in/check.v1"
 )
@@ -687,15 +689,18 @@ func (s *S) TestIssue26(c *check.C) {
 			GroupOrder: GroupUnspecified,
 		},
 		ref: Reference{
+			id:        -1,
 			name:      "ref",
 			lRef:      45,
 			otherTags: []tagPair{{tag: fuTag, value: "bar"}},
 		},
 		rg: ReadGroup{
+			id:        -1,
 			name:      "group",
 			otherTags: []tagPair{{tag: fuTag, value: "bar"}},
 		},
 		prog: Program{
+			id:        -1,
 			uid:       "program",
 			otherTags: []tagPair{{tag: fuTag, value: "bar"}},
 		},
@@ -704,22 +709,23 @@ func (s *S) TestIssue26(c *check.C) {
 	sr, err := NewReader(bytes.NewReader(issue26.data))
 	c.Assert(err, check.Equals, nil)
 	h := sr.Header()
+
 	c.Check(h.Version, check.Equals, issue26.header.Version)
 	c.Check(h.SortOrder, check.Equals, issue26.header.SortOrder)
 	c.Check(h.GroupOrder, check.Equals, issue26.header.GroupOrder)
 	c.Assert(len(h.Refs()), check.Equals, 1)
-	ref := h.Refs()[0]
+	ref := h.Refs()[0].Clone()
 	c.Check(equalRefs(ref, &issue26.ref), check.Equals, true)
 	c.Check(ref.Get(refNameTag), check.Equals, "ref")
 	c.Check(ref.Get(refLengthTag), check.Equals, "45")
 	c.Check(ref.Get(fuTag), check.Equals, "bar")
 	c.Assert(len(h.RGs()), check.Equals, 1)
-	rg := h.RGs()[0]
+	rg := h.RGs()[0].Clone()
 	c.Check(*rg, check.DeepEquals, issue26.rg)
 	c.Check(rg.Get(idTag), check.Equals, "group")
 	c.Check(rg.Get(fuTag), check.Equals, "bar")
 	c.Assert(len(h.Progs()), check.Equals, 1)
-	prog := h.Progs()[0]
+	prog := h.Progs()[0].Clone()
 	c.Check(*prog, check.DeepEquals, issue26.prog)
 	c.Check(prog.Get(idTag), check.Equals, "program")
 	c.Check(prog.Get(fuTag), check.Equals, "bar")
@@ -782,6 +788,46 @@ func (s *S) TestAddClonedRef(c *check.C) {
 	h := sr.Header()
 	ref := h.Refs()[0].Clone()
 	c.Check(h.AddReference(ref), check.Equals, nil)
+}
+
+func (s *S) TestRenames(c *check.C) {
+	sam := []byte(`@HD	VN:1.5	SO:coordinate
+@SQ	SN:name	LN:1
+@SQ	SN:taken	LN:1
+@RG	ID:name
+@RG	ID:taken
+@PG	ID:name
+@PG	ID:taken
+`)
+
+	r, err := NewReader(bytes.NewReader(sam))
+	c.Check(err, check.Equals, nil)
+	h := r.Header()
+	c.Assert(len(h.Refs()), check.Equals, 2)
+	c.Assert(h.Refs()[0].SetName("reference"), check.Equals, nil)
+	c.Check(h.Refs()[0].Name(), check.Equals, "reference")
+	c.Check(h.Refs()[0].SetName("taken"), check.DeepEquals, errors.New("sam: name exists"))
+
+	c.Assert(len(h.RGs()), check.Equals, 2)
+	c.Assert(h.RGs()[0].SetName("read group"), check.Equals, nil)
+	c.Check(h.RGs()[0].Name(), check.Equals, "read group")
+	c.Check(h.RGs()[0].SetName("taken"), check.DeepEquals, errors.New("sam: name exists"))
+
+	c.Assert(len(h.Progs()), check.Equals, 2)
+	c.Assert(h.Progs()[0].SetUID("program"), check.Equals, nil)
+	c.Check(h.Progs()[0].UID(), check.Equals, "program")
+	c.Check(h.Progs()[0].SetUID("taken"), check.DeepEquals, errors.New("sam: uid exists"))
+
+	ref, err := NewReference("ref", "", "", 1, nil, nil)
+	c.Assert(err, check.Equals, nil)
+	c.Assert(ref.SetName("new ref"), check.Equals, nil)
+
+	rg, err := NewReadGroup("rg", "", "", "", "", "", "", "", "", "", time.Time{}, 0)
+	c.Assert(err, check.Equals, nil)
+	c.Assert(rg.SetName("new rg"), check.Equals, nil)
+
+	prog := NewProgram("prog", "", "", "", "")
+	c.Assert(prog.SetUID("new prog"), check.Equals, nil)
 }
 
 func BenchmarkParseCigar(b *testing.B) {
