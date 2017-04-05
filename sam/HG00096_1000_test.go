@@ -5,6 +5,18 @@ import (
 	"time"
 )
 
+func init() {
+	for _, ref := range headerHG00096_1000.refs {
+		ref.owner = headerHG00096_1000
+	}
+	for _, rg := range headerHG00096_1000.rgs {
+		rg.owner = headerHG00096_1000
+	}
+	for _, prog := range headerHG00096_1000.progs {
+		prog.owner = headerHG00096_1000
+	}
+}
+
 var (
 	// This is the header of the file
 	// ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data/HG00096/alignment/HG00096.unmapped.ILLUMINA.bwa.GBR.low_coverage.20120522.bam

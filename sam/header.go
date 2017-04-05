@@ -232,14 +232,17 @@ func (bh *Header) Clone() *Header {
 		}
 		c.refs[i] = new(Reference)
 		*c.refs[i] = *r
+		c.refs[i].owner = c
 	}
 	for i, r := range bh.rgs {
 		c.rgs[i] = new(ReadGroup)
 		*c.rgs[i] = *r
+		c.rgs[i].owner = c
 	}
 	for i, p := range bh.progs {
 		c.progs[i] = new(Program)
 		*c.progs[i] = *p
+		c.progs[i].owner = c
 	}
 	for k, v := range bh.seenRefs {
 		c.seenRefs[k] = v
