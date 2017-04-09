@@ -255,7 +255,7 @@ func (r *Record) UnmarshalSAM(h *Header, b []byte) error {
 	}
 	if !bytes.Equal(f[9], []byte{'*'}) {
 		r.Seq = NewSeq(f[9])
-		if !r.Cigar.IsValid(r.Seq.Length) {
+		if len(r.Cigar) != 0 && !r.Cigar.IsValid(r.Seq.Length) {
 			return errors.New("sam: sequence/CIGAR length mismatch")
 		}
 	}
