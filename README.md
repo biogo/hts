@@ -1,14 +1,14 @@
 ![bíogo](https://raw.githubusercontent.com/biogo/biogo/master/biogo.png)
 
-#HTS
+# HTS
 
 [![Build Status](https://travis-ci.org/biogo/hts.svg?branch=master)](https://travis-ci.org/biogo/hts) [![GoDoc](https://godoc.org/github.com/biogo/hts?status.svg)](https://godoc.org/github.com/biogo/hts)
 
-##Installation
+## Installation
 
         $ go get github.com/biogo/hts/...
 
-##Overview
+## Overview
 
 SAM and BAM handling for the Go language.
 
@@ -16,7 +16,7 @@ bíogo/hts provides a Go native implementation of the [SAM specification](https:
 The bíogo/hts packages perform parallelized read and write operations and are able to cache recent reads according to user-specified caching methods.
 The bíogo/hts APIs have been constructed to provide a consistent interface to sequence alignment data and the underlying compression system in order to aid ease of use and tool development.
 
-##Example usage
+## Example usage
 
 The following code implements the equivalent of `samtools view -c -f n -F N file.bam`.
 
@@ -110,29 +110,29 @@ func main() {
 }
 ```
 
-##Getting help
+## Getting help
 
 Help or similar requests are preferred on the biogo-user Google Group.
 
 https://groups.google.com/forum/#!forum/biogo-user
 
-##Contributing
+## Contributing
 
 If you find any bugs, feel free to file an issue on the github issue tracker.
 Pull requests are welcome, though if they involve changes to API or addition of features, please first open a discussion at the biogo-dev Google Group.
 
 https://groups.google.com/forum/#!forum/biogo-dev
 
-##Citing
+## Citing
 
 If you use bíogo/hts, please cite Kortschak, Pedersen and Adelson "bíogo/hts: high throughput sequence handling for the Go language", doi:[10.21105/joss.00168](http://dx.doi.org/10.21105/joss.00168).
 
-##Library Structure and Coding Style
+## Library Structure and Coding Style
 
 The coding style should be aligned with normal Go idioms as represented in the
 Go core libraries.
 
-##Copyright and License
+## Copyright and License
 
 Copyright ©2011-2013 The bíogo Authors except where otherwise noted. All rights
 reserved. Use of this source code is governed by a BSD-style license that can be
