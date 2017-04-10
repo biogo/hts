@@ -842,3 +842,17 @@ func BenchmarkParseCigar(b *testing.B) {
 		}
 	}
 }
+
+func benchmarkAux(b *testing.B, aux []byte) {
+	for i := 0; i < b.N; i++ {
+		_, err := ParseAux(aux)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkParseAuxInt(b *testing.B)   { benchmarkAux(b, []byte("NM:i:1")) }
+func BenchmarkParseAuxZ(b *testing.B)     { benchmarkAux(b, []byte("SA:Z:ref,29,-,6H5M,17,0;")) }
+func BenchmarkParseAuxFloat(b *testing.B) { benchmarkAux(b, []byte("FL:f:100042.42")) }
+func BenchmarkParseAuxArray(b *testing.B) { benchmarkAux(b, []byte("BB:B:i,629,1095")) }
