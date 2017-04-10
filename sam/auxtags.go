@@ -97,9 +97,13 @@ func NewAux(t Tag, value interface{}) (Aux, error) {
 		a = Aux{t[0], t[1], 'f', 0, 0, 0, 0}
 		binary.LittleEndian.PutUint32(a[3:7], math.Float32bits(v))
 	case Text:
-		a = append(Aux{t[0], t[1], 'Z'}, v...)
+		a = make(Aux, len(v)+3)
+		a[0], a[1], a[2] = t[0], t[1], 'Z'
+		copy(a[3:], v)
 	case string:
-		a = append(Aux{t[0], t[1], 'Z'}, v...)
+		a = make(Aux, len(v)+3)
+		a[0], a[1], a[2] = t[0], t[1], 'Z'
+		copy(a[3:], v)
 	case Hex:
 		a = make(Aux, 3, len(v)+3)
 		copy(a, Aux{t[0], t[1], 'H'})
@@ -151,19 +155,21 @@ func NewAux(t Tag, value interface{}) (Aux, error) {
 
 // ParseAux returns an AUX parsed from the given text.
 func ParseAux(text []byte) (Aux, error) {
-	tf := bytes.SplitN(text, []byte{':'}, 3)
-	if len(tf) != 3 || len(tf[1]) != 1 {
+	// TG:T:v...
+	// 012345...
+	if len(text) < 6 || text[2] != ':' || text[4] != ':' {
 		return nil, fmt.Errorf("sam: invalid aux tag field: %q", text)
 	}
+	txt := text[5:]
 	var value interface{}
-	switch typ := tf[1][0]; typ {
+	switch typ := text[3]; typ {
 	case 'A':
-		if len(tf[2]) != 1 {
+		if len(txt) != 1 {
 			return nil, fmt.Errorf("sam: invalid aux tag field: %q", text)
 		}
-		value = ASCII(tf[2][0])
+		value = ASCII(txt[0])
 	case 'i':
-		i, err := strconv.Atoi(string(tf[2]))
+		i, err := strconv.Atoi(string(txt))
 		if err != nil {
 			return nil, fmt.Errorf("sam: invalid aux tag field: %v", err)
 		}
@@ -173,29 +179,29 @@ func ParseAux(text []byte) (Aux, error) {
 			value = uint(i)
 		}
 	case 'f':
-		f, err := strconv.ParseFloat(string(tf[2]), 32)
+		f, err := strconv.ParseFloat(string(txt), 32)
 		if err != nil {
 			return nil, fmt.Errorf("sam: invalid aux tag field: %v", err)
 		}
 		value = float32(f)
 	case 'Z':
-		value = Text(tf[2])
+		value = Text(txt)
 	case 'H':
-		b := make([]byte, hex.DecodedLen(len(tf[2])))
-		_, err := hex.Decode(b, tf[2])
+		b := make([]byte, hex.DecodedLen(len(txt)))
+		_, err := hex.Decode(b, txt)
 		if err != nil {
 			return nil, fmt.Errorf("sam: invalid aux tag field: %v", err)
 		}
 		value = Hex(b)
 	case 'B':
-		if tf[2][1] != ',' {
+		if txt[1] != ',' {
 			return nil, fmt.Errorf("sam: invalid aux tag field: %q", text)
 		}
-		nf := bytes.Split(tf[2][2:], []byte{','})
+		nf := bytes.Split(txt[2:], []byte{','})
 		if len(nf) == 0 {
 			return nil, fmt.Errorf("sam: invalid aux tag field: %q", text)
 		}
-		switch tf[2][0] {
+		switch txt[0] {
 		case 'c':
 			a := make([]int8, len(nf))
 			for i, n := range nf {
@@ -272,11 +278,7 @@ func ParseAux(text []byte) (Aux, error) {
 	default:
 		return nil, fmt.Errorf("sam: invalid aux tag field: %q", text)
 	}
-	var t Tag
-	if copy(t[:], tf[0]) != 2 {
-		return nil, fmt.Errorf("sam: invalid aux tag: %q", tf[0])
-	}
-	aux, err := NewAux(t, value)
+	aux, err := NewAux(Tag{text[0], text[1]}, value)
 	if err != nil {
 		return nil, fmt.Errorf("sam: invalid aux tag field: %v", err)
 	}
