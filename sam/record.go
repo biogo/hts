@@ -273,12 +273,15 @@ func (r *Record) UnmarshalSAM(h *Header, b []byte) error {
 	if len(r.Qual) != 0 && len(r.Qual) != r.Seq.Length {
 		return errors.New("sam: sequence/quality length mismatch")
 	}
-	for _, aux := range f[11:] {
-		a, err := ParseAux(aux)
-		if err != nil {
-			return err
+	if len(f) > 11 {
+		r.AuxFields = make([]Aux, len(f)-11)
+		for i, aux := range f[11:] {
+			a, err := ParseAux(aux)
+			if err != nil {
+				return err
+			}
+			r.AuxFields[i] = a
 		}
-		r.AuxFields = append(r.AuxFields, a)
 	}
 	return nil
 }
