@@ -50,10 +50,6 @@ func sortBAM(r io.Reader, so sam.SortOrder, less func(a, b *sam.Record) bool, fn
 				n, recs = len(recs), recs[:0]
 			}
 		}
-		err = it.Error()
-		if n == 0 || err != nil {
-			break
-		}
 		if len(recs) != 0 {
 			r, err := writeSorted(h, recs, less)
 			if err != nil {
@@ -61,6 +57,11 @@ func sortBAM(r io.Reader, so sam.SortOrder, less func(a, b *sam.Record) bool, fn
 			}
 			defer r.Close()
 			t = append(t, r)
+			break
+		}
+		err = it.Error()
+		if n == 0 || err != nil {
+			break
 		}
 	}
 	if err != nil {
@@ -126,6 +127,13 @@ var mergerTests = []struct {
 		less:   nil,
 		expect: (*sam.Record).LessByName,
 		shard:  199,
+	},
+	{
+		r:      func() io.Reader { return bytes.NewReader(bamHG00096_1000) },
+		so:     sam.QueryName,
+		less:   nil,
+		expect: (*sam.Record).LessByName,
+		shard:  1e5,
 	},
 	{
 		r:      func() io.Reader { return bytes.NewReader(bamHG00096_1000) },

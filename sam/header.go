@@ -289,7 +289,9 @@ func (bh *Header) Clone() *Header {
 // MergeHeaders returns a new Header resulting from the merge of the
 // source Headers, and a mapping between the references in the source
 // and the References in the returned Header. Sort order is set to
-// unknown and group order is set to none.
+// unknown and group order is set to none. If a single Header is passed
+// to MergeHeaders, the mapping between source and destination headers,
+// reflink, is returned as nil.
 // The returned Header contains the read groups and programs of the
 // first Header in src.
 func MergeHeaders(src []*Header) (h *Header, reflinks [][]*Reference, err error) {

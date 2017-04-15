@@ -154,7 +154,7 @@ func (m *Merger) nextBySortOrder() (rec *sam.Record, err error) {
 }
 
 func (m *Merger) reassignReference(id int, rec *sam.Record) {
-	if rec.Ref == nil {
+	if rec.Ref == nil || m.refLinks == nil {
 		return
 	}
 	rec.Ref = m.refLinks[id][rec.RefID()]

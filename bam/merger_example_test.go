@@ -75,16 +75,17 @@ func ExampleMerger_sortByCoordinate() {
 				n, recs = len(recs), recs[:0]
 			}
 		}
-		err = it.Error()
-		if n == 0 || err != nil {
-			break
-		}
 		if len(recs) != 0 {
 			r, err := writeChunk(dir, h, recs)
 			if err != nil {
 				log.Panic(err)
 			}
 			t = append(t, r)
+			break
+		}
+		err = it.Error()
+		if n == 0 || err != nil {
+			break
 		}
 	}
 	if err != nil {
