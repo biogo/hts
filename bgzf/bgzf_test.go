@@ -1052,6 +1052,20 @@ func TestWriteByteCount(t *testing.T) {
 	}
 }
 
+func TestMultiClose(t *testing.T) {
+	buf := new(bytes.Buffer)
+	if err := NewWriter(buf, *conc).Close(); err != nil {
+		t.Errorf("error creating writable buffer: %v", err)
+	}
+
+	rdr, err := NewReader(buf, 2)
+	if err != nil {
+		t.Errorf("Unable to create reader:%v", err)
+	}
+	rdr.Close()
+	rdr.Close()
+}
+
 func BenchmarkWrite(b *testing.B) {
 	bg := NewWriter(ioutil.Discard, *conc)
 	block := bytes.Repeat([]byte("repeated"), 50)

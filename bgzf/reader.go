@@ -496,7 +496,9 @@ func (bg *Reader) BlockLen() int { return bg.current.len() }
 func (bg *Reader) Close() error {
 	if bg.control != nil {
 		close(bg.control)
+		bg.control = nil
 		close(bg.waiting)
+		bg.waiting = nil
 	}
 	if bg.err == io.EOF {
 		return nil
