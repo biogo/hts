@@ -202,6 +202,9 @@ func TestRoundTrip(t *testing.T) {
 	if r.Name != "name" {
 		t.Errorf("name is %q, want %q", r.Name, "name")
 	}
+	if r.OS != 0xff {
+		t.Errorf("os is %x, want %x", r.OS, 0xff)
+	}
 	if err := r.Close(); err != nil {
 		t.Errorf("Reader.Close: %v", err)
 	}

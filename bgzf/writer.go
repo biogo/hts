@@ -63,6 +63,7 @@ func NewWriterLevel(w io.Writer, level, wc int) (*Writer, error) {
 		waiting: make(chan *compressor, wc),
 		queue:   make(chan *compressor, wc),
 	}
+	bg.Header.OS = 0xff // Set default OS to unknown.
 
 	c := make([]compressor, wc)
 	for i := range c {
