@@ -213,16 +213,11 @@ func (r *ReadGroup) Set(t Tag, value string) error {
 			r.date = time.Time{}
 			return nil
 		}
-		var err error
-		for _, tf := range iso8601 {
-			var date time.Time
-			date, err = time.ParseInLocation(tf, value, nil)
-			if err == nil {
-				r.date = date
-				break
-			}
+		date, err := parseISO8601(value)
+		if err != nil {
+			return err
 		}
-		return err
+		r.date = date
 	case flowOrderTag:
 		if value == "" || value == "*" {
 			r.flowOrder = ""

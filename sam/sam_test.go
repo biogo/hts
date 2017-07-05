@@ -737,6 +737,22 @@ func (s *S) TestIssue26(c *check.C) {
 	c.Check(prog.Get(fuTag), check.Equals, "bar")
 }
 
+func (s *S) TestParseISO8601(c *check.C) {
+	for _, test := range []struct {
+		value string
+		want  time.Time
+	}{
+		{value: "2017-05-10", want: time.Date(2017, 05, 10, 0, 0, 0, 0, time.Local)},
+		{value: "2017-05-10T21:02:29", want: time.Date(2017, 05, 10, 21, 02, 29, 0, time.Local)},
+		{value: "2017-05-10T21:02:29Z", want: time.Date(2017, 05, 10, 21, 02, 29, 0, time.UTC)},
+		{value: "2017-05-10T21:02:29+0900", want: time.Date(2017, 05, 10, 21, 02, 29, 0, time.FixedZone("0900", 9*3600))},
+	} {
+		date, err := parseISO8601(test.value)
+		c.Check(err, check.Equals, nil)
+		c.Check(date.Equal(test.want), check.Equals, true)
+	}
+}
+
 var cigTests = []struct {
 	cig  []byte
 	ref  int
