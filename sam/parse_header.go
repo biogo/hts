@@ -294,11 +294,36 @@ func referenceLine(l []byte, bh *Header) error {
 //
 const (
 	iso8601Date      = "2006-01-02"
+	iso8601TimeDate  = "2006-01-02T15:04:05"
 	iso8601TimeDateZ = "2006-01-02T15:04:05Z"
 	iso8601TimeDateN = "2006-01-02T15:04:05-0700"
 )
 
-var iso8601 = []string{iso8601Date, iso8601TimeDateZ, iso8601TimeDateN}
+var iso8601 = []struct {
+	isLocal bool
+	format  string
+}{
+	{isLocal: true, format: iso8601Date},
+	{isLocal: false, format: iso8601TimeDateZ},
+	{isLocal: false, format: iso8601TimeDateN},
+	{isLocal: true, format: iso8601TimeDate},
+}
+
+func parseISO8601(value string) (time.Time, error) {
+	var err error
+	for _, format := range iso8601 {
+		loc := time.UTC
+		if format.isLocal {
+			loc = time.Local
+		}
+		var t time.Time
+		t, err = time.ParseInLocation(format.format, value, loc)
+		if err == nil {
+			return t, nil
+		}
+	}
+	return time.Time{}, err
+}
 
 func readGroupLine(l []byte, bh *Header) error {
 	fields := bytes.Split(l, []byte{'\t'})
@@ -313,7 +338,6 @@ func readGroupLine(l []byte, bh *Header) error {
 		idok bool
 	)
 
-L:
 	for _, f := range fields[1:] {
 		if f[2] != ':' {
 			return errBadHeader
@@ -337,13 +361,10 @@ L:
 			rg.description = fs
 		case dateTag:
 			var err error
-			for _, tf := range iso8601 {
-				rg.date, err = time.ParseInLocation(tf, fs, nil)
-				if err == nil {
-					continue L
-				}
+			rg.date, err = parseISO8601(fs)
+			if err != nil {
+				return err
 			}
-			return err
 		case flowOrderTag:
 			rg.flowOrder = fs
 		case keySequenceTag:
