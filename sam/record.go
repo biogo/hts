@@ -128,7 +128,7 @@ func (r *Record) Start() int {
 
 // Bin returns the BAM index bin of the record.
 func (r *Record) Bin() int {
-	if r.Flags&Unmapped != 0 {
+	if r.Flags&(Unmapped|MateUnmapped) == Unmapped|MateUnmapped {
 		return 4680 // reg2bin(-1, 0)
 	}
 	end := r.End()
