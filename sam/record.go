@@ -131,10 +131,6 @@ func (r *Record) Bin() int {
 	if r.Flags&(Unmapped|MateUnmapped) == Unmapped|MateUnmapped {
 		return 4680 // reg2bin(-1, 0)
 	}
-	end := r.End()
-	if !internal.IsValidIndexPos(r.Pos) || !internal.IsValidIndexPos(end) {
-		return -1
-	}
 	return int(internal.BinFor(r.Pos, r.End()))
 }
 
