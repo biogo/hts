@@ -150,6 +150,9 @@ func max(a, b int) int {
 // The position returned by End is not valid if r.Cigar.IsValid(r.Seq.Length)
 // is false.
 func (r *Record) End() int {
+	if r.Flags&Unmapped != 0 || len(r.Cigar) == 0 {
+		return r.Pos + 1
+	}
 	pos := r.Pos
 	end := pos
 	for _, co := range r.Cigar {
