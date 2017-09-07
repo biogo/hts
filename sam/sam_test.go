@@ -746,6 +746,7 @@ func (s *S) TestParseISO8601(c *check.C) {
 		{value: "2017-05-10T21:02:29", want: time.Date(2017, 05, 10, 21, 02, 29, 0, time.Local)},
 		{value: "2017-05-10T21:02:29Z", want: time.Date(2017, 05, 10, 21, 02, 29, 0, time.UTC)},
 		{value: "2017-05-10T21:02:29+0900", want: time.Date(2017, 05, 10, 21, 02, 29, 0, time.FixedZone("0900", 9*3600))},
+		{value: "2010-10-19T00:00:00.000+00:00", want: time.Date(2010, 10, 19, 0, 0, 0, 0, time.FixedZone("0000", 0))},
 	} {
 		date, err := parseISO8601(test.value)
 		c.Check(err, check.Equals, nil)
