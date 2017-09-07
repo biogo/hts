@@ -13,6 +13,7 @@ import (
 	"io"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -290,26 +291,54 @@ func referenceLine(l []byte, bh *Header) error {
 //
 // Date: 2014-08-13
 // Time: 2014-08-13T16:02:01Z
+//     : 2014-08-13T16:02:01
 //     : 2014-08-13T16:02:01+00:00
+//     : 2014-08-13T16:02:01.000+00:00
 //
 const (
-	iso8601Date      = "2006-01-02"
-	iso8601TimeDate  = "2006-01-02T15:04:05"
-	iso8601TimeDateZ = "2006-01-02T15:04:05Z"
+	// This is the ISO8601 format used for output.
 	iso8601TimeDateN = "2006-01-02T15:04:05-0700"
+
+	// This is the set of ISO8601 formats we accept.
+	// The input values are first converted to a
+	// basic ISO8601 form by removing all ':'
+	// characters. We cannot do the same thing with
+	// '-' since this has two meanings in ISO8601,
+	// a separator and a negative time zone offset.
+	iso8601DateB          = "20060102"
+	iso8601DateE          = "2006-01-02"
+	iso8601TimeDateB      = "20060102T150405"
+	iso8601TimeDateE      = "2006-01-02T150405"
+	iso8601TimeDateZB     = "20060102T150405Z"
+	iso8601TimeDateZE     = "2006-01-02T150405Z"
+	iso8601TimeDateNB     = "20060102T150405-0700"
+	iso8601TimeDateNE     = "2006-01-02T150405-0700"
+	iso8601TimeThouDateZB = "20060102T150405.999Z"
+	iso8601TimeThouDateZE = "2006-01-02T150405.999Z"
+	iso8601TimeThouDateNB = "20060102T150405.999-0700"
+	iso8601TimeThouDateNE = "2006-01-02T150405.999-0700"
 )
 
 var iso8601 = []struct {
 	isLocal bool
 	format  string
 }{
-	{isLocal: true, format: iso8601Date},
-	{isLocal: false, format: iso8601TimeDateZ},
-	{isLocal: false, format: iso8601TimeDateN},
-	{isLocal: true, format: iso8601TimeDate},
+	{isLocal: true, format: iso8601DateB},
+	{isLocal: true, format: iso8601DateE},
+	{isLocal: false, format: iso8601TimeDateZB},
+	{isLocal: false, format: iso8601TimeDateZE},
+	{isLocal: false, format: iso8601TimeDateNB},
+	{isLocal: false, format: iso8601TimeDateNE},
+	{isLocal: false, format: iso8601TimeThouDateZB},
+	{isLocal: false, format: iso8601TimeThouDateZE},
+	{isLocal: false, format: iso8601TimeThouDateNB},
+	{isLocal: false, format: iso8601TimeThouDateNE},
+	{isLocal: true, format: iso8601TimeDateB},
+	{isLocal: true, format: iso8601TimeDateE},
 }
 
 func parseISO8601(value string) (time.Time, error) {
+	value = strings.Replace(value, ":", "", -1)
 	var err error
 	for _, format := range iso8601 {
 		loc := time.UTC
