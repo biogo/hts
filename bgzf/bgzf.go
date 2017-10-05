@@ -53,7 +53,6 @@ var (
 	ErrNoBlockSize       = errors.New("bgzf: could not determine block size")
 	ErrBlockSizeMismatch = errors.New("bgzf: unexpected block size")
 	ErrCorruptBlock      = errors.New("bgzf: corrupt block")
-
 )
 
 // HasEOF checks for the presence of a BGZF magic EOF block.

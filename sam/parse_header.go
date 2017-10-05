@@ -73,7 +73,7 @@ func (bh *Header) DecodeBinary(r io.Reader) error {
 		return err
 	}
 	if nRef < 0 || nRef > maxSAMHeaderSize {
-               return errors.New("sam: wrong reference length")
+		return errors.New("sam: wrong reference length")
 	}
 	refs, err := readRefRecords(r, nRef)
 	if err != nil {
