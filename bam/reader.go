@@ -33,6 +33,9 @@ type Reader struct {
 	buf [4]byte
 }
 
+// Max possible bytesize of one record.
+const maxBAMRecordSize = 0xfffffff
+
 // NewReader returns a new Reader using the given io.Reader
 // and setting the read concurrency to rd. If rd is zero
 // concurrency is set to GOMAXPROCS. The returned Reader
@@ -117,7 +120,9 @@ func (br *Reader) Read() (*sam.Record, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	if len(b.data) < 32 {
+		return nil, errors.New("bam: record too short")
+	}
 	var rec sam.Record
 	refID := b.readInt32()
 	rec.Pos = int(b.readUint32())
@@ -152,8 +157,10 @@ func (br *Reader) Read() (*sam.Record, error) {
 		goto done
 	}
 	auxTags = b.bytes(b.len())
-	rec.AuxFields = parseAux(auxTags)
-
+	rec.AuxFields, err = parseAux(auxTags)
+	if err != nil {
+		return nil, err
+	}
 done:
 	refs := int32(len(br.h.Refs()))
 	if refID != -1 {
@@ -308,9 +315,9 @@ var jumps = [256]int{
 
 // parseAux examines the data of a SAM record's OPT fields,
 // returning a slice of sam.Aux that are backed by the original data.
-func parseAux(aux []byte) []sam.Aux {
+func parseAux(aux []byte) ([]sam.Aux, error) {
 	if len(aux) == 0 {
-		return nil
+		return nil, nil
 	}
 	aa := make([]sam.Aux, 0, 4)
 	for i := 0; i+2 < len(aux); {
@@ -336,19 +343,22 @@ func parseAux(aux []byte) []sam.Aux {
 				i += j + 1
 			case 'B':
 				var length int32
+				if len(aux) < i+8 {
+					return nil, errors.New("Corrupt aux field")
+				}
 				err := binary.Read(bytes.NewBuffer([]byte(aux[i+4:i+8])), binary.LittleEndian, &length)
 				if err != nil {
-					panic(fmt.Sprintf("bam: binary.Read failed: %v", err))
+					return nil, err
 				}
 				j = int(length)*jumps[aux[i+3]] + int(unsafe.Sizeof(length)) + 4
 				aa = append(aa, sam.Aux(aux[i:i+j:i+j]))
 				i += j
 			}
 		default:
-			panic(fmt.Sprintf("bam: unrecognised optional field type: %q", t))
+			return nil, fmt.Errorf("bam: unrecognised optional field type: %q", t)
 		}
 	}
-	return aa
+	return aa, nil
 }
 
 // buffer is light-weight read buffer.
@@ -406,6 +416,9 @@ func newBuffer(br *Reader) (*buffer, error) {
 	}
 	b := &buffer{data: br.buf[:4]}
 	size := int(b.readInt32())
+	if size < 0 || size > maxBAMRecordSize {
+		return nil, errors.New("bam: wrong record size")
+	}
 	b.off, b.data = 0, make([]byte, size)
 	n, err = io.ReadFull(br.r, b.data)
 	if err != nil {
