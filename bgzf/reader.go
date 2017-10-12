@@ -292,6 +292,9 @@ func (d *decompressor) readMember() error {
 		return ErrNoBlockSize
 	}
 	skipped := int(d.cr.offset() - mark)
+	if d.blockSize < skipped {
+		return ErrCorrupt
+	}
 
 	// Read compressed data into the decompressor buffer until the
 	// underlying flate.Reader is positioned at the end of the gzip
