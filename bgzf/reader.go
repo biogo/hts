@@ -292,14 +292,17 @@ func (d *decompressor) readMember() error {
 		return ErrNoBlockSize
 	}
 	skipped := int(d.cr.offset() - mark)
-	if d.blockSize < skipped {
+	need := d.blockSize - skipped
+	if need == 0 {
+		return io.EOF
+	} else if need < 0 {
 		return ErrCorrupt
 	}
 
 	// Read compressed data into the decompressor buffer until the
 	// underlying flate.Reader is positioned at the end of the gzip
 	// member in which the readMember call was made.
-	return d.buf.readLimited(d.blockSize-skipped, d.cr)
+	return d.buf.readLimited(need, d.cr)
 }
 
 // Offset is a BGZF virtual offset.
