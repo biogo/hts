@@ -1034,6 +1034,53 @@ func TestBlocked(t *testing.T) {
 	}
 }
 
+var fuzzCrashers = []string{
+	// Invalid block size.
+	"\x1f\x8b\bu0000000\x0000000000" +
+		"000000000BC\x02\x000\x0000000" +
+		"00000000000000000000" +
+		"00000000000000000000" +
+		"000000000000000000\x00",
+	"\x1f\x8b\b\xc4000000V\x0000000000" +
+		"00000000000000000000" +
+		"00000000000000000000" +
+		"00000000000000000000" +
+		"000000000000BC\x02\x00w\x00\x030" +
+		"\x00\x00\x00\x00\x00\x00\x00\x00\x1f\x8b\bu000000\x00\x00" +
+		"\x1f\x8b\bu000000\b\x00BC\x02\x00\x00\x0000" +
+		"\x00",
+}
+
+func TestFuzzCrashers(t *testing.T) {
+	for i, test := range fuzzCrashers {
+		func() {
+			i := i
+			defer func() {
+				r := recover()
+				if r != nil {
+					t.Errorf("unexpected panic for crasher %d: %v", i, r)
+				}
+			}()
+			r, err := NewReader(strings.NewReader(test), 0)
+			switch err {
+			case nil:
+				// Pass through.
+			case ErrCorrupt:
+				return
+			default:
+				t.Fatalf("unexpected error creating reader: %v", err)
+			}
+			tmp := make([]byte, 1024)
+			for {
+				_, err := r.Read(tmp)
+				if err != nil {
+					break
+				}
+			}
+		}()
+	}
+}
+
 type zero struct{}
 
 func (z zero) Read(p []byte) (int, error) {

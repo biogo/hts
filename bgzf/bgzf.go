@@ -45,6 +45,7 @@ func init() {
 
 var (
 	ErrClosed            = errors.New("bgzf: use of closed writer")
+	ErrCorrupt           = errors.New("bgzf: corrupt block")
 	ErrBlockOverflow     = errors.New("bgzf: block overflow")
 	ErrWrongFileType     = errors.New("bgzf: file is a directory")
 	ErrNoEnd             = errors.New("bgzf: cannot determine offset from end")
