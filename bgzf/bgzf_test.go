@@ -1049,6 +1049,20 @@ var fuzzCrashers = []string{
 		"\x00\x00\x00\x00\x00\x00\x00\x00\x1f\x8b\bu000000\x00\x00" +
 		"\x1f\x8b\bu000000\b\x00BC\x02\x00\x00\x0000" +
 		"\x00",
+
+	// Zero block size.
+	"\x1f\x8b\bu000000V\x0000000000" +
+		"00000000000000000000" +
+		"00000000000000000000" +
+		"00000000000000000000" +
+		"000000000000BC\x02\x00k\x0000" +
+		"0000000\x00",
+	"\x1f\x8b\bu\xe8k\x15k\x00sV\x00bcdefghi" +
+		"jklmnxpq\xc49\xbf\x1f\x8b\x0f\a/\x85\xba\xb0Q" +
+		"\xef (\x01\xbd\xbf\xefrde\a/\x85fghmjt\x00" +
+		"\xff\x00\x00v\x97x\x92zB\x80\x00142261869" +
+		"48039093abxdBC\x02\x00i\x00sV" +
+		"\xbbghmj\x00\x00",
 }
 
 func TestFuzzCrashers(t *testing.T) {
@@ -1065,7 +1079,7 @@ func TestFuzzCrashers(t *testing.T) {
 			switch err {
 			case nil:
 				// Pass through.
-			case ErrCorrupt:
+			case io.EOF, ErrCorrupt:
 				return
 			default:
 				t.Fatalf("unexpected error creating reader: %v", err)
@@ -1078,6 +1092,38 @@ func TestFuzzCrashers(t *testing.T) {
 				}
 			}
 		}()
+	}
+}
+
+func TestZeroNonZero(t *testing.T) {
+	const wrote = "second block"
+	buf := bytes.NewBuffer([]byte(MagicBlock))
+	w := NewWriter(buf, 1)
+	_, err := w.Write([]byte(wrote))
+	if err != nil {
+		w.Close()
+		t.Fatalf("unexpected error writing second block: %v", err)
+	}
+	err = w.Close()
+	if err != nil {
+		t.Fatalf("unexpected error closing writer: %v", err)
+	}
+	r, err := NewReader(buf, 1)
+	if err != nil {
+		t.Fatalf("unexpected error opening reader: %v", err)
+	}
+	defer r.Close()
+	var b [1024]byte
+	var got []byte
+	for {
+		n, err := r.Read(b[:])
+		got = append(got, b[:n]...)
+		if err != nil {
+			break
+		}
+	}
+	if string(got) != wrote {
+		t.Errorf("unexpected round trip: got:%q want:%q", got, wrote)
 	}
 }
 
