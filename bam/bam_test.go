@@ -2356,3 +2356,67 @@ func (s *S) TestIndexRoundtrip(c *check.C) {
 		c.Check(got, check.DeepEquals, expect, check.Commentf("Test %d", i))
 	}
 }
+
+var fuzzCrashers = []string{
+	// lText
+	"BAM\x01000\x86",
+	"BAM\x01\x00\x00\x00v",
+	"BAM\x01000\xef",
+
+	// nRef
+	"BAM\x01\x00\x00\x00\x00000\xbd",
+	"BAM\x01\x00\x00\x00\x000000",
+	"BAM\x01\x00\x00\x00\x000000\x00\x00\x00\x000",
+	"BAM\x01\x00\x00\x00\x00000\xbf",
+
+	// lName
+	"BAM\x01\x00\x00\x00\x000000\x00\x00\x00\x000",
+	"BAM\x01\x00\x00\x00\x00000\xbf",
+
+	//reader.go 412
+	"BAM\x01\xbf\xbdC_t\x0efRRUAe\x80t.V",
+	"BAM\x01\x00\x00\x00\x00\x00\x00\x00\x00000\xbf" +
+		"e.Ce&Cell",
+	"BAM\x01\x00\x00\x00\x00\x00\x00\x00\x00000\xe9",
+
+	// Zero size buffer.
+	"BAM\x01\x00\x00\x00\x00\x00\x9f7R",
+	// Negative size buffer
+	"BAM\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+}
+
+func TestFuzzCrashers(t *testing.T) {
+	for i, test := range fuzzCrashers {
+		func() {
+			i := i
+			defer func() {
+				r := recover()
+				if r != nil {
+					t.Errorf("unexpected panic for crasher %d: %v", i, r)
+					panic(r)
+				}
+			}()
+			var buf bytes.Buffer
+			w := bgzf.NewWriter(&buf, 1)
+			_, err := w.Write([]byte(test))
+			if err != nil {
+				t.Errorf("unexpected error preparing buffer: %v", err)
+			}
+			err = w.Close()
+			if err != nil {
+				t.Errorf("unexpected error closing buffer: %v", err)
+			}
+
+			r, err := NewReader(&buf, 1)
+			if err != nil {
+				return
+			}
+			for {
+				_, err := r.Read()
+				if err != nil {
+					break
+				}
+			}
+		}()
+	}
+}

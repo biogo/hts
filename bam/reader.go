@@ -406,6 +406,12 @@ func newBuffer(br *Reader) (*buffer, error) {
 	}
 	b := &buffer{data: br.buf[:4]}
 	size := int(b.readInt32())
+	if size == 0 {
+		return nil, io.EOF
+	}
+	if size < 0 {
+		return nil, errors.New("bam: invalid record: invalid block size")
+	}
 	b.off, b.data = 0, make([]byte, size)
 	n, err = io.ReadFull(br.r, b.data)
 	if err != nil {
