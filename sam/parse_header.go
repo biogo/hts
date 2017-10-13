@@ -49,6 +49,9 @@ func (bh *Header) DecodeBinary(r io.Reader) error {
 	if err != nil {
 		return err
 	}
+	if lText < 0 {
+		return errors.New("sam: invalid text length")
+	}
 	text := make([]byte, lText)
 	n, err := r.Read(text)
 	if err != nil {
@@ -65,6 +68,9 @@ func (bh *Header) DecodeBinary(r io.Reader) error {
 	if err != nil {
 		return err
 	}
+	if nRef < 0 {
+		return errors.New("sam: invalid reference count field")
+	}
 	refs, err := readRefRecords(r, nRef)
 	if err != nil {
 		return err
@@ -79,16 +85,23 @@ func (bh *Header) DecodeBinary(r io.Reader) error {
 }
 
 func readRefRecords(r io.Reader, n int32) ([]*Reference, error) {
-	rr := make([]*Reference, n)
+	// bootstrapSize is the maximum number of
+	// reference records to pre-allocate.
+	const bootstrapSize = 1000
+
+	rr := make([]*Reference, 0, min(n, bootstrapSize))
 	var (
 		lName int32
 		err   error
 	)
-	for i := range rr {
-		rr[i] = &Reference{id: int32(i)}
+	for i := 0; i < int(n); i++ {
+		rr = append(rr, &Reference{id: int32(i)})
 		err = binary.Read(r, binary.LittleEndian, &lName)
 		if err != nil {
 			return nil, err
+		}
+		if lName < 1 {
+			return nil, errors.New("sam: invalid name length")
 		}
 		name := make([]byte, lName)
 		n, err := r.Read(name)
@@ -105,6 +118,13 @@ func readRefRecords(r io.Reader, n int32) ([]*Reference, error) {
 		}
 	}
 	return rr, nil
+}
+
+func min(a, b int32) int32 {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
