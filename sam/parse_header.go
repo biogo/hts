@@ -24,6 +24,10 @@ var (
 
 var bamMagic = [4]byte{'B', 'A', 'M', 0x1}
 
+// Max possible SAM header size, in bytes. For detecting a corrupt header
+// without blowing up memory usage.
+const maxSAMHeaderSize = 0xffffff
+
 // UnmarshalBinary implements the encoding.BinaryUnmarshaler interface.
 func (bh *Header) UnmarshalBinary(b []byte) error {
 	return bh.DecodeBinary(bytes.NewReader(b))
@@ -49,6 +53,9 @@ func (bh *Header) DecodeBinary(r io.Reader) error {
 	if err != nil {
 		return err
 	}
+	if lText < 0 || lText >= maxSAMHeaderSize {
+		return errors.New("sam: wrong header length")
+	}
 	text := make([]byte, lText)
 	n, err := r.Read(text)
 	if err != nil {
@@ -64,6 +71,9 @@ func (bh *Header) DecodeBinary(r io.Reader) error {
 	err = binary.Read(r, binary.LittleEndian, &nRef)
 	if err != nil {
 		return err
+	}
+	if nRef < 0 || nRef > maxSAMHeaderSize {
+		return errors.New("sam: wrong reference length")
 	}
 	refs, err := readRefRecords(r, nRef)
 	if err != nil {
@@ -89,6 +99,9 @@ func readRefRecords(r io.Reader, n int32) ([]*Reference, error) {
 		err = binary.Read(r, binary.LittleEndian, &lName)
 		if err != nil {
 			return nil, err
+		}
+		if lName <= 0 || lName > maxSAMHeaderSize {
+			return nil, errors.New("sam: wrong reference name length")
 		}
 		name := make([]byte, lName)
 		n, err := r.Read(name)

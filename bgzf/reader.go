@@ -119,6 +119,9 @@ func (r *buffer) readLimited(n int, src *countReader) error {
 		panic("bgzf: read into non-empty buffer")
 	}
 	r.off = 0
+	if n < 0 || n > len(r.data) {
+		return ErrCorruptBlock
+	}
 	var err error
 	r.size, err = io.ReadFull(src, r.data[:n])
 	return err
@@ -224,7 +227,6 @@ func (d *decompressor) nextBlockAt(off int64, rs io.ReadSeeker) *decompressor {
 	d.lazyBlock()
 
 	d.acquireHead()
-	defer d.releaseHead()
 
 	if d.cr.offset() != off {
 		if rs == nil {
@@ -235,12 +237,16 @@ func (d *decompressor) nextBlockAt(off int64, rs io.ReadSeeker) *decompressor {
 			var ok bool
 			rs, ok = d.owner.r.(io.ReadSeeker)
 			if !ok {
-				panic("bgzf: unexpected offset without seek")
+				d.err = ErrCorruptBlock
+				d.wg.Done()
+				d.releaseHead()
+				return d
 			}
 		}
 		d.err = d.cr.seek(rs, off)
 		if d.err != nil {
 			d.wg.Done()
+			d.releaseHead()
 			return d
 		}
 	}
@@ -249,6 +255,7 @@ func (d *decompressor) nextBlockAt(off int64, rs io.ReadSeeker) *decompressor {
 	d.err = d.readMember()
 	if d.err != nil {
 		d.wg.Done()
+		d.releaseHead()
 		return d
 	}
 	d.blk.setHeader(d.gz.Header)
@@ -258,6 +265,7 @@ func (d *decompressor) nextBlockAt(off int64, rs io.ReadSeeker) *decompressor {
 	go func() {
 		d.err = d.blk.readFrom(&d.gz)
 		d.wg.Done()
+		d.releaseHead()
 	}()
 
 	return d
@@ -592,7 +600,7 @@ func (bg *Reader) nextBlock() error {
 			}
 		}
 		if !ok {
-			panic("bgzf: unexpected block")
+			panic("bgzf: unexpected offset without seek")
 		}
 	}
 	if err != nil {
