@@ -355,9 +355,17 @@ func parseAux(aux []byte) []sam.Aux {
 type buffer struct {
 	off  int
 	data []byte
+	err  error
 }
 
 func (b *buffer) bytes(n int) []byte {
+	if b.err != nil {
+		return nil
+	}
+	if b.len() < n {
+		b.err = io.ErrUnexpectedEOF
+		return nil
+	}
 	s := b.off
 	b.off += n
 	return b.data[s:b.off]
@@ -368,23 +376,58 @@ func (b *buffer) len() int {
 }
 
 func (b *buffer) discard(n int) {
+	if b.err != nil {
+		return
+	}
+	if b.len() < n {
+		b.err = io.ErrUnexpectedEOF
+		return
+	}
 	b.off += n
 }
 
 func (b *buffer) readUint8() uint8 {
+	if b.err != nil {
+		return 0
+	}
+	if b.len() < 1 {
+		b.err = io.ErrUnexpectedEOF
+		return 0
+	}
 	b.off++
 	return b.data[b.off-1]
 }
 
 func (b *buffer) readUint16() uint16 {
+	if b.err != nil {
+		return 0
+	}
+	if b.len() < 2 {
+		b.err = io.ErrUnexpectedEOF
+		return 0
+	}
 	return binary.LittleEndian.Uint16(b.bytes(2))
 }
 
 func (b *buffer) readInt32() int32 {
+	if b.err != nil {
+		return 0
+	}
+	if b.len() < 4 {
+		b.err = io.ErrUnexpectedEOF
+		return 0
+	}
 	return int32(binary.LittleEndian.Uint32(b.bytes(4)))
 }
 
 func (b *buffer) readUint32() uint32 {
+	if b.err != nil {
+		return 0
+	}
+	if b.len() < 4 {
+		b.err = io.ErrUnexpectedEOF
+		return 0
+	}
 	return binary.LittleEndian.Uint32(b.bytes(4))
 }
 
