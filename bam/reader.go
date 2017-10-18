@@ -126,8 +126,8 @@ func (br *Reader) Read() (*sam.Record, error) {
 	b.discard(2)
 	nCigar := b.readUint16()
 	rec.Flags = sam.Flags(b.readUint16())
-	lSeq := int32(b.readUint32())
-	nextRefID := int32(b.readUint32())
+	lSeq := b.readInt32()
+	nextRefID := b.readInt32()
 	rec.MatePos = int(b.readInt32())
 	rec.TempLen = int(b.readInt32())
 	// Read variable length data.
@@ -142,6 +142,9 @@ func (br *Reader) Read() (*sam.Record, error) {
 		goto done
 	}
 
+	if lSeq < 0 {
+		return nil, fmt.Errorf("bam: invalid sequence length: %d", lSeq)
+	}
 	seq = make(doublets, (lSeq+1)>>1)
 	*(*[]byte)(unsafe.Pointer(&seq)) = b.bytes(int(lSeq+1) >> 1)
 
@@ -152,7 +155,10 @@ func (br *Reader) Read() (*sam.Record, error) {
 		goto done
 	}
 	auxTags = b.bytes(b.len())
-	rec.AuxFields = parseAux(auxTags)
+	rec.AuxFields, err = parseAux(auxTags)
+	if err != nil {
+		return nil, err
+	}
 
 done:
 	refs := int32(len(br.h.Refs()))
@@ -308,9 +314,9 @@ var jumps = [256]int{
 
 // parseAux examines the data of a SAM record's OPT fields,
 // returning a slice of sam.Aux that are backed by the original data.
-func parseAux(aux []byte) []sam.Aux {
+func parseAux(aux []byte) ([]sam.Aux, error) {
 	if len(aux) == 0 {
-		return nil
+		return nil, nil
 	}
 	aa := make([]sam.Aux, 0, 4)
 	for i := 0; i+2 < len(aux); {
@@ -345,10 +351,10 @@ func parseAux(aux []byte) []sam.Aux {
 				i += j
 			}
 		default:
-			panic(fmt.Sprintf("bam: unrecognised optional field type: %q", t))
+			return nil, fmt.Errorf("bam: unrecognised optional field type: %q", t)
 		}
 	}
-	return aa
+	return aa, nil
 }
 
 // buffer is light-weight read buffer.
