@@ -22,6 +22,10 @@ type Reader struct {
 	h *sam.Header
 	c *bgzf.Chunk
 
+	// references is cached header
+	// reference count.
+	references int32
+
 	// omit specifies how much of the
 	// record should be omitted during
 	// a read of the BAM input.
@@ -46,6 +50,8 @@ func NewReader(r io.Reader, rd int) (*Reader, error) {
 	br := &Reader{
 		r: bg,
 		h: h,
+
+		references: int32(len(h.Refs())),
 	}
 	err = br.h.DecodeBinary(br.r)
 	if err != nil {
@@ -126,18 +132,21 @@ func (br *Reader) Read() (*sam.Record, error) {
 	b.discard(2)
 	nCigar := b.readUint16()
 	rec.Flags = sam.Flags(b.readUint16())
-	lSeq := b.readInt32()
+	lSeq := int(b.readInt32())
 	nextRefID := b.readInt32()
 	rec.MatePos = int(b.readInt32())
 	rec.TempLen = int(b.readInt32())
+
 	// Read variable length data.
+	if nLen < 1 {
+		return nil, fmt.Errorf("bam: invalid read name length: %d", nLen)
+	}
 	rec.Name = string(b.bytes(int(nLen) - 1))
 	b.discard(1)
 
 	rec.Cigar = readCigarOps(b.bytes(int(nCigar) * 4))
 
-	var seq doublets
-	var auxTags []byte
+	var seq, auxTags []byte
 	if br.omit >= AllVariableLengthData {
 		goto done
 	}
@@ -145,11 +154,10 @@ func (br *Reader) Read() (*sam.Record, error) {
 	if lSeq < 0 {
 		return nil, fmt.Errorf("bam: invalid sequence length: %d", lSeq)
 	}
-	seq = make(doublets, (lSeq+1)>>1)
-	*(*[]byte)(unsafe.Pointer(&seq)) = b.bytes(int(lSeq+1) >> 1)
-
-	rec.Seq = sam.Seq{Length: int(lSeq), Seq: seq}
-	rec.Qual = b.bytes(int(lSeq))
+	seq = make([]byte, (lSeq>>1)+(lSeq&0x1))
+	copy(seq, b.bytes(len(seq)))
+	rec.Seq = sam.Seq{Length: lSeq, Seq: *(*doublets)(unsafe.Pointer(&seq))}
+	rec.Qual = b.bytes(lSeq)
 
 	if br.omit >= AuxTags {
 		goto done
