@@ -2419,9 +2419,14 @@ var fuzzCrashers = []string{
 		"0000\a000\x00\x0000\x00\x00\x00\x000000" +
 		"00000000000000000\b00" +
 		"0",
-
 	"BAM\x01\x00\x00ewline;�\xbf\xb2\x10e" +
 		"�\x16\x00\x00\x00\x00\x00\xbf89rf",
+
+	// lSeq overflow.
+	"BAM\x01\x00\x00\x00\x00\x00\x00\x00\x000\x00\x00\x000000" +
+		"000000000000\xff\xff\xff\u007f0000" +
+		"00000000000000000000" +
+		"00000000",
 }
 
 func TestFuzzCrashers(t *testing.T) {
