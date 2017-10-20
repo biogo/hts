@@ -2427,6 +2427,12 @@ var fuzzCrashers = []string{
 		"000000000000\xff\xff\xff\u007f0000" +
 		"00000000000000000000" +
 		"00000000",
+
+	// B-type aux data length overflow.
+	"BAM\x01\x00\x00\x00\x00\x00\x00\x00\x000\x00\x00\x000000" +
+		"0000\x01000\x01\x0000\x00\x00\x00\x000000" +
+		"000000000000000BC000" +
+		"00000000",
 }
 
 func TestFuzzCrashers(t *testing.T) {

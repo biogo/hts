@@ -349,12 +349,11 @@ func parseAux(aux []byte) ([]sam.Aux, error) {
 				aa = append(aa, sam.Aux(aux[i:i+j:i+j]))
 				i += j + 1
 			case 'B':
-				var length int32
-				err := binary.Read(bytes.NewBuffer([]byte(aux[i+4:i+8])), binary.LittleEndian, &length)
-				if err != nil {
-					panic(fmt.Sprintf("bam: binary.Read failed: %v", err))
-				}
+				length := binary.LittleEndian.Uint32(aux[i+4 : i+8])
 				j = int(length)*jumps[aux[i+3]] + int(unsafe.Sizeof(length)) + 4
+				if i+j > len(aux) {
+					return nil, fmt.Errorf("bam: invalid array length for aux data: %d", length)
+				}
 				aa = append(aa, sam.Aux(aux[i:i+j:i+j]))
 				i += j
 			}
