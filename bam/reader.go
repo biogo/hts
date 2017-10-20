@@ -337,14 +337,9 @@ func parseAux(aux []byte) ([]sam.Aux, error) {
 		case j < 0:
 			switch t {
 			case 'Z', 'H':
-				var (
-					j int
-					v byte
-				)
-				for j, v = range aux[i:] {
-					if v == 0 { // C string termination
-						break // Truncate terminal zero.
-					}
+				j := bytes.IndexByte(aux[i:], 0)
+				if j == -1 {
+					return nil, errors.New("bam: invalid zero terminated data: no zero")
 				}
 				aa = append(aa, sam.Aux(aux[i:i+j:i+j]))
 				i += j + 1
