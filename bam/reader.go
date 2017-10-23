@@ -346,7 +346,7 @@ func parseAux(aux []byte) ([]sam.Aux, error) {
 			case 'B':
 				length := binary.LittleEndian.Uint32(aux[i+4 : i+8])
 				j = int(length)*jumps[aux[i+3]] + int(unsafe.Sizeof(length)) + 4
-				if i+j > len(aux) {
+				if j < 0 || i+j < 0 || i+j > len(aux) {
 					return nil, fmt.Errorf("bam: invalid array length for aux data: %d", length)
 				}
 				aa = append(aa, sam.Aux(aux[i:i+j:i+j]))
