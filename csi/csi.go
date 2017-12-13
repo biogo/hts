@@ -220,6 +220,8 @@ func (i *Index) Chunks(rid int, beg, end int) []bgzf.Chunk {
 			for _, chunk := range ref.bins[c].chunks {
 				if vOffset(chunk.End) > left {
 					chunks = append(chunks, chunk)
+				}
+				if vOffset(chunk.Begin) > left {
 					break
 				}
 			}
