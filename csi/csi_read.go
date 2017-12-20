@@ -66,7 +66,8 @@ func ReadFrom(r io.Reader) (*Index, error) {
 			return nil, err
 		}
 	}
-	idx.refs, err = readIndices(r, idx.Version)
+	binLimit := uint32(((1 << ((idx.depth + 1) * nextBinShift)) - 1) / 7)
+	idx.refs, err = readIndices(r, idx.Version, binLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +82,7 @@ func ReadFrom(r io.Reader) (*Index, error) {
 	return &idx, nil
 }
 
-func readIndices(r io.Reader, version byte) ([]refIndex, error) {
+func readIndices(r io.Reader, version byte, binLimit uint32) ([]refIndex, error) {
 	var n int32
 	err := binary.Read(r, binary.LittleEndian, &n)
 	if err != nil {
@@ -92,7 +93,7 @@ func readIndices(r io.Reader, version byte) ([]refIndex, error) {
 	}
 	idx := make([]refIndex, n)
 	for i := range idx {
-		idx[i].bins, idx[i].stats, err = readBins(r, version)
+		idx[i].bins, idx[i].stats, err = readBins(r, version, binLimit)
 		if err != nil {
 			return nil, err
 		}
@@ -100,17 +101,21 @@ func readIndices(r io.Reader, version byte) ([]refIndex, error) {
 	return idx, nil
 }
 
-func readBins(r io.Reader, version byte) ([]bin, *index.ReferenceStats, error) {
-	var n int32
-	err := binary.Read(r, binary.LittleEndian, &n)
+func readBins(r io.Reader, version byte, binLimit uint32) ([]bin, *index.ReferenceStats, error) {
+	var nBins int32
+	err := binary.Read(r, binary.LittleEndian, &nBins)
 	if err != nil {
 		return nil, nil, err
 	}
-	if n == 0 {
+	if nBins == 0 {
 		return nil, nil, nil
 	}
+	if uint32(nBins) > binLimit {
+		return nil, nil, fmt.Errorf("csi: invalid bin count: %d > %d", nBins, binLimit)
+	}
 	var stats *index.ReferenceStats
-	bins := make([]bin, n)
+	bins := make([]bin, nBins)
+	statsDummyBin := binLimit + 1
 	for i := 0; i < len(bins); i++ {
 		err = binary.Read(r, binary.LittleEndian, &bins[i].bin)
 		if err != nil {
@@ -128,12 +133,13 @@ func readBins(r io.Reader, version byte) ([]bin, *index.ReferenceStats, error) {
 				return nil, nil, fmt.Errorf("csi: failed to read record count: %v", err)
 			}
 		}
-		err = binary.Read(r, binary.LittleEndian, &n)
+		var nChunks int32
+		err = binary.Read(r, binary.LittleEndian, &nChunks)
 		if err != nil {
 			return nil, nil, fmt.Errorf("csi: failed to read bin count: %v", err)
 		}
 		if bins[i].bin == statsDummyBin {
-			if n != 2 {
+			if nChunks != 2 {
 				return nil, nil, errors.New("csi: malformed dummy bin header")
 			}
 			stats, err = readStats(r)
@@ -144,7 +150,7 @@ func readBins(r io.Reader, version byte) ([]bin, *index.ReferenceStats, error) {
 			i--
 			continue
 		}
-		bins[i].chunks, err = readChunks(r, n)
+		bins[i].chunks, err = readChunks(r, nChunks)
 		if err != nil {
 			return nil, nil, err
 		}

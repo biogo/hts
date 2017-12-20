@@ -23,10 +23,7 @@ const (
 	DefaultDepth = 5
 )
 
-const (
-	nextBinShift  = 3
-	statsDummyBin = 0x924a
-)
+const nextBinShift = 3
 
 // MinimumShiftFor returns the lowest minimum shift value that can be used to index
 // the given maximum position with the given index depth.
