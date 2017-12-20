@@ -42,7 +42,8 @@ func WriteTo(w io.Writer, idx *Index) error {
 	if err != nil {
 		return err
 	}
-	err = writeIndices(w, idx.Version, idx.refs)
+	binLimit := uint32(((1 << ((idx.depth + 1) * nextBinShift)) - 1) / 7)
+	err = writeIndices(w, idx.Version, idx.refs, binLimit)
 	if err != nil {
 		return err
 	}
@@ -52,13 +53,13 @@ func WriteTo(w io.Writer, idx *Index) error {
 	return err
 }
 
-func writeIndices(w io.Writer, version byte, idx []refIndex) error {
+func writeIndices(w io.Writer, version byte, idx []refIndex, binLimit uint32) error {
 	err := binary.Write(w, binary.LittleEndian, int32(len(idx)))
 	if err != nil {
 		return err
 	}
 	for i := range idx {
-		err = writeBins(w, version, idx[i].bins, idx[i].stats)
+		err = writeBins(w, version, idx[i].bins, idx[i].stats, binLimit)
 		if err != nil {
 			return err
 		}
@@ -66,7 +67,7 @@ func writeIndices(w io.Writer, version byte, idx []refIndex) error {
 	return nil
 }
 
-func writeBins(w io.Writer, version byte, bins []bin, stats *index.ReferenceStats) error {
+func writeBins(w io.Writer, version byte, bins []bin, stats *index.ReferenceStats, binLimit uint32) error {
 	n := int32(len(bins))
 	if stats != nil {
 		n++
@@ -96,7 +97,7 @@ func writeBins(w io.Writer, version byte, bins []bin, stats *index.ReferenceStat
 		}
 	}
 	if stats != nil {
-		return writeStats(w, version, stats)
+		return writeStats(w, version, stats, binLimit)
 	}
 	return nil
 }
@@ -119,8 +120,9 @@ func writeChunks(w io.Writer, chunks []bgzf.Chunk) error {
 	return nil
 }
 
-func writeStats(w io.Writer, version byte, stats *index.ReferenceStats) error {
+func writeStats(w io.Writer, version byte, stats *index.ReferenceStats, binLimit uint32) error {
 	var err error
+	statsDummyBin := binLimit + 1
 	switch version {
 	case 0x1:
 		err = binary.Write(w, binary.LittleEndian, [4]uint32{statsDummyBin, 0, 0, 2})
