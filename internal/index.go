@@ -18,9 +18,16 @@ const (
 	// in BAI and tabix indexes.
 	TileWidth = 0x4000
 
+	// Levels is the number of levels in the index tree.
+	Levels = 6
+
+	// BinLimit is the maximum number of bins available in
+	// a BAI or tabix index.
+	BinLimit = ((1 << (Levels * nextBinShift)) - 1) / 7
+
 	// StatsDummyBin is the bin number of the reference
 	// statistics bin used in BAI and tabix indexes.
-	StatsDummyBin = 0x924a
+	StatsDummyBin = BinLimit + 1
 )
 
 // Index is a coordinate based index.
