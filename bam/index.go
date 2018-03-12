@@ -8,6 +8,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+	"sort"
 
 	"github.com/biogo/hts/bgzf"
 	"github.com/biogo/hts/bgzf/index"
@@ -68,6 +69,65 @@ func (i *Index) Chunks(r *sam.Reference, beg, end int) ([]bgzf.Chunk, error) {
 // MergeChunks applies the given MergeStrategy to all bins in the Index.
 func (i *Index) MergeChunks(s index.MergeStrategy) {
 	i.idx.MergeChunks(s)
+}
+
+// GetAllOffsets returns a map of chunk offsets in the index file, it
+// includes chunk begin locations, and interval locations.  The Key of
+// the map is the Reference ID, and the value is a slice of
+// bgzf.Offsets.  The return map will have an entry for every
+// reference ID, even if the list of offsets is empty.
+func (i *Index) GetAllOffsets() map[int][]bgzf.Offset {
+	m := make(map[int][]bgzf.Offset)
+	for refId, ref := range i.idx.Refs {
+		m[refId] = make([]bgzf.Offset, 0)
+
+		// Get the offsets for this ref.
+		for _, bin := range ref.Bins {
+			for _, chunk := range bin.Chunks {
+				if chunk.Begin.File != 0 || chunk.Begin.Block != 0 {
+					m[refId] = append(m[refId], chunk.Begin)
+				}
+			}
+		}
+		for _, interval := range ref.Intervals {
+			if interval.File != 0 || interval.Block != 0 {
+				m[refId] = append(m[refId], interval)
+			}
+		}
+
+		// Sort the offsets
+		sort.Sort(byOffset(m[refId]))
+
+		// Keep only unique offsets
+		uniq := make([]bgzf.Offset, 0)
+		previous := bgzf.Offset{-1, 0}
+		for _, offset := range m[refId] {
+			if offset != previous {
+				uniq = append(uniq, offset)
+				previous = offset
+			}
+		}
+		m[refId] = uniq
+	}
+
+	return m
+}
+
+type byOffset []bgzf.Offset
+
+func (s byOffset) Len() int {
+	return len(s)
+}
+
+func (s byOffset) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+func (s byOffset) Less(i, j int) bool {
+	if s[i].File != s[j].File {
+		return s[i].File < s[j].File
+	}
+	return s[i].Block < s[j].Block
 }
 
 var baiMagic = [4]byte{'B', 'A', 'I', 0x1}
