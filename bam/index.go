@@ -18,6 +18,13 @@ import (
 // Index is a BAI index.
 type Index struct {
 	idx internal.Index
+
+	// MergeStrategy is used to determine the
+	// the merge strategy used to prepare the
+	// slice of chunks returned by Chunks.
+	// If MergeStrategy is nil, index.MergeStrategy
+	// is used.
+	MergeStrategy index.MergeStrategy
 }
 
 // NumRefs returns the number of references in the index.
@@ -62,7 +69,10 @@ func (i *Index) Chunks(r *sam.Reference, beg, end int) ([]bgzf.Chunk, error) {
 	if err != nil {
 		return nil, err
 	}
-	return index.Adjacent(chunks), nil
+	if i.MergeStrategy == nil {
+		return index.Adjacent(chunks), nil
+	}
+	return i.MergeStrategy(chunks), nil
 }
 
 // MergeChunks applies the given MergeStrategy to all bins in the Index.
