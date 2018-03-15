@@ -462,10 +462,10 @@ func (a Aux) Value() interface{} {
 			}
 			return Bf
 		default:
-			return fmt.Errorf("%!(UNKNOWN ARRAY type=%c)", t)
+			return fmt.Errorf("%%B!(UNKNOWN ARRAY type=%c)", t)
 		}
 	default:
-		return fmt.Errorf("%!(UNKNOWN type=%c)", t)
+		return fmt.Errorf("%%?!(UNKNOWN type=%c)", t)
 	}
 }
 

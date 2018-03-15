@@ -122,7 +122,7 @@ func writeChunk(dir string, h *sam.Header, recs []*sam.Record) (*bam.Reader, err
 
 	f, err := ioutil.TempFile(dir, "")
 	if err != nil {
-		return nil, fmt.Errorf("failed to create temp file %q: %v", err)
+		return nil, fmt.Errorf("failed to create temp file %q: %v", f.Name(), err)
 	}
 
 	bw, err := bam.NewWriter(f, h, 0)

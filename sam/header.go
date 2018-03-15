@@ -443,11 +443,11 @@ func (bh *Header) Validate(r *Record) error {
 		if hg.Name() == rg.Value() {
 			rPlatformUnit := r.AuxFields.Get(platformUnitTag).Value()
 			if rPlatformUnit != hg.PlatformUnit() {
-				return fmt.Errorf("sam: mismatched platform for read group %s: %v != %v: %v", hg.Name(), rPlatformUnit, hg.platformUnit)
+				return fmt.Errorf("sam: mismatched platform for read group %s: %v != %v", hg.Name(), rPlatformUnit, hg.platformUnit)
 			}
 			rLibrary := r.AuxFields.Get(libraryTag).Value()
 			if rLibrary != hg.Library() {
-				return fmt.Errorf("sam: mismatched library for read group %s: %v != %v: %v", hg.Name(), rLibrary, hg.library)
+				return fmt.Errorf("sam: mismatched library for read group %s: %v != %v", hg.Name(), rLibrary, hg.library)
 			}
 			found = true
 			break
