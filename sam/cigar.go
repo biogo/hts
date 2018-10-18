@@ -69,7 +69,12 @@ func (c Cigar) Lengths() (ref, read int) {
 type CigarOp uint32
 
 // NewCigarOp returns a CIGAR operation of the specified type with length n.
+// Due to a limitation of the BAM format, CIGAR operation lengths are limited
+// to 2^28-1, and NewCigarOp will panic if n is above this or negative.
 func NewCigarOp(t CigarOpType, n int) CigarOp {
+	if uint64(n) > 1<<28-1 {
+		panic("sam: illegal CIGAR op length")
+	}
 	return CigarOp(t) | (CigarOp(n) << 4)
 }
 
@@ -196,22 +201,27 @@ func init() {
 	}
 }
 
-var powers = []int{1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8}
+var powers = []int64{1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12}
 
 // atoi returns the integer interpretation of b which must be an ASCII decimal number representation.
-func atoi(b []byte, i int) (int, error) {
-	n := 0
+func atoi(b []byte) (int, error) {
+	if len(b) > len(powers) {
+		return 0, fmt.Errorf("sam: integer overflow: %q", b)
+	}
+	var n int64
 	k := len(b) - 1
 	for i, v := range b {
-		n += int(v-'0') * powers[k-i]
+		n += int64(v-'0') * powers[k-i]
+		if int64(int(n)) != n {
+			return 0, fmt.Errorf("sam: integer overflow: %q at %d", b, i)
+		}
 	}
-	if n < 0 || 1<<28 <= n {
-		return n, fmt.Errorf("sam: invalid cigar operation count: %q at %d", b, i)
-	}
-	return n, nil
+	return int(n), nil
 }
 
 // ParseCigar returns a Cigar parsed from the provided byte slice.
+// ParseCigar will break CIGAR operations longer than 2^28-1 into
+// multiple operations summing to the same length.
 func ParseCigar(b []byte) (Cigar, error) {
 	if len(b) == 1 && b[0] == '*' {
 		return nil, nil
@@ -225,7 +235,7 @@ func ParseCigar(b []byte) (Cigar, error) {
 	for i := 0; i < len(b); i++ {
 		for j := i; j < len(b); j++ {
 			if b[j] < '0' || '9' < b[j] {
-				n, err = atoi(b[i:j], i)
+				n, err = atoi(b[i:j])
 				if err != nil {
 					return nil, err
 				}
@@ -237,7 +247,22 @@ func ParseCigar(b []byte) (Cigar, error) {
 		if op == lastCigar {
 			return nil, fmt.Errorf("sam: failed to parse cigar string %q: unknown operation %q", b, op)
 		}
-		c = append(c, NewCigarOp(op, n))
+
+		for {
+			c = append(c, NewCigarOp(op, minInt(n, 1<<28-1)))
+			n -= 1<<28 - 1
+			if n <= 0 {
+				break
+			}
+		}
 	}
+	fmt.Printf("%s\n", c)
 	return c, nil
+}
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }

@@ -765,6 +765,9 @@ var cigTests = []struct {
 	{[]byte("11H1D11M"), 12, 11},
 	{[]byte("5M21N5M"), 31, 10},
 	{[]byte("21N"), 21, 0},
+	{[]byte("0M1I1D"), 1, 1},
+	{[]byte("1000000000M"), 1e9, 1e9},
+	{[]byte("1000000000000M"), 1e12, 1e12},
 }
 
 func (s *S) TestLengths(c *check.C) {
