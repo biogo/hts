@@ -256,7 +256,6 @@ func ParseCigar(b []byte) (Cigar, error) {
 			}
 		}
 	}
-	fmt.Printf("%s\n", c)
 	return c, nil
 }
 
