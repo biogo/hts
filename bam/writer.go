@@ -89,8 +89,7 @@ func (bw *Writer) Write(r *sam.Record) error {
 		len(tags)
 
 	bw.buf.Reset()
-	wb := errWriter{w: &bw.buf}
-	bin := binaryWriter{w: &wb}
+	bin := binaryWriter{w: &bw.buf}
 
 	// Write record header data.
 	bin.writeInt32(int32(recLen))
@@ -107,21 +106,18 @@ func (bw *Writer) Write(r *sam.Record) error {
 	bin.writeInt32(int32(r.TempLen))
 
 	// Write variable length data.
-	wb.Write(append([]byte(r.Name), 0))
+	bw.buf.WriteString(r.Name)
+	bw.buf.WriteByte(0)
 	writeCigarOps(&bin, r.Cigar)
-	wb.Write(doublets(r.Seq.Seq).Bytes())
+	bw.buf.Write(doublets(r.Seq.Seq).Bytes())
 	if r.Qual != nil {
-		wb.Write(r.Qual)
+		bw.buf.Write(r.Qual)
 	} else {
 		for i := 0; i < r.Seq.Length; i++ {
-			wb.WriteByte(0xff)
+			bw.buf.WriteByte(0xff)
 		}
 	}
-	wb.Write(tags)
-	if wb.err != nil {
-		return wb.err
-	}
-
+	bw.buf.Write(tags)
 	_, err := bw.bg.Write(bw.buf.Bytes())
 	return err
 }
@@ -129,11 +125,7 @@ func (bw *Writer) Write(r *sam.Record) error {
 func writeCigarOps(bin *binaryWriter, co []sam.CigarOp) {
 	for _, o := range co {
 		bin.writeUint32(uint32(o))
-		if bin.w.err != nil {
-			return
-		}
 	}
-	return
 }
 
 // Close closes the writer.
@@ -141,30 +133,8 @@ func (bw *Writer) Close() error {
 	return bw.bg.Close()
 }
 
-type errWriter struct {
-	w   *bytes.Buffer
-	err error
-}
-
-func (w *errWriter) Write(p []byte) (int, error) {
-	if w.err != nil {
-		return 0, w.err
-	}
-	var n int
-	n, w.err = w.w.Write(p)
-	return n, w.err
-}
-
-func (w *errWriter) WriteByte(b byte) error {
-	if w.err != nil {
-		return w.err
-	}
-	w.err = w.w.WriteByte(b)
-	return w.err
-}
-
 type binaryWriter struct {
-	w   *errWriter
+	w   *bytes.Buffer
 	buf [4]byte
 }
 
