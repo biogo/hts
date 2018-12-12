@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"io"
 	"sync"
+
+	"github.com/grailbio/base/compress/libdeflate"
 )
 
 // Writer implements BGZF blocked gzip compression.
@@ -113,7 +115,7 @@ func writeOK(bg *Writer, c *compressor) bool {
 
 type compressor struct {
 	*gzip.Header
-	gz    *gzip.Writer
+	ld    *libdeflate.Writer
 	level int
 
 	next  int
@@ -131,15 +133,15 @@ type compressor struct {
 func (c *compressor) writeBlock() {
 	defer func() { c.flush <- c }()
 
-	if c.gz == nil {
-		c.gz, c.err = gzip.NewWriterLevel(&c.buf, c.level)
+	if c.ld == nil {
+		c.ld, c.err = libdeflate.NewWriterLevel(&c.buf, c.level)
 		if c.err != nil {
 			return
 		}
 	} else {
-		c.gz.Reset(&c.buf)
+		c.ld.Reset(&c.buf)
 	}
-	c.gz.Header = gzip.Header{
+	c.ld.Header = gzip.Header{
 		Comment: c.Comment,
 		Extra:   append([]byte(bgzfExtra), c.Extra...),
 		ModTime: c.ModTime,
@@ -147,11 +149,11 @@ func (c *compressor) writeBlock() {
 		OS:      c.OS,
 	}
 
-	_, c.err = c.gz.Write(c.block[:c.next])
+	_, c.err = c.ld.Write(c.block[:c.next])
 	if c.err != nil {
 		return
 	}
-	c.err = c.gz.Close()
+	c.err = c.ld.Close()
 	if c.err != nil {
 		return
 	}
@@ -272,10 +274,14 @@ func (bg *Writer) setErr(err error) {
 func (bg *Writer) Close() error {
 	if !bg.closed {
 		c := bg.active
-		bg.queue <- c
-		bg.qwg.Add(1)
-		<-bg.waiting
-		c.writeBlock()
+		// If there are no alignment records at all, don't write an extra empty
+		// block.
+		if c.next != 0 {
+			bg.queue <- c
+			bg.qwg.Add(1)
+			<-bg.waiting
+			c.writeBlock()
+		}
 		bg.closed = true
 		close(bg.queue)
 		bg.wg.Wait()

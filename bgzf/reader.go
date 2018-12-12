@@ -12,6 +12,8 @@ import (
 	"io"
 	"runtime"
 	"sync"
+
+	"github.com/grailbio/base/compress/libdeflate"
 )
 
 // countReader wraps flate.Reader, adding support for querying current offset.
@@ -124,10 +126,6 @@ func (r *buffer) readLimited(n int, src *countReader) error {
 	return err
 }
 
-// equals returns a boolean indicating the equality between
-// the buffered data and the given byte slice.
-func (r *buffer) equals(b []byte) bool { return bytes.Equal(r.data[:r.size], b) }
-
 // decompressor is a gzip member decompressor worker.
 type decompressor struct {
 	owner *Reader
@@ -224,7 +222,6 @@ func (d *decompressor) nextBlockAt(off int64, rs io.ReadSeeker) *decompressor {
 	d.lazyBlock()
 
 	d.acquireHead()
-	defer d.releaseHead()
 
 	if d.cr.offset() != off {
 		if rs == nil {
@@ -235,12 +232,16 @@ func (d *decompressor) nextBlockAt(off int64, rs io.ReadSeeker) *decompressor {
 			var ok bool
 			rs, ok = d.owner.r.(io.ReadSeeker)
 			if !ok {
-				panic("bgzf: unexpected offset without seek")
+				d.err = ErrCorrupt
+				d.wg.Done()
+				d.releaseHead()
+				return d
 			}
 		}
 		d.err = d.cr.seek(rs, off)
 		if d.err != nil {
 			d.wg.Done()
+			d.releaseHead()
 			return d
 		}
 	}
@@ -249,6 +250,7 @@ func (d *decompressor) nextBlockAt(off int64, rs io.ReadSeeker) *decompressor {
 	d.err = d.readMember()
 	if d.err != nil {
 		d.wg.Done()
+		d.releaseHead()
 		return d
 	}
 	d.blk.setHeader(d.gz.Header)
@@ -256,10 +258,17 @@ func (d *decompressor) nextBlockAt(off int64, rs io.ReadSeeker) *decompressor {
 
 	// Decompress data into the decompressor's Block.
 	go func() {
-		d.err = d.blk.readFrom(&d.gz)
+		// Possible TODO: use a pool of preallocated libdeflate.Decompressor
+		// objects instead.
+		var dd libdeflate.Decompressor
+		d.err = dd.Init()
+		if d.err == nil {
+			d.err = d.blk.readBuf(d.buf.data[:d.buf.size], dd)
+			dd.Cleanup()
+		}
+		d.releaseHead()
 		d.wg.Done()
 	}()
-
 	return d
 }
 
