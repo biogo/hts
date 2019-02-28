@@ -39,7 +39,7 @@ func TestRoundTrip(t *testing.T) {
 			}
 			out, outn, ok := Decode(b)
 			if !ok {
-				t.Error("failed to decode ITF-8 bytes: %08b", b[:inn])
+				t.Errorf("failed to decode ITF-8 bytes: %08b", b[:inn])
 			}
 			if inn != outn {
 				t.Errorf("disagreement in number of encoded bytes: in=%d out=%d", inn, outn)
@@ -63,7 +63,7 @@ func TestKnownValues(t *testing.T) {
 	for _, test := range tests {
 		got, n, ok := Decode(test.bytes)
 		if !ok {
-			t.Error("failed to decode ITF-8 bytes: %08b", test.bytes)
+			t.Errorf("failed to decode ITF-8 bytes: %08b", test.bytes)
 		}
 		if n != len(test.bytes) {
 			t.Errorf("disagreement in expected number of encoded bytes: n=%d len(b)=%d", n, len(test.bytes))
