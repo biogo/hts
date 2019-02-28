@@ -3,6 +3,9 @@
 // license that can be found in the LICENSE file.
 
 // Package ltf8 provides LTF-8 integer encoding.
+//
+// LTF-8 integer encoding is specified in the CRAM format specification
+// section 2.3.
 package ltf8
 
 var pop = [16]byte{
