@@ -2,6 +2,10 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// Package cram is a WIP CRAM reader implementation.
+//
+// See https://samtools.github.io/hts-specs/CRAMv3.pdf for the CRAM
+// specification.
 package cram
 
 import (
@@ -24,6 +28,9 @@ import (
 	"github.com/biogo/hts/sam"
 )
 
+// cramEOFmarker is the CRAM end of file marker.
+//
+// See CRAM spec section 9.
 var cramEOFmarker = []byte{
 	0x0f, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, // |........|
 	0x0f, 0xe0, 0x45, 0x4f, 0x46, 0x00, 0x00, 0x00, // |..EOF...|
@@ -32,6 +39,7 @@ var cramEOFmarker = []byte{
 	0x01, 0x00, 0xee, 0x63, 0x01, 0x4b, /*       */ // |...c.K|
 }
 
+// ErrNoEnd is returned when a stream cannot seek to a CRAM EOF block.
 var ErrNoEnd = errors.New("cram: cannot determine offset from end")
 
 // HasEOF checks for the presence of a CRAM magic EOF block.
@@ -78,6 +86,7 @@ func HasEOF(r io.ReaderAt) (bool, error) {
 	return bytes.Equal(b, cramEOFmarker), nil
 }
 
+// Reader is a CRAM format reader.
 type Reader struct {
 	r io.Reader
 
@@ -87,6 +96,7 @@ type Reader struct {
 	err error
 }
 
+// NewReader returns a new Reader.
 func NewReader(r io.Reader) (*Reader, error) {
 	cr := Reader{r: r}
 	err := cr.d.readFrom(r)
@@ -96,6 +106,9 @@ func NewReader(r io.Reader) (*Reader, error) {
 	return &cr, nil
 }
 
+// Next advances the Reader to the next CRAM container. It returns false
+// when the stream ends, either by reaching the end of the stream or
+// encountering an error.
 func (r *Reader) Next() bool {
 	if r.err != nil {
 		return false
@@ -109,10 +122,13 @@ func (r *Reader) Next() bool {
 	return r.err == nil
 }
 
+// Container returns the current CRAM container. The returned Container
+// is only valid after a previous call to Next has returned true.
 func (r *Reader) Container() *Container {
 	return r.c
 }
 
+// Err returns the most recent error.
 func (r *Reader) Err() error {
 	if r.err == io.EOF {
 		return nil
@@ -120,13 +136,17 @@ func (r *Reader) Err() error {
 	return r.err
 }
 
-// CRAM spec section 6.
+// definition is a CRAM file definition.
+//
+// See CRAM spec section 6.
 type definition struct {
 	Magic   [4]byte `is:"CRAM"`
 	Version [2]byte
 	ID      [20]byte
 }
 
+// readFrom populates a definition from the given io.Reader. If the magic
+// number of the file is not "CRAM" readFrom returns an error.
 func (d *definition) readFrom(r io.Reader) error {
 	err := binary.Read(r, binary.LittleEndian, d)
 	if err != nil {
@@ -139,7 +159,9 @@ func (d *definition) readFrom(r io.Reader) error {
 	return nil
 }
 
-// CRAM spec section 7.
+// Container is a CRAM container.
+//
+// See CRAM spec section 7.
 type Container struct {
 	blockLen  int32
 	refID     int32
@@ -157,6 +179,8 @@ type Container struct {
 	err   error
 }
 
+// readFrom populates a Container from the given io.Reader checking that the
+// CRC32 for the container header is correct.
 func (c *Container) readFrom(r io.Reader) error {
 	crc := crc32.NewIEEE()
 	er := errorReader{r: io.TeeReader(r, crc)}
@@ -190,6 +214,9 @@ func (c *Container) readFrom(r io.Reader) error {
 	return nil
 }
 
+// Next advances the Container to the next CRAM block. It returns false
+// when the data ends, either by reaching the end of the container or
+// encountering an error.
 func (c *Container) Next() bool {
 	if c.err != nil {
 		return false
@@ -203,10 +230,13 @@ func (c *Container) Next() bool {
 	return false
 }
 
+// Block returns the current CRAM block. The returned Blcok is only
+// valid after a previous call to Next has returned true.
 func (c *Container) Block() *Block {
 	return c.block
 }
 
+// Err returns the most recent error.
 func (c *Container) Err() error {
 	if c.err == io.EOF {
 		return nil
@@ -214,7 +244,9 @@ func (c *Container) Err() error {
 	return c.err
 }
 
-// CRAM spec section 8.
+// Block is a CRAM block structure.
+//
+// See CRAM spec section 8.
 type Block struct {
 	method         byte
 	typ            byte
@@ -242,6 +274,8 @@ const (
 	coreData
 )
 
+// readFrom fills a Block from the given io.Reader checking that the
+// CRC32 for the block is correct.
 func (b *Block) readFrom(r io.Reader) error {
 	crc := crc32.NewIEEE()
 	er := errorReader{r: io.TeeReader(r, crc)}
@@ -275,6 +309,7 @@ func (b *Block) readFrom(r io.Reader) error {
 	return nil
 }
 
+// Value returns the value of the Block.
 func (b *Block) Value() (interface{}, error) {
 	switch b.typ {
 	case fileHeader:
@@ -310,6 +345,7 @@ func (b *Block) Value() (interface{}, error) {
 	}
 }
 
+// expandBlockdata decompresses the block's compressed data.
 func (b *Block) expandBlockdata() ([]byte, error) {
 	switch b.method {
 	default:
@@ -336,7 +372,9 @@ func (b *Block) expandBlockdata() ([]byte, error) {
 	}
 }
 
-// CRAM spec section 8.5.
+// Slice is a CRAM slice header block.
+//
+// See CRAM spec section 8.5.
 type Slice struct {
 	refID         int32
 	start         int32
@@ -350,6 +388,7 @@ type Slice struct {
 	tags          []byte
 }
 
+// readFrom populates a Slice from the given io.Reader.
 func (s *Slice) readFrom(r io.Reader) error {
 	er := errorReader{r: r}
 	s.refID = er.itf8()
@@ -368,11 +407,13 @@ func (s *Slice) readFrom(r io.Reader) error {
 	return err
 }
 
+// errorReader is a sticky error io.Reader.
 type errorReader struct {
 	r   io.Reader
 	err error
 }
 
+// Read implements the io.Reader interface.
 func (r *errorReader) Read(b []byte) (int, error) {
 	if r.err != nil {
 		return 0, r.err
@@ -382,6 +423,7 @@ func (r *errorReader) Read(b []byte) (int, error) {
 	return n, r.err
 }
 
+// itf8 returns the ITF-8 encoded number at the current reader position.
 func (r *errorReader) itf8() int32 {
 	var buf [5]byte
 	_, r.err = io.ReadFull(r, buf[:1])
@@ -403,6 +445,8 @@ func (r *errorReader) itf8() int32 {
 	return i
 }
 
+// itf8slice returns the n[ITF-8] encoded numbers at the current reader position
+// where n is an ITF-8 encoded number.
 func (r *errorReader) itf8slice() []int32 {
 	n := r.itf8()
 	if r.err != nil {
@@ -421,6 +465,7 @@ func (r *errorReader) itf8slice() []int32 {
 	return s
 }
 
+// itf8 returns the LTF-8 encoded number at the current reader position.
 func (r *errorReader) ltf8() int64 {
 	var buf [9]byte
 	_, r.err = io.ReadFull(r, buf[:1])
