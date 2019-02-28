@@ -39,7 +39,7 @@ func TestInt64RoundTrip(t *testing.T) {
 			}
 			out, outn, ok := Decode(b)
 			if !ok {
-				t.Error("failed to decode LTF-8 bytes: %08b", b[:inn])
+				t.Errorf("failed to decode LTF-8 bytes: %08b", b[:inn])
 			}
 			if inn != outn {
 				t.Errorf("disagreement in number of encoded bytes: in=%d out=%d", inn, outn)
