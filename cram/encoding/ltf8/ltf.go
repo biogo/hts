@@ -8,27 +8,7 @@
 // section 2.3.
 package ltf8
 
-var pop = [16]byte{
-	0:  8,
-	1:  7,
-	4:  3,
-	5:  6,
-	6:  1,
-	9:  4,
-	10: 2,
-	11: 5,
-	14: 0,
-}
-
-// nlo returns the number of leading set bits in x.
-func nlo(x byte) int {
-	x = ^x
-	x |= x >> 1
-	x |= x >> 2
-	x |= x >> 4
-	x *= 27
-	return int(pop[x>>4])
-}
+import "math/bits"
 
 // Len returns the number of bytes required to encode v.
 func Len(v int64) int {
@@ -63,7 +43,7 @@ func Decode(b []byte) (v int64, n int, ok bool) {
 	if len(b) == 0 {
 		return 0, 0, false
 	}
-	n = nlo(b[0]) + 1
+	n = bits.LeadingZeros8(^(b[0])) + 1
 	if len(b) < n {
 		return 0, n, false
 	}
