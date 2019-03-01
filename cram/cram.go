@@ -4,6 +4,9 @@
 
 // Package cram is a WIP CRAM reader implementation.
 //
+// Currently the package implements container, block and slice retrieval, and
+// SAM header values can be retrieved from blocks.
+//
 // See https://samtools.github.io/hts-specs/CRAMv3.pdf for the CRAM
 // specification.
 package cram
@@ -310,6 +313,8 @@ func (b *Block) readFrom(r io.Reader) error {
 }
 
 // Value returns the value of the Block.
+//
+// Note that rANS decompression is not implemented.
 func (b *Block) Value() (interface{}, error) {
 	switch b.typ {
 	case fileHeader:
@@ -368,7 +373,11 @@ func (b *Block) expandBlockdata() ([]byte, error) {
 		return ioutil.ReadAll(lz)
 	case ransMethod:
 		// Unimplemented.
-		return b.blockData, nil
+		// BUG(kortschak): The rANS method is not implemented.
+		// Data blocks compressed with rANS will be returned
+		// compressed and an "unimplemented" error will be
+		// returned.
+		return b.blockData, errors.New("unimplemented")
 	}
 }
 
