@@ -6,27 +6,6 @@ package itf8
 
 import "testing"
 
-func TestNLO(t *testing.T) {
-	for i := 0; i < 256; i++ {
-		want := loopNLO(byte(i))
-		got := nlo(byte(i))
-		if got != want {
-			t.Errorf("unexpected number of leading ones: got:%d want:%d", got, want)
-		}
-	}
-}
-
-func loopNLO(x byte) int {
-	var n int
-	for b := 0x80; b > 0; b >>= 1 {
-		if x&byte(b) == 0 {
-			break
-		}
-		n++
-	}
-	return n
-}
-
 func TestRoundTrip(t *testing.T) {
 	b := make([]byte, 6)
 	for i := uint(0); i < 32; i++ {
