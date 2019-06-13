@@ -75,6 +75,88 @@ func NewRecord(name string, ref, mRef *Reference, p, mPos, tLen int, mapQ byte, 
 	return r, nil
 }
 
+// NewRecordFromAln build a new SAM record based on the provided local alignment and its reference/query coordinates.
+func NewRecordFromAln(name string, ref *Reference, refStart, refEnd, queryStart, queryEnd int, refAln, queryAln string, strand string, mapQ byte, seq string, qual []byte, aux []Aux) (*Record, error) {
+	if len(refAln) != len(queryAln) {
+		panic("alignment length mismatch")
+	}
+	if len(refAln) == 0 {
+		panic("empty alignment")
+	}
+	gap := byte('-')
+
+	rawCo := make([]CigarOp, 0, len(seq))
+	co := make([]CigarOp, 0, len(seq))
+	var consumed int
+	var nm int
+
+	// Building the CIGAR in two steps for clarity.
+	if queryStart > 0 {
+		rawCo = append(rawCo, NewCigarOp(CigarSoftClipped, queryStart))
+	}
+	for i := range refAln {
+		if queryAln[i] == gap {
+			rawCo = append(rawCo, NewCigarOp(CigarDeletion, 1))
+			continue
+
+		} else if refAln[i] == gap {
+			rawCo = append(rawCo, NewCigarOp(CigarInsertion, 1))
+			consumed++
+			continue
+		} else {
+			rawCo = append(rawCo, NewCigarOp(CigarMatch, 1))
+			consumed++
+			if queryAln[i] != refAln[i] {
+				nm++
+			}
+			continue
+
+		}
+	} // refAln
+
+	leftover := len(seq) - queryStart - consumed
+	if leftover > 0 {
+		rawCo = append(rawCo, NewCigarOp(CigarSoftClipped, leftover))
+	}
+
+	cop := rawCo[0].Type()
+	length := rawCo[0].Len()
+	var o CigarOp
+	for i := 1; i < len(rawCo); i++ {
+		o = rawCo[i]
+		if o.Type() == cop {
+			length++
+			continue
+		}
+		co = append(co, NewCigarOp(cop, length))
+		length = o.Len()
+		cop = o.Type()
+	}
+	co = append(co, NewCigarOp(o.Type(), length))
+
+	switch strand {
+	case "-":
+		for i, j := 0, len(co)-1; i < j; i, j = i+1, j-1 {
+			co[i], co[j] = co[j], co[i]
+		}
+	case "+":
+	default:
+		panic("Invalid strand: " + strand)
+
+	}
+
+	nmTag, _ := NewAux(NewTag("NM"), nm)
+	aux = append(aux, nmTag)
+	res, err := NewRecord(name, ref, nil, refStart, -1, 0, mapQ, co, []byte(seq), qual, aux)
+	if err != nil {
+		panic(err)
+	}
+	if strand == "-" {
+		res.Flags |= Reverse
+	}
+	return res, err
+}
+
 // IsValidRecord returns whether the record satisfies the conditions that
 // it has the Unmapped flag set if it not placed; that the MateUnmapped
 // flag is set if it paired its mate is unplaced; that the CIGAR length
@@ -156,7 +238,7 @@ func (r *Record) End() int {
 	pos := r.Pos
 	end := pos
 	for _, co := range r.Cigar {
-		pos += co.Len() * co.Type().Consumes().Reference
+		pos += co.Len() * co.Type().Consumes().Query
 		end = max(end, pos)
 	}
 	return end
