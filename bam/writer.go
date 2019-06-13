@@ -89,7 +89,7 @@ func (bw *Writer) Write(r *sam.Record) error {
 		len(r.Name) + 1 + // Null terminated.
 		len(r.Cigar)<<2 + // CigarOps are 4 bytes.
 		len(r.Seq.Seq) +
-		qlen +
+		r.Seq.Length +
 		len(tags)
 
 	bw.buf.Reset()
