@@ -96,10 +96,18 @@ func IsValidRecord(r *Record) bool {
 	if len(r.Qual) != 0 && r.Seq.Length != len(r.Qual) {
 		return false
 	}
-	if cigarLen := r.Len(); cigarLen < 0 || (r.Seq.Length != 0 && r.Seq.Length != cigarLen) {
+	if r.Seq.Length != 0 && r.Seq.Length != r.queryLen() {
 		return false
 	}
 	return true
+}
+
+func (r *Record) queryLen() int {
+	var l int
+	for _, co := range r.Cigar {
+		l += co.Len() * co.Type().Consumes().Query
+	}
+	return l
 }
 
 // Tag returns an Aux tag whose tag ID matches the first two bytes of tag and true.
