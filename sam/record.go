@@ -238,7 +238,7 @@ func (r *Record) End() int {
 	pos := r.Pos
 	end := pos
 	for _, co := range r.Cigar {
-		pos += co.Len() * co.Type().Consumes().Query
+		pos += co.Len() * co.Type().Consumes().Reference
 		end = max(end, pos)
 	}
 	return end
