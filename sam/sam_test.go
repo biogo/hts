@@ -798,6 +798,19 @@ func (s *S) TestIssue32(c *check.C) {
 	c.Check(h.Progs()[0].UID(), check.Equals, "name")
 }
 
+func (s *S) TestIssue133(c *check.C) {
+	sam := []byte(`@HD	VN:1.5	SO:coordinate
+@SQ	SN:q2	LN:1000
+q3	0	q2	4	7	1S13M2I18M	*	0	0	TCAGGAAGGCGGTATCGACGACGGTGCCGAGGCA	*	PG:i:0	NM:i:0
+`)
+
+	r, err := NewReader(bytes.NewReader(sam))
+	c.Check(err, check.Equals, nil)
+	rec, err := r.Read()
+	c.Check(err, check.Equals, nil)
+	c.Check(IsValidRecord(rec), check.Equals, true)
+}
+
 func (s *S) TestEqualRefs(c *check.C) {
 	a, err := NewReference("aaa", "assem", "species", 1234, nil, nil)
 	c.Assert(err, check.IsNil)
