@@ -499,9 +499,8 @@ func (ns Seq) Expand() []byte {
 	return s
 }
 
-// BaseChar returns the base type at the given position as a character, such as
-// 'A', 'C'. It panics unless 0 <= pos < ns.Length. The returned value is a
-// character.
+// At returns the base at the given position.
+// At panics unless 0 <= pos < ns.Length.
 func (ns Seq) At(pos int) byte {
 	if pos%2 == 0 {
 		return n16TableRev[ns.Seq[pos/2]>>4]
