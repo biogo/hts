@@ -126,7 +126,7 @@ func (br *Reader) Read() (*sam.Record, error) {
 
 	var rec sam.Record
 	refID := b.readInt32()
-	rec.Pos = int(b.readUint32())
+	rec.Pos = int(b.readInt32())
 	nLen := b.readUint8()
 	rec.MapQ = b.readUint8()
 	b.discard(2)
