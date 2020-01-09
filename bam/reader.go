@@ -428,17 +428,6 @@ func (b *buffer) readInt32() int32 {
 	return int32(binary.LittleEndian.Uint32(b.bytes(4)))
 }
 
-func (b *buffer) readUint32() uint32 {
-	if b.err != nil {
-		return 0
-	}
-	if b.len() < 4 {
-		b.err = io.ErrUnexpectedEOF
-		return 0
-	}
-	return binary.LittleEndian.Uint32(b.bytes(4))
-}
-
 // newBuffer returns a new buffer reading from the Reader's underlying bgzf.Reader and
 // updates the Reader's lastChunk field.
 func newBuffer(br *Reader) (*buffer, error) {
