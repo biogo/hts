@@ -48,11 +48,12 @@ func TestFile(t *testing.T) {
 			continue
 		}
 
-		m, err := OpenFile(p, idx)
+		f, err = os.Open(p)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 			continue
 		}
+		m := NewFile(f, idx)
 		for _, test := range tests {
 			var s *Seq
 			if test.Start == -1 {
@@ -86,20 +87,10 @@ func TestFile(t *testing.T) {
 					t.Errorf("unexpected sequence: got:%q want:%q", got, test.Want)
 				}
 
-				if test.Start == -1 {
-					for p, b := range got {
-						if a := s.At(p); a != b {
-							t.Errorf("unexpected base at %d: got:%q want:%q", p, a, b)
-						}
-					}
-				}
-
 				s.Reset()
 			}
-
-			s.Close()
 		}
 
-		m.Close()
+		f.Close()
 	}
 }
