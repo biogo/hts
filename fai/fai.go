@@ -6,8 +6,11 @@
 package fai
 
 import (
+	"bufio"
+	"bytes"
 	"encoding/csv"
 	"errors"
+	"fmt"
 	"io"
 	"strconv"
 )
@@ -24,6 +27,78 @@ var ErrNonUnique = errors.New("non-unique record name")
 
 // Index is an FAI index.
 type Index map[string]Record
+
+// NewIndex returns a new Index constructed from the FASTA sequence
+// in the provided io.Reader.
+func NewIndex(fasta io.Reader) (Index, error) {
+	sc := bufio.NewScanner(fasta)
+	sc.Split(func(data []byte, atEOF bool) (advance int, token []byte, err error) {
+		if atEOF && len(data) == 0 {
+			return 0, nil, nil
+		}
+		if i := bytes.IndexByte(data, '\n'); i >= 0 {
+			return i + 1, data[:i+1], nil
+		}
+		if atEOF {
+			return len(data), data, nil
+		}
+		return 0, nil, nil
+	})
+
+	idx := make(Index)
+	var (
+		rec          Record
+		offset       int64
+		wantDescLine bool
+	)
+	for sc.Scan() {
+		b := bytes.TrimSpace(sc.Bytes())
+		if len(b) == 0 {
+			continue
+		}
+		if b[0] == '>' {
+			if rec.Name != "" {
+				idx[rec.Name] = rec
+				rec = Record{}
+			}
+			rec.Name = string(bytes.SplitN(b[1:], []byte{' '}, 2)[0])
+			if _, exists := idx[rec.Name]; exists {
+				return nil, fmt.Errorf("fai: duplicate sequence identifier %s at %d", rec.Name, offset)
+			}
+			rec.Start = offset + int64(len(sc.Bytes()))
+			wantDescLine = false
+		} else {
+			if wantDescLine {
+				return nil, fmt.Errorf("fai: unexpected short line before offset %d", offset)
+			}
+			switch {
+			case rec.BytesPerLine == 0:
+				rec.BytesPerLine = len(sc.Bytes())
+			case len(sc.Bytes()) > rec.BytesPerLine:
+				return nil, fmt.Errorf("fai: unexpected long line at offset %d", offset)
+			case len(sc.Bytes()) < rec.BytesPerLine:
+				wantDescLine = true
+			}
+			switch {
+			case len(b) == 0:
+				// Do nothing.
+			case rec.BasesPerLine == 0:
+				rec.BasesPerLine = len(b)
+			case len(b) > rec.BasesPerLine:
+				return nil, fmt.Errorf("fai: unexpected long line at offset %d", offset)
+			case len(b) < rec.BasesPerLine:
+				wantDescLine = true
+			}
+			rec.Length += len(b)
+		}
+		offset += int64(len(sc.Bytes()))
+	}
+	if rec.Name != "" {
+		idx[rec.Name] = rec
+		rec = Record{}
+	}
+	return idx, sc.Err()
+}
 
 // Record is a single FAI index record.
 type Record struct {
