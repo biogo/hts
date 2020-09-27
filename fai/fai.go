@@ -62,7 +62,12 @@ func NewIndex(fasta io.Reader) (Index, error) {
 				idx[rec.Name] = rec
 				rec = Record{}
 			}
-			rec.Name = string(bytes.SplitN(b[1:], []byte{' '}, 2)[0])
+			lenID := bytes.IndexAny(b, " \t")
+			if lenID < 0 {
+				rec.Name = string(b[1:])
+			} else {
+				rec.Name = string(b[1:lenID])
+			}
 			if _, exists := idx[rec.Name]; exists {
 				return nil, fmt.Errorf("fai: duplicate sequence identifier %s at %d", rec.Name, offset)
 			}
