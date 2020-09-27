@@ -5,6 +5,7 @@
 package fai
 
 import (
+	"bytes"
 	"encoding/csv"
 	"errors"
 	"reflect"
@@ -273,6 +274,49 @@ NODE_53327_length_192_cov_1.854167	212	5590	60	61
 		}
 		if !reflect.DeepEqual(got, test.idx) {
 			t.Errorf("unexpected result for test %d: got:%#v want:%#v", i, got, test.idx)
+		}
+	}
+}
+
+func TestWriteTo(t *testing.T) {
+	for i, test := range []struct {
+		idx  Index
+		want string
+	}{
+		{
+			idx: Index{
+				"FN654386.1": Record{Name: "FN654386.1", Length: 100, Start: 12, BasesPerLine: 70, BytesPerLine: 71},
+				"FN654386.2": Record{Name: "FN654386.2", Length: 100, Start: 126, BasesPerLine: 70, BytesPerLine: 71},
+				"FN654386.3": Record{Name: "FN654386.3", Length: 100, Start: 240, BasesPerLine: 70, BytesPerLine: 71},
+			},
+			want: `FN654386.1	100	12	70	71
+FN654386.2	100	126	70	71
+FN654386.3	100	240	70	71
+`,
+		},
+		{
+			// Map iteration order is stated to be unspecified, but in practice,
+			// maps that are shorter than one bucket have consistent order, so
+			// provide a different ordering.
+			idx: Index{
+				"FN654386.2": Record{Name: "FN654386.2", Length: 100, Start: 126, BasesPerLine: 70, BytesPerLine: 71},
+				"FN654386.1": Record{Name: "FN654386.1", Length: 100, Start: 12, BasesPerLine: 70, BytesPerLine: 71},
+				"FN654386.3": Record{Name: "FN654386.3", Length: 100, Start: 240, BasesPerLine: 70, BytesPerLine: 71},
+			},
+			want: `FN654386.1	100	12	70	71
+FN654386.2	100	126	70	71
+FN654386.3	100	240	70	71
+`,
+		},
+	} {
+		var buf bytes.Buffer
+		err := WriteTo(&buf, test.idx)
+		if err != nil {
+			t.Errorf("unexpected error: got:%v", err)
+		}
+		got := buf.String()
+		if got != test.want {
+			t.Errorf("unexpected result for test %d: got:\n%s\nwant:%s", i, got, test.want)
 		}
 	}
 }
