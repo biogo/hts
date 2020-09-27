@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sort"
 	"strconv"
 )
 
@@ -207,3 +208,25 @@ func parseError(line, column int, err error) *csv.ParseError {
 		Err:       err,
 	}
 }
+
+// WriteTo writes the the given index to w in order of ascending start position.
+func WriteTo(w io.Writer, idx Index) error {
+	recs := make([]Record, 0, len(idx))
+	for _, r := range idx {
+		recs = append(recs, r)
+	}
+	sort.Sort(byStart(recs))
+	for _, r := range recs {
+		_, err := fmt.Fprintf(w, "%s\t%d\t%d\t%d\t%d\n", r.Name, r.Length, r.Start, r.BasesPerLine, r.BytesPerLine)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type byStart []Record
+
+func (r byStart) Len() int           { return len(r) }
+func (r byStart) Less(i, j int) bool { return r[i].Start < r[j].Start }
+func (r byStart) Swap(i, j int)      { r[i], r[j] = r[j], r[i] }
