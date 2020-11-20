@@ -215,7 +215,7 @@ func readTabixHeader(r io.Reader, idx *Index) error {
 	if names[len(names)-1] != 0 {
 		return errors.New("tabix: last name not zero-terminated")
 	}
-	idx.refNames = strings.Split(names[:len(names)-1], string(0))
+	idx.refNames = strings.Split(names[:len(names)-1], string(rune(0)))
 
 	return nil
 }
