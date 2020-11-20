@@ -1,6 +1,6 @@
 module github.com/biogo/hts
 
-go 1.12
+go 1.14
 
 require (
 	github.com/biogo/boom v0.0.0-20150317015657-28119bc1ffc1
