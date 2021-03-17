@@ -449,7 +449,7 @@ func (bg *Reader) Seek(off Offset) error {
 		return ErrNotASeeker
 	}
 
-	if off.File != bg.current.Base() || !bg.current.hasData() {
+	if bg.current == nil || off.File != bg.current.Base() || !bg.current.hasData() {
 		ok := bg.cacheSwap(off.File)
 		if !ok {
 			var dec *decompressor
