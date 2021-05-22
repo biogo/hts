@@ -13,6 +13,8 @@ import (
 	"io"
 	"os"
 	"time"
+
+	"github.com/biogo/hts/internal/pool"
 )
 
 const (
@@ -91,7 +93,8 @@ func HasEOF(r io.ReaderAt) (bool, error) {
 		return false, ErrNoEnd
 	}
 
-	b := make([]byte, len(magicBlock))
+	b := pool.GetBuffer(len(magicBlock))
+	defer pool.PutBuffer(b)
 	_, err := r.ReadAt(b, size-int64(len(magicBlock)))
 	if err != nil {
 		return false, err

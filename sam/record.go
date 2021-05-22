@@ -11,6 +11,7 @@ import (
 	"strconv"
 
 	"github.com/biogo/hts/internal"
+	"github.com/biogo/hts/internal/pool"
 )
 
 // Record represents a SAM/BAM record.
@@ -388,7 +389,8 @@ func formatFlags(f Flags, format int) interface{} {
 
 		const flags = "pPuUrR12sfdS"
 
-		b := make([]byte, 0, len(flags))
+		b := pool.GetBuffer(len(flags))[:0]
+		defer pool.PutBuffer(b)
 		for i, c := range flags {
 			if f&(1<<uint(i)) != 0 {
 				b = append(b, byte(c))

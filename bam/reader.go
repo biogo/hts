@@ -13,6 +13,7 @@ import (
 	"unsafe"
 
 	"github.com/biogo/hts/bgzf"
+	"github.com/biogo/hts/internal/pool"
 	"github.com/biogo/hts/sam"
 )
 
@@ -119,7 +120,8 @@ func (br *Reader) Read() (*sam.Record, error) {
 		return nil, io.EOF
 	}
 
-	b, err := newBuffer(br)
+	b, put, err := newBuffer(br)
+	defer put()
 	if err != nil {
 		return nil, err
 	}
@@ -322,10 +324,17 @@ var jumps = [256]int{
 
 // parseAux examines the data of a SAM record's OPT fields,
 // returning a slice of sam.Aux that are backed by the original data.
-func parseAux(aux []byte) ([]sam.Aux, error) {
-	if len(aux) == 0 {
+func parseAux(buf []byte) ([]sam.Aux, error) {
+	if len(buf) == 0 {
 		return nil, nil
 	}
+
+	// TODO(kortschak): Replace this with bytes.Clone when available.
+	// This is necessary to allow buf to be replaced into the pool
+	// when Read returns.
+	// See https://github.com/golang/go/issues/45038 for bytes.Clone.
+	aux := append(buf[:0:0], buf...)
+
 	aa := make([]sam.Aux, 0, 4)
 	for i := 0; i+2 < len(aux); {
 		t := aux[i+2]
@@ -430,7 +439,7 @@ func (b *buffer) readInt32() int32 {
 
 // newBuffer returns a new buffer reading from the Reader's underlying bgzf.Reader and
 // updates the Reader's lastChunk field.
-func newBuffer(br *Reader) (*buffer, error) {
+func newBuffer(br *Reader) (b *buffer, put func(), err error) {
 	n, err := io.ReadFull(br.r, br.buf[:4])
 	// br.r.Chunk() is only valid after the call the Read(), so this
 	// must come after the first read in the record.
@@ -439,29 +448,34 @@ func newBuffer(br *Reader) (*buffer, error) {
 		br.lastChunk = tx.End()
 	}()
 	if err != nil {
-		return nil, err
+		return nil, noop, err
 	}
 	if n != 4 {
-		return nil, errors.New("bam: invalid record: short block size")
+		return nil, noop, errors.New("bam: invalid record: short block size")
 	}
-	b := &buffer{data: br.buf[:4]}
+	b = &buffer{data: br.buf[:4]}
 	size := int(b.readInt32())
 	if size == 0 {
-		return nil, io.EOF
+		return nil, noop, io.EOF
 	}
 	if size < 0 {
-		return nil, errors.New("bam: invalid record: invalid block size")
+		return nil, noop, errors.New("bam: invalid record: invalid block size")
 	}
-	b.off, b.data = 0, make([]byte, size)
+	b.off, b.data = 0, pool.GetBuffer(size)
+	put = func() {
+		pool.PutBuffer(b.data)
+	}
 	n, err = io.ReadFull(br.r, b.data)
 	if err != nil {
-		return nil, err
+		return nil, put, err
 	}
 	if n != size {
-		return nil, errors.New("bam: truncated record")
+		return nil, put, errors.New("bam: truncated record")
 	}
-	return b, nil
+	return b, put, nil
 }
+
+func noop() {}
 
 // buildAux constructs a single byte slice that represents a slice of sam.Aux.
 func buildAux(aa []sam.Aux) (aux []byte) {

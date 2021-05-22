@@ -28,6 +28,7 @@ import (
 
 	"github.com/biogo/hts/cram/encoding/itf8"
 	"github.com/biogo/hts/cram/encoding/ltf8"
+	"github.com/biogo/hts/internal/pool"
 	"github.com/biogo/hts/sam"
 )
 
@@ -81,7 +82,8 @@ func HasEOF(r io.ReaderAt) (bool, error) {
 		return false, ErrNoEnd
 	}
 
-	b := make([]byte, len(cramEOFmarker))
+	b := pool.GetBuffer(len(cramEOFmarker))
+	defer pool.PutBuffer(b)
 	_, err := r.ReadAt(b, size-int64(len(cramEOFmarker)))
 	if err != nil {
 		return false, err

@@ -15,6 +15,7 @@ import (
 	"github.com/biogo/hts/bgzf"
 	"github.com/biogo/hts/bgzf/index"
 	"github.com/biogo/hts/internal"
+	"github.com/biogo/hts/internal/pool"
 )
 
 // Index is a tabix index.
@@ -206,7 +207,8 @@ func readTabixHeader(r io.Reader, idx *Index) error {
 	if err != nil {
 		return fmt.Errorf("tabix: failed to read name lengths: %v", err)
 	}
-	nameBytes := make([]byte, n)
+	nameBytes := pool.GetBuffer(int(n))
+	defer pool.PutBuffer(nameBytes)
 	_, err = io.ReadFull(r, nameBytes)
 	if err != nil {
 		return fmt.Errorf("tabix: failed to read names: %v", err)

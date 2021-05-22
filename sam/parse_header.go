@@ -15,6 +15,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/biogo/hts/internal/pool"
 )
 
 var (
@@ -52,7 +54,8 @@ func (bh *Header) DecodeBinary(r io.Reader) error {
 	if lText < 0 {
 		return errors.New("sam: invalid text length")
 	}
-	text := make([]byte, lText)
+	text := pool.GetBuffer(int(lText))
+	defer pool.PutBuffer(text)
 	n, err := r.Read(text)
 	if err != nil {
 		return err
@@ -103,7 +106,8 @@ func readRefRecords(r io.Reader, n int32) ([]*Reference, error) {
 		if lName < 1 {
 			return nil, errors.New("sam: invalid name length")
 		}
-		name := make([]byte, lName)
+		name := pool.GetBuffer(int(lName))
+		defer pool.PutBuffer(name)
 		n, err := r.Read(name)
 		if err != nil {
 			return nil, err
