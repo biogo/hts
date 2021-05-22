@@ -336,7 +336,11 @@ func parseAux(buf []byte) ([]sam.Aux, error) {
 	// See https://github.com/golang/go/issues/45038 for bytes.Clone.
 	aux := append(buf[:0:0], buf...)
 
-	aa := make([]sam.Aux, 0, 4)
+	// Heuristically pre-allocate enough slots for the byte data.
+	// Value chosen by experimentation and will not fit all inputs,
+	// with the cost being over-allocation.
+	aa := make([]sam.Aux, 0, len(aux)/4)
+
 	for i := 0; i+2 < len(aux); {
 		t := aux[i+2]
 		switch j := jumps[t]; {
