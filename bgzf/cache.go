@@ -46,6 +46,7 @@ type Block interface {
 	Base() int64
 
 	io.Reader
+	io.ByteReader
 
 	// Used returns whether one or more bytes have
 	// been read from the Block.
@@ -123,6 +124,15 @@ func (b *block) Read(p []byte) (int, error) {
 		b.used = true
 	}
 	return n, err
+}
+
+func (b *block) ReadByte() (byte, error) {
+	c, err := b.buf.ReadByte()
+	if err == nil {
+		b.offset.Block++
+		b.used = true
+	}
+	return c, err
 }
 
 // readToEOF will exhaust r or fill buf.

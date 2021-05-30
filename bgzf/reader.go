@@ -560,6 +560,40 @@ func (bg *Reader) Read(p []byte) (int, error) {
 	return n, bg.err
 }
 
+// ReadByte implements the io.ByteReader interface.
+func (bg *Reader) ReadByte() (byte, error) {
+	if bg.err != nil {
+		return 0, bg.err
+	}
+
+	// Discard leading empty blocks. This is an indexing
+	// optimisation to avoid retaining useless members
+	// in a BAI/CSI.
+	for bg.current.len() == 0 {
+		bg.err = bg.nextBlock()
+		if bg.err != nil {
+			return 0, bg.err
+		}
+	}
+
+	bg.lastChunk.Begin = bg.current.txOffset()
+
+	var b byte
+	b, bg.err = bg.current.ReadByte()
+	if bg.err == io.EOF {
+		if bg.Blocked {
+			bg.err = nil
+			bg.lastChunk.End = bg.current.txOffset()
+			return b, io.EOF
+		}
+
+		bg.err = bg.nextBlock()
+	}
+
+	bg.lastChunk.End = bg.current.txOffset()
+	return b, bg.err
+}
+
 // nextBlock swaps the current decompressed block for the next
 // in the stream. If the block is available from the cache
 // no additional work is done, otherwise a decompressor is

@@ -150,145 +150,199 @@ func TestEOF(t *testing.T) {
 // TestRoundTrip tests that bgzipping and then bgunzipping is the identity
 // function.
 func TestRoundTrip(t *testing.T) {
-	buf := new(bytes.Buffer)
+	for _, reader := range []struct {
+		name    string
+		readAll func(*Reader) ([]byte, error)
+	}{
+		{"io.Reader", readAllWrapper},
+		{"io.ByteReader", readAllByByte},
+	} {
+		buf := new(bytes.Buffer)
 
-	w := NewWriter(buf, *conc)
-	w.Comment = "comment"
-	w.Extra = []byte("extra")
-	w.ModTime = time.Unix(1e8, 0)
-	w.Name = "name"
-	if _, err := w.Write([]byte("payload")); err != nil {
-		t.Fatalf("Write: %v", err)
-	}
-	if err := w.Close(); err != nil {
-		t.Fatalf("Writer.Close: %v", err)
-	}
-	// FIXME(kortschak) The magic block is written on close,
-	// so we need to discount that until we have the capacity
-	// to see every header again.
-	wbl := buf.Len() - len(MagicBlock)
+		w := NewWriter(buf, *conc)
+		w.Comment = "comment"
+		w.Extra = []byte("extra")
+		w.ModTime = time.Unix(1e8, 0)
+		w.Name = "name"
+		if _, err := w.Write([]byte("payload")); err != nil {
+			t.Fatalf("Write: %v", err)
+		}
+		if err := w.Close(); err != nil {
+			t.Fatalf("Writer.Close: %v", err)
+		}
+		// FIXME(kortschak) The magic block is written on close,
+		// so we need to discount that until we have the capacity
+		// to see every header again.
+		wbl := buf.Len() - len(MagicBlock)
 
-	r, err := NewReader(buf, *conc)
-	if err != nil {
-		t.Fatalf("NewReader: %v", err)
-	}
+		r, err := NewReader(buf, *conc)
+		if err != nil {
+			t.Fatalf("NewReader: %v", err)
+		}
 
-	if bl := ExpectedMemberSize(r.Header); bl != wbl {
-		t.Errorf("expectedMemberSize is %d, want %d", bl, wbl)
+		if bl := ExpectedMemberSize(r.Header); bl != wbl {
+			t.Errorf("expectedMemberSize is %d, want %d", bl, wbl)
+		}
+		blEnc := string([]byte{byte(wbl - 1), byte((wbl - 1) >> 8)})
+		if string(r.Extra) != "BC\x02\x00"+blEnc+"extra" {
+			t.Errorf("extra is %q, want %q", r.Extra, "BC\x02\x00"+blEnc+"extra")
+		}
+		b, err := reader.readAll(r)
+		if err != nil {
+			t.Fatalf("%s readAll: %v", reader.name, err)
+		}
+		if string(b) != "payload" {
+			t.Fatalf("%s payload is %q, want %q", reader.name, string(b), "payload")
+		}
+		if r.Comment != "comment" {
+			t.Errorf("comment is %q, want %q", r.Comment, "comment")
+		}
+		if bl := ExpectedMemberSize(r.Header); bl != len(MagicBlock) {
+			t.Errorf("expectedMemberSize is %d, want %d", bl, len(MagicBlock))
+		}
+		if string(r.Extra) != "BC\x02\x00\x1b\x00" {
+			t.Errorf("extra is %q, want %q", r.Extra, "BC\x02\x00\x1b\x00")
+		}
+		if r.ModTime.Unix() != 1e8 {
+			t.Errorf("mtime is %d, want %d", r.ModTime.Unix(), uint32(1e8))
+		}
+		if r.Name != "name" {
+			t.Errorf("name is %q, want %q", r.Name, "name")
+		}
+		if r.OS != 0xff {
+			t.Errorf("os is %x, want %x", r.OS, 0xff)
+		}
+		if err := r.Close(); err != nil {
+			t.Errorf("Reader.Close: %v", err)
+		}
 	}
-	blEnc := string([]byte{byte(wbl - 1), byte((wbl - 1) >> 8)})
-	if string(r.Extra) != "BC\x02\x00"+blEnc+"extra" {
-		t.Errorf("extra is %q, want %q", r.Extra, "BC\x02\x00"+blEnc+"extra")
+}
+
+func readAllWrapper(r *Reader) ([]byte, error) {
+	return ioutil.ReadAll(r)
+}
+
+func readAllByByte(r *Reader) ([]byte, error) {
+	var (
+		buf []byte
+		err error
+		b   byte
+	)
+	for {
+		b, err = r.ReadByte()
+		if err != nil {
+			break
+		}
+		buf = append(buf, b)
 	}
-	b, err := ioutil.ReadAll(r)
-	if err != nil {
-		t.Fatalf("ReadAll: %v", err)
+	if err == io.EOF {
+		err = nil
 	}
-	if string(b) != "payload" {
-		t.Fatalf("payload is %q, want %q", string(b), "payload")
-	}
-	if r.Comment != "comment" {
-		t.Errorf("comment is %q, want %q", r.Comment, "comment")
-	}
-	if bl := ExpectedMemberSize(r.Header); bl != len(MagicBlock) {
-		t.Errorf("expectedMemberSize is %d, want %d", bl, len(MagicBlock))
-	}
-	if string(r.Extra) != "BC\x02\x00\x1b\x00" {
-		t.Errorf("extra is %q, want %q", r.Extra, "BC\x02\x00\x1b\x00")
-	}
-	if r.ModTime.Unix() != 1e8 {
-		t.Errorf("mtime is %d, want %d", r.ModTime.Unix(), uint32(1e8))
-	}
-	if r.Name != "name" {
-		t.Errorf("name is %q, want %q", r.Name, "name")
-	}
-	if r.OS != 0xff {
-		t.Errorf("os is %x, want %x", r.OS, 0xff)
-	}
-	if err := r.Close(); err != nil {
-		t.Errorf("Reader.Close: %v", err)
-	}
+	return buf, err
 }
 
 // TestRoundTripMulti tests that bgzipping and then bgunzipping is the identity
 // function for a multiple member bgzf.
 func TestRoundTripMulti(t *testing.T) {
-	var wbl [2]int
-	buf := new(bytes.Buffer)
+	for _, reader := range []struct {
+		name string
+		read func(*Reader, []byte) (int, error)
+	}{
+		{"io.Reader", readWrapper},
+		{"io.ByteReader", readByByte},
+	} {
+		var wbl [2]int
+		buf := new(bytes.Buffer)
 
-	w := NewWriter(buf, *conc)
-	w.Comment = "comment"
-	w.Extra = []byte("extra")
-	w.ModTime = time.Unix(1e8, 0)
-	w.Name = "name"
-	if _, err := w.Write([]byte("payload1")); err != nil {
-		t.Fatalf("Write: %v", err)
-	}
-	if err := w.Flush(); err != nil {
-		t.Fatalf("Flush: %v", err)
-	}
-	if err := w.Wait(); err != nil {
-		t.Fatalf("Wait: %v", err)
-	}
-	wbl[0] = buf.Len()
-	if _, err := w.Write([]byte("payloadTwo")); err != nil {
-		t.Fatalf("Write: %v", err)
-	}
-	if err := w.Close(); err != nil {
-		t.Fatalf("Writer.Close: %v", err)
-	}
-	wbl[1] = buf.Len() - wbl[0] - len(MagicBlock)
+		w := NewWriter(buf, *conc)
+		w.Comment = "comment"
+		w.Extra = []byte("extra")
+		w.ModTime = time.Unix(1e8, 0)
+		w.Name = "name"
+		if _, err := w.Write([]byte("payload1")); err != nil {
+			t.Fatalf("Write: %v", err)
+		}
+		if err := w.Flush(); err != nil {
+			t.Fatalf("Flush: %v", err)
+		}
+		if err := w.Wait(); err != nil {
+			t.Fatalf("Wait: %v", err)
+		}
+		wbl[0] = buf.Len()
+		if _, err := w.Write([]byte("payloadTwo")); err != nil {
+			t.Fatalf("Write: %v", err)
+		}
+		if err := w.Close(); err != nil {
+			t.Fatalf("Writer.Close: %v", err)
+		}
+		wbl[1] = buf.Len() - wbl[0] - len(MagicBlock)
 
-	var (
-		b     []byte
-		bl, n int
-		err   error
-	)
-	r, err := NewReader(buf, *conc)
-	if err != nil {
-		t.Fatalf("NewReader: %v", err)
-	}
+		var (
+			b     []byte
+			bl, n int
+			err   error
+		)
+		r, err := NewReader(buf, *conc)
+		if err != nil {
+			t.Fatalf("NewReader: %v", err)
+		}
 
-	if r.Comment != "comment" {
-		t.Errorf("comment is %q, want %q", r.Comment, "comment")
-	}
-	blEnc := string([]byte{byte(wbl[0] - 1), byte((wbl[0] - 1) >> 8)})
-	if string(r.Extra) != "BC\x02\x00"+blEnc+"extra" {
-		t.Errorf("extra is %q, want %q", r.Extra, "BC\x02\x00"+blEnc+"extra")
-	}
-	if r.ModTime.Unix() != 1e8 {
-		t.Errorf("mtime is %d, want %d", r.ModTime.Unix(), uint32(1e8))
-	}
-	if r.Name != "name" {
-		t.Errorf("name is %q, want %q", r.Name, "name")
-	}
+		if r.Comment != "comment" {
+			t.Errorf("comment is %q, want %q", r.Comment, "comment")
+		}
+		blEnc := string([]byte{byte(wbl[0] - 1), byte((wbl[0] - 1) >> 8)})
+		if string(r.Extra) != "BC\x02\x00"+blEnc+"extra" {
+			t.Errorf("extra is %q, want %q", r.Extra, "BC\x02\x00"+blEnc+"extra")
+		}
+		if r.ModTime.Unix() != 1e8 {
+			t.Errorf("mtime is %d, want %d", r.ModTime.Unix(), uint32(1e8))
+		}
+		if r.Name != "name" {
+			t.Errorf("name is %q, want %q", r.Name, "name")
+		}
 
-	bl = ExpectedMemberSize(r.Header)
-	if bl != wbl[0] {
-		t.Errorf("expectedMemberSize is %d, want %d", bl, wbl[0])
-	}
-	b = make([]byte, len("payload1payloadTwo"))
-	n, err = r.Read(b)
-	if string(b[:n]) != "payload1payloadTwo" {
-		t.Errorf("payload is %q, want %q", string(b[:n]), "payload1payloadTwo")
-	}
-	if err != nil {
-		t.Errorf("Read: %v", err)
-	}
+		bl = ExpectedMemberSize(r.Header)
+		if bl != wbl[0] {
+			t.Errorf("expectedMemberSize is %d, want %d", bl, wbl[0])
+		}
+		b = make([]byte, len("payload1payloadTwo"))
+		n, err = reader.read(r, b)
+		if string(b[:n]) != "payload1payloadTwo" {
+			t.Errorf("%s payload is %q, want %q", reader.name, string(b[:n]), "payload1payloadTwo")
+		}
+		if err != nil {
+			t.Errorf("%s read: %v", reader.name, err)
+		}
 
-	bl = ExpectedMemberSize(r.Header)
-	if bl != wbl[1] {
-		t.Errorf("expectedMemberSize is %d, want %d", bl, wbl[1])
+		bl = ExpectedMemberSize(r.Header)
+		if bl != wbl[1] {
+			t.Errorf("expectedMemberSize is %d, want %d", bl, wbl[1])
+		}
+		b = make([]byte, 1)
+		n, err = reader.read(r, b)
+		if string(b[:n]) != "" {
+			t.Errorf("%s payload is %q, want %q", reader.name, string(b[:n]), "")
+		}
+		if err != io.EOF {
+			t.Errorf("%s read: %v", reader.name, err)
+		}
+		r.Close()
 	}
-	b = make([]byte, 1)
-	n, err = r.Read(b)
-	if string(b[:n]) != "" {
-		t.Errorf("payload is %q, want %q", string(b[:n]), "")
+}
+
+func readWrapper(r *Reader, buf []byte) (int, error) {
+	return r.Read(buf)
+}
+
+func readByByte(r *Reader, buf []byte) (n int, err error) {
+	for range buf {
+		buf[n], err = r.ReadByte()
+		if err != nil {
+			break
+		}
+		n++
 	}
-	if err != io.EOF {
-		t.Errorf("Read: %v", err)
-	}
-	r.Close()
+	return n, err
 }
 
 // See https://github.com/biogo/hts/issues/57
