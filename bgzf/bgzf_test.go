@@ -1202,6 +1202,40 @@ func TestWriteByteCount(t *testing.T) {
 	}
 }
 
+func TestSeekCacheReadahead(t *testing.T) {
+	// Check that we see the correct behavior when seeking to the block at the
+	// head of the readahead queue with caching and readahead enabled.
+	// See https://github.com/biogo/hts/issues/159.
+	fh, err := os.Open("testdata/dbscSNV_sample.gz")
+	if err != nil {
+		t.Fatalf("Open() error:%v", err)
+	}
+	rd, err := NewReader(fh, 2)
+	if err != nil {
+		t.Fatalf("NewReader() error:%v", err)
+	}
+	rd.SetCache(cache.NewLRU(32))
+	buf := make([]byte, 2)
+	// Wait for readahead.
+	time.Sleep(100 * time.Millisecond)
+	// Seek to the beginning of the second block.
+	off := Offset{File: 9395, Block: 0}
+	err = rd.Seek(off)
+	if err != nil {
+		t.Fatalf("Seek() error:%v", err)
+	}
+	_, err = rd.Read(buf)
+	if err != nil {
+		t.Fatalf("Read() error:%v", err)
+	}
+	if !bytes.Equal(buf, []byte{'O', 'X'}) {
+		t.Errorf("Expected 'OX', got '%s'", buf)
+	}
+	if rd.LastChunk().Begin != off {
+		t.Errorf("Incorrect position: expected %+v, got %+v", off, rd.LastChunk().Begin)
+	}
+}
+
 func BenchmarkWrite(b *testing.B) {
 	bg := NewWriter(ioutil.Discard, *conc)
 	block := bytes.Repeat([]byte("repeated"), 50)

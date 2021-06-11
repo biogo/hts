@@ -362,9 +362,10 @@ type Reader struct {
 
 // NewReader returns a new BGZF reader.
 //
-// The number of concurrent read decompressors is specified by rd.
-// If rd is 0, GOMAXPROCS concurrent will be created. The returned
-// Reader should be closed after use to avoid leaking resources.
+// The number of concurrent read decompressors is specified by rd. If rd
+// is 0, GOMAXPROCS concurrent will be created. If rd is 1, blocks will
+// be read synchronously without readahead. The returned Reader should
+// be closed after use to avoid leaking resources.
 func NewReader(r io.Reader, rd int) (*Reader, error) {
 	if rd == 0 {
 		rd = runtime.GOMAXPROCS(0)
@@ -462,24 +463,38 @@ func (bg *Reader) Seek(off Offset) error {
 					blk, err := dec.wait()
 					if err == nil {
 						bg.keep(blk)
+						if blk.Base() == off.File {
+							// This decompressor had the block we
+							// wanted.
+							bg.current = blk
+							bg.control <- bg.current.NextBase()
+							bg.waiting <- dec
+							dec = nil
+						}
 					}
 				}
 			}
-			bg.current, bg.err = dec.
-				using(bg.current).
-				nextBlockAt(off.File, rs).
-				wait()
-			if bg.dec == nil {
-				select {
-				case <-bg.control:
-				default:
+			if dec != nil {
+				// Synchronously decompress the requested block using
+				// the selected decompressor. Not necessary if that
+				// decompressor had the block ready, as determined
+				// above.
+				bg.current, bg.err = dec.
+					using(bg.current).
+					nextBlockAt(off.File, rs).
+					wait()
+				if bg.dec == nil {
+					select {
+					case <-bg.control:
+					default:
+					}
+					bg.control <- bg.current.NextBase()
+					bg.waiting <- dec
 				}
-				bg.control <- bg.current.NextBase()
-				bg.waiting <- dec
-			}
-			bg.Header = bg.current.header()
-			if bg.err != nil {
-				return bg.err
+				bg.Header = bg.current.header()
+				if bg.err != nil {
+					return bg.err
+				}
 			}
 		}
 	}
