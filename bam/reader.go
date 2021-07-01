@@ -144,10 +144,11 @@ func (br *Reader) Read() (*sam.Record, error) {
 	if nLen < 1 {
 		return nil, fmt.Errorf("bam: invalid read name length: %d", nLen)
 	}
-	rec.Name = string(b.bytes(int(nLen) - 1))
+	rec.Name = string(b.unsafeBytes(int(nLen) - 1))
 	b.discard(1)
 
-	rec.Cigar = readCigarOps(b.bytes(int(nCigar) * 4))
+	// bytes are safe since readCigarOps does not retain the returned buffer.
+	rec.Cigar = readCigarOps(b.unsafeBytes(int(nCigar) * 4))
 
 	var seq, auxTags []byte
 	if br.omit >= AllVariableLengthData {
@@ -157,8 +158,7 @@ func (br *Reader) Read() (*sam.Record, error) {
 	if lSeq < 0 {
 		return nil, fmt.Errorf("bam: invalid sequence length: %d", lSeq)
 	}
-	seq = make([]byte, (lSeq>>1)+(lSeq&0x1))
-	copy(seq, b.bytes(len(seq)))
+	seq = b.bytes((lSeq >> 1) + (lSeq & 0x1))
 	rec.Seq = sam.Seq{Length: lSeq, Seq: *(*doublets)(unsafe.Pointer(&seq))}
 	rec.Qual = b.bytes(lSeq)
 
@@ -325,16 +325,10 @@ var jumps = [256]int{
 
 // parseAux examines the data of a SAM record's OPT fields,
 // returning a slice of sam.Aux that are backed by the original data.
-func parseAux(buf []byte) ([]sam.Aux, error) {
-	if len(buf) == 0 {
+func parseAux(aux []byte) ([]sam.Aux, error) {
+	if len(aux) == 0 {
 		return nil, nil
 	}
-
-	// TODO(kortschak): Replace this with bytes.Clone when available.
-	// This is necessary to allow buf to be replaced into the pool
-	// when Read returns.
-	// See https://github.com/golang/go/issues/45038 for bytes.Clone.
-	aux := append(buf[:0:0], buf...)
 
 	// Heuristically pre-allocate enough slots for the byte data.
 	// Value chosen by experimentation and will not fit all inputs,
@@ -375,12 +369,27 @@ func parseAux(buf []byte) ([]sam.Aux, error) {
 
 // buffer is light-weight read buffer.
 type buffer struct {
-	off  int
-	data []byte
-	err  error
+	off    int
+	data   []byte
+	shared bool
+	err    error
 }
 
+// bytes returns the next n bytes in the buffer. It is safe for the caller
+// to retain the byte slice.
 func (b *buffer) bytes(n int) []byte {
+	data := b.unsafeBytes(n)
+	if !b.shared {
+		return data
+	}
+	// TODO(kortschak): Replace this with bytes.Clone when available.
+	// See https://github.com/golang/go/issues/45038 for bytes.Clone.
+	return append(data[:0:0], data...)
+}
+
+// unsafeBytes returns the next n bytes of the buffer. The caller must not
+// retain the returned byte slice without copying it.
+func (b *buffer) unsafeBytes(n int) []byte {
 	if b.err != nil {
 		return nil
 	}
@@ -428,7 +437,7 @@ func (b *buffer) readUint16() uint16 {
 		b.err = io.ErrUnexpectedEOF
 		return 0
 	}
-	return binary.LittleEndian.Uint16(b.bytes(2))
+	return binary.LittleEndian.Uint16(b.unsafeBytes(2))
 }
 
 func (b *buffer) readInt32() int32 {
@@ -439,7 +448,7 @@ func (b *buffer) readInt32() int32 {
 		b.err = io.ErrUnexpectedEOF
 		return 0
 	}
-	return int32(binary.LittleEndian.Uint32(b.bytes(4)))
+	return int32(binary.LittleEndian.Uint32(b.unsafeBytes(4)))
 }
 
 // newBuffer returns a new buffer reading from the Reader's underlying bgzf.Reader and
@@ -470,6 +479,7 @@ func newBuffer(br *Reader) (*buffer, error) {
 		b.off, b.data = 0, make([]byte, size)
 	} else {
 		b.off, b.data = 0, br.buf[:size]
+		b.shared = true
 	}
 	n, err = io.ReadFull(br.r, b.data)
 	if err != nil {
