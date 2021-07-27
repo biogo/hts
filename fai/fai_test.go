@@ -207,7 +207,7 @@ NODE_12878_length_198_cov_2.358586	218	1431	60	61
 NODE_19170_length_305_cov_2.147541	325	1689	60	61
 NODE_23972_length_201_cov_2`,
 			idx: nil,
-			err: parseError(8, 0, csv.ErrFieldCount),
+			err: parseError(8, 1, csv.ErrFieldCount),
 		},
 		{
 			in: `NODE_7194_length_226_cov_2.672566	246	35	60	61
@@ -233,7 +233,7 @@ NODE_44676_length_185_cov_1.421622	205	5345	60	61
 NODE_53327_length_192_cov_1.854167	212	5590	60	61
 `,
 			idx: nil,
-			err: parseError(13, 0, csv.ErrFieldCount),
+			err: parseError(13, 1, csv.ErrFieldCount),
 		},
 		{
 			in: `NODE_7194_length_226_cov_2.672566	246	35	60	61
@@ -289,8 +289,8 @@ NODE_53327_length_192_cov_1.854167	212	5590	60	61
 		},
 	} {
 		got, err := ReadFrom(strings.NewReader(test.in))
-		if !reflect.DeepEqual(err, test.err) {
-			t.Errorf("unexpected error: got:%v want:%v", err, test.err)
+		if !reflect.DeepEqual(err, dropCSVColumn(test.err)) {
+			t.Errorf("unexpected error for test %d: got:%#v want:%#v", i, err, test.err)
 		}
 		if !reflect.DeepEqual(got, test.idx) {
 			t.Errorf("unexpected result for test %d: got:%#v want:%#v", i, got, test.idx)
