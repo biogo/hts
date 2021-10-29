@@ -4,6 +4,7 @@
 
 // TODO(kortschak): Remove this when go1.16 is no longer supported.
 
+//go:build go1.17
 // +build go1.17
 
 package fai
