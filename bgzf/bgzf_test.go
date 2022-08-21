@@ -1133,7 +1133,7 @@ func TestFuzzCrashers(t *testing.T) {
 			switch err {
 			case nil:
 				// Pass through.
-			case io.EOF, ErrCorrupt:
+			case io.EOF, io.ErrUnexpectedEOF, ErrCorrupt:
 				return
 			default:
 				t.Fatalf("unexpected error creating reader: %v", err)
