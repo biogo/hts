@@ -421,9 +421,9 @@ func (w *errWriter) Write(p []byte) (int, error) {
 // Validate checks r against the Header for record validity according to the
 // SAM specification:
 //
-//  - a program auxiliary field must refer to a program listed in the header
-//  - a read group auxiliary field must refer to a read group listed in the
-//    header and these must agree on platform unit and library.
+//   - a program auxiliary field must refer to a program listed in the header
+//   - a read group auxiliary field must refer to a read group listed in the
+//     header and these must agree on platform unit and library.
 func (bh *Header) Validate(r *Record) error {
 	rp := r.AuxFields.Get(programTag)
 	found := false

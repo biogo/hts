@@ -244,19 +244,18 @@ type Iterator struct {
 // NewIterator returns a Iterator to read from r, limiting the reads to the provided
 // chunks.
 //
-//  chunks, err := idx.Chunks(ref, beg, end)
-//  if err != nil {
-//  	return err
-//  }
-//  i, err := NewIterator(r, chunks)
-//  if err != nil {
-//  	return err
-//  }
-//  for i.Next() {
-//  	fn(i.Record())
-//  }
-//  return i.Close()
-//
+//	chunks, err := idx.Chunks(ref, beg, end)
+//	if err != nil {
+//		return err
+//	}
+//	i, err := NewIterator(r, chunks)
+//	if err != nil {
+//		return err
+//	}
+//	for i.Next() {
+//		fn(i.Record())
+//	}
+//	return i.Close()
 func NewIterator(r *Reader, chunks []bgzf.Chunk) (*Iterator, error) {
 	if len(chunks) == 0 {
 		return &Iterator{r: r}, nil

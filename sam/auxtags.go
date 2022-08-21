@@ -30,22 +30,21 @@ type Aux []byte
 // NewAux returns a new Aux with the given tag, type and value. Acceptable value
 // types and their corresponding SAM type are:
 //
-//  A - ASCII
-//  c - int8
-//  C - uint8
-//  s - int16
-//  S - uint16
-//  i - int, uint or int32
-//  I - int, uint or uint32
-//  f - float32
-//  Z - Text or string
-//  H - Hex
-//  B - []int8, []int16, []int32, []uint8, []uint16, []uint32 or []float32
+//	A - ASCII
+//	c - int8
+//	C - uint8
+//	s - int16
+//	S - uint16
+//	i - int, uint or int32
+//	I - int, uint or uint32
+//	f - float32
+//	Z - Text or string
+//	H - Hex
+//	B - []int8, []int16, []int32, []uint8, []uint16, []uint32 or []float32
 //
 // The handling of int and uint types is provided as a convenience - values must
 // fit within either int32 or uint32 and are converted to the smallest possible
 // representation.
-//
 func NewAux(t Tag, value interface{}) (Aux, error) {
 	var a Aux
 	switch v := value.(type) {

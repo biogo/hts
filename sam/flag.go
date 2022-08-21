@@ -23,18 +23,19 @@ const (
 )
 
 // String representation of BAM alignment flags:
-//  0x001 - p - Paired
-//  0x002 - P - ProperPair
-//  0x004 - u - Unmapped
-//  0x008 - U - MateUnmapped
-//  0x010 - r - Reverse
-//  0x020 - R - MateReverse
-//  0x040 - 1 - Read1
-//  0x080 - 2 - Read2
-//  0x100 - s - Secondary
-//  0x200 - f - QCFail
-//  0x400 - d - Duplicate
-//  0x800 - S - Supplementary
+//
+//	0x001 - p - Paired
+//	0x002 - P - ProperPair
+//	0x004 - u - Unmapped
+//	0x008 - U - MateUnmapped
+//	0x010 - r - Reverse
+//	0x020 - R - MateReverse
+//	0x040 - 1 - Read1
+//	0x080 - 2 - Read2
+//	0x100 - s - Secondary
+//	0x200 - f - QCFail
+//	0x400 - d - Duplicate
+//	0x800 - S - Supplementary
 //
 // Note that flag bits are represented high order to the right.
 func (f Flags) String() string {
