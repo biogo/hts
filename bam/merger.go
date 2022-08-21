@@ -41,11 +41,12 @@ type reader struct {
 // function. The header sort order fields must agree.
 //
 // Sort order is determined using the following rules:
-//  - for sam.QueryName the LessByName sam.Record method is used.
-//  - for sam.Coordinate the LessByCoordinate sam.Record method is used.
-//  - for sam.Unsorted the reader streams are concatenated.
-//  - for sam.Unknown the provided less function is used - if nil
-//    this is the same as sam.Unsorted.
+//   - for sam.QueryName the LessByName sam.Record method is used.
+//   - for sam.Coordinate the LessByCoordinate sam.Record method is used.
+//   - for sam.Unsorted the reader streams are concatenated.
+//   - for sam.Unknown the provided less function is used - if nil
+//     this is the same as sam.Unsorted.
+//
 // For all sort orders other than sam.Unknown, the less parameter
 // is ignored.
 // The src Readers should be closed individually after use to avoid

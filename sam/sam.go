@@ -140,15 +140,14 @@ type Iterator struct {
 
 // NewIterator returns a Iterator to read from r.
 //
-//  i, err := NewIterator(r)
-//  if err != nil {
-//  	return err
-//  }
-//  for i.Next() {
-//  	fn(i.Record())
-//  }
-//  return i.Error()
-//
+//	i, err := NewIterator(r)
+//	if err != nil {
+//		return err
+//	}
+//	for i.Next() {
+//		fn(i.Record())
+//	}
+//	return i.Error()
 func NewIterator(r RecordReader) *Iterator { return &Iterator{r: r} }
 
 // Next advances the Iterator past the next record, which will then be available through

@@ -110,18 +110,17 @@ var cigarOps = []string{"M", "I", "D", "N", "S", "H", "P", "=", "X", "B", "?"}
 //
 // The Consume values for each of the CigarOpTypes is as follows:
 //
-//                    Query  Reference
-//  CigarMatch          1        1
-//  CigarInsertion      1        0
-//  CigarDeletion       0        1
-//  CigarSkipped        0        1
-//  CigarSoftClipped    1        0
-//  CigarHardClipped    0        0
-//  CigarPadded         0        0
-//  CigarEqual          1        1
-//  CigarMismatch       1        1
-//  CigarBack           0       -1
-//
+//	                  Query  Reference
+//	CigarMatch          1        1
+//	CigarInsertion      1        0
+//	CigarDeletion       0        1
+//	CigarSkipped        0        1
+//	CigarSoftClipped    1        0
+//	CigarHardClipped    0        0
+//	CigarPadded         0        0
+//	CigarEqual          1        1
+//	CigarMismatch       1        1
+//	CigarBack           0       -1
 func (ct CigarOpType) Consumes() Consume { return consume[ct] }
 
 // String returns the string representation of a CigarOpType.
