@@ -15,7 +15,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"runtime"
 	"strings"
@@ -28,8 +27,6 @@ import (
 )
 
 var (
-	go1_8 bool
-
 	conc = flag.Int("conc", 1, "sets the level of concurrency for compression")
 	file = flag.String("bench.file", "", "bgzf file to read for benchmarking decompression")
 )
@@ -57,7 +54,7 @@ func TestEmpty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewReader: %v", err)
 	}
-	b, err := ioutil.ReadAll(r)
+	b, err := io.ReadAll(r)
 	if err != nil {
 		t.Fatalf("ReadAll: %v", err)
 	}
@@ -80,7 +77,7 @@ func (r crippledReaderAt) ReadAt(b []byte, off int64) (int, error) {
 // TestEOF tests HasEOF can find the EOF magic block.
 func TestEOF(t *testing.T) {
 	// os.File cases
-	f, err := ioutil.TempFile(os.TempDir(), "bgzf_EOF_test_")
+	f, err := os.CreateTemp("", "bgzf_EOF_test_*")
 	if err != nil {
 		t.Fatalf("Create temp file: %v", err)
 	}
@@ -219,7 +216,7 @@ func TestRoundTrip(t *testing.T) {
 }
 
 func readAllWrapper(r *Reader) ([]byte, error) {
-	return ioutil.ReadAll(r)
+	return io.ReadAll(r)
 }
 
 func readAllByByte(r *Reader) ([]byte, error) {
@@ -348,10 +345,6 @@ func readByByte(r *Reader, buf []byte) (n int, err error) {
 // See https://github.com/biogo/hts/issues/57
 func TestHeaderIssue57(t *testing.T) {
 	var stamp time.Time
-	if !go1_8 {
-		unixEpoch := time.Unix(0, 0)
-		stamp = unixEpoch
-	}
 
 	var buf bytes.Buffer
 	bg := NewWriter(&buf, *conc)
@@ -371,7 +364,7 @@ func TestHeaderIssue57(t *testing.T) {
 // TestRoundTripMultiSeek tests that bgzipping and then bgunzipping is the identity
 // function for a multiple member bgzf with an underlying Seeker.
 func TestRoundTripMultiSeek(t *testing.T) {
-	f, err := ioutil.TempFile(os.TempDir(), "bgzf_test_")
+	f, err := os.CreateTemp("", "bgzf_test_*")
 	if err != nil {
 		t.Fatalf("Create temp file: %v", err)
 	}
@@ -1191,7 +1184,7 @@ func (z zero) Read(p []byte) (int, error) {
 }
 
 func TestWriteByteCount(t *testing.T) {
-	cw, _ := NewWriterLevel(ioutil.Discard, gzip.BestCompression, 4)
+	cw, _ := NewWriterLevel(io.Discard, gzip.BestCompression, 4)
 	defer cw.Close()
 	n, err := io.Copy(cw, &io.LimitedReader{R: new(zero), N: 100000})
 	if n != 100000 {
@@ -1237,7 +1230,7 @@ func TestSeekCacheReadahead(t *testing.T) {
 }
 
 func BenchmarkWrite(b *testing.B) {
-	bg := NewWriter(ioutil.Discard, *conc)
+	bg := NewWriter(io.Discard, *conc)
 	block := bytes.Repeat([]byte("repeated"), 50)
 	for i := 0; i < b.N; i++ {
 		for j := 0; j < 1000000; j++ {
@@ -1261,7 +1254,7 @@ func BenchmarkRead(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		f.Seek(0, os.SEEK_SET)
+		f.Seek(0, io.SeekStart)
 		bg, err := NewReader(f, *conc)
 		if err != nil {
 			b.Fatalf("bgzf open failed: %v", err)
