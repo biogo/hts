@@ -5,6 +5,7 @@
 package bam_test
 
 import (
+	"errors"
 	"io"
 	"log"
 	"os"
@@ -22,7 +23,7 @@ func ExampleIndex_Add() {
 	var bai bam.Index
 	for {
 		r, err := br.Read()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {

@@ -176,40 +176,40 @@ func readTabixHeader(r io.Reader, idx *Index) error {
 	)
 	err = binary.Read(r, binary.LittleEndian, &format)
 	if err != nil {
-		return fmt.Errorf("tabix: failed to read format: %v", err)
+		return fmt.Errorf("tabix: failed to read format: %w", err)
 	}
 	idx.Format = byte(format)
 	idx.ZeroBased = format&0x10000 != 0
 
 	err = binary.Read(r, binary.LittleEndian, &idx.NameColumn)
 	if err != nil {
-		return fmt.Errorf("tabix: failed to read name column index: %v", err)
+		return fmt.Errorf("tabix: failed to read name column index: %w", err)
 	}
 	err = binary.Read(r, binary.LittleEndian, &idx.BeginColumn)
 	if err != nil {
-		return fmt.Errorf("tabix: failed to read begin column index: %v", err)
+		return fmt.Errorf("tabix: failed to read begin column index: %w", err)
 	}
 	err = binary.Read(r, binary.LittleEndian, &idx.EndColumn)
 	if err != nil {
-		return fmt.Errorf("tabix: failed to read end column index: %v", err)
+		return fmt.Errorf("tabix: failed to read end column index: %w", err)
 	}
 	err = binary.Read(r, binary.LittleEndian, &idx.MetaChar)
 	if err != nil {
-		return fmt.Errorf("tabix: failed to read metacharacter: %v", err)
+		return fmt.Errorf("tabix: failed to read metacharacter: %w", err)
 	}
 	err = binary.Read(r, binary.LittleEndian, &idx.Skip)
 	if err != nil {
-		return fmt.Errorf("tabix: failed to read skip count: %v", err)
+		return fmt.Errorf("tabix: failed to read skip count: %w", err)
 	}
 	var n int32
 	err = binary.Read(r, binary.LittleEndian, &n)
 	if err != nil {
-		return fmt.Errorf("tabix: failed to read name lengths: %v", err)
+		return fmt.Errorf("tabix: failed to read name lengths: %w", err)
 	}
 	nameBytes := make([]byte, n)
 	_, err = io.ReadFull(r, nameBytes)
 	if err != nil {
-		return fmt.Errorf("tabix: failed to read names: %v", err)
+		return fmt.Errorf("tabix: failed to read names: %w", err)
 	}
 	names := string(nameBytes)
 	if names[len(names)-1] != 0 {
@@ -249,27 +249,27 @@ func writeTabixHeader(w io.Writer, idx *Index) error {
 	}
 	err = binary.Write(w, binary.LittleEndian, format)
 	if err != nil {
-		return fmt.Errorf("tabix: failed to write format: %v", err)
+		return fmt.Errorf("tabix: failed to write format: %w", err)
 	}
 	err = binary.Write(w, binary.LittleEndian, idx.NameColumn)
 	if err != nil {
-		return fmt.Errorf("tabix: failed to write name column index: %v", err)
+		return fmt.Errorf("tabix: failed to write name column index: %w", err)
 	}
 	err = binary.Write(w, binary.LittleEndian, idx.BeginColumn)
 	if err != nil {
-		return fmt.Errorf("tabix: failed to write begin column index: %v", err)
+		return fmt.Errorf("tabix: failed to write begin column index: %w", err)
 	}
 	err = binary.Write(w, binary.LittleEndian, idx.EndColumn)
 	if err != nil {
-		return fmt.Errorf("tabix: failed to write end column index: %v", err)
+		return fmt.Errorf("tabix: failed to write end column index: %w", err)
 	}
 	err = binary.Write(w, binary.LittleEndian, idx.MetaChar)
 	if err != nil {
-		return fmt.Errorf("tabix: failed to write metacharacter: %v", err)
+		return fmt.Errorf("tabix: failed to write metacharacter: %w", err)
 	}
 	err = binary.Write(w, binary.LittleEndian, idx.Skip)
 	if err != nil {
-		return fmt.Errorf("tabix: failed to write skip count: %v", err)
+		return fmt.Errorf("tabix: failed to write skip count: %w", err)
 	}
 	var n int32
 	for _, name := range idx.refNames {
@@ -277,16 +277,16 @@ func writeTabixHeader(w io.Writer, idx *Index) error {
 	}
 	err = binary.Write(w, binary.LittleEndian, n)
 	if err != nil {
-		return fmt.Errorf("tabix: failed to write name lengths: %v", err)
+		return fmt.Errorf("tabix: failed to write name lengths: %w", err)
 	}
 	for _, name := range idx.refNames {
 		_, err = w.Write([]byte(name))
 		if err != nil {
-			return fmt.Errorf("tabix: failed to write name: %v", err)
+			return fmt.Errorf("tabix: failed to write name: %w", err)
 		}
 		_, err = w.Write([]byte{0})
 		if err != nil {
-			return fmt.Errorf("tabix: failed to write name: %v", err)
+			return fmt.Errorf("tabix: failed to write name: %w", err)
 		}
 	}
 	return nil

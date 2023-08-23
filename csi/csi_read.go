@@ -75,7 +75,7 @@ func ReadFrom(r io.Reader) (*Index, error) {
 	err = binary.Read(r, binary.LittleEndian, &nUnmapped)
 	if err == nil {
 		idx.unmapped = &nUnmapped
-	} else if err != io.EOF {
+	} else if !errors.Is(err, io.EOF) {
 		return nil, err
 	}
 	idx.isSorted = true
@@ -119,24 +119,24 @@ func readBins(r io.Reader, version byte, binLimit uint32) ([]bin, *index.Referen
 	for i := 0; i < len(bins); i++ {
 		err = binary.Read(r, binary.LittleEndian, &bins[i].bin)
 		if err != nil {
-			return nil, nil, fmt.Errorf("csi: failed to read bin number: %v", err)
+			return nil, nil, fmt.Errorf("csi: failed to read bin number: %w", err)
 		}
 		var vOff uint64
 		err = binary.Read(r, binary.LittleEndian, &vOff)
 		if err != nil {
-			return nil, nil, fmt.Errorf("csi: failed to read left virtual offset: %v", err)
+			return nil, nil, fmt.Errorf("csi: failed to read left virtual offset: %w", err)
 		}
 		bins[i].left = makeOffset(vOff)
 		if version == 0x2 {
 			err = binary.Read(r, binary.LittleEndian, &bins[i].records)
 			if err != nil {
-				return nil, nil, fmt.Errorf("csi: failed to read record count: %v", err)
+				return nil, nil, fmt.Errorf("csi: failed to read record count: %w", err)
 			}
 		}
 		var nChunks int32
 		err = binary.Read(r, binary.LittleEndian, &nChunks)
 		if err != nil {
-			return nil, nil, fmt.Errorf("csi: failed to read bin count: %v", err)
+			return nil, nil, fmt.Errorf("csi: failed to read bin count: %w", err)
 		}
 		if bins[i].bin == statsDummyBin {
 			if nChunks != 2 {
@@ -173,12 +173,12 @@ func readChunks(r io.Reader, n int32) ([]bgzf.Chunk, error) {
 	for i := range chunks {
 		err = binary.Read(r, binary.LittleEndian, &vOff)
 		if err != nil {
-			return nil, fmt.Errorf("csi: failed to read chunk begin virtual offset: %v", err)
+			return nil, fmt.Errorf("csi: failed to read chunk begin virtual offset: %w", err)
 		}
 		chunks[i].Begin = makeOffset(vOff)
 		err = binary.Read(r, binary.LittleEndian, &vOff)
 		if err != nil {
-			return nil, fmt.Errorf("csi: failed to read chunk end virtual offset: %v", err)
+			return nil, fmt.Errorf("csi: failed to read chunk end virtual offset: %w", err)
 		}
 		chunks[i].End = makeOffset(vOff)
 	}
@@ -196,21 +196,21 @@ func readStats(r io.Reader) (*index.ReferenceStats, error) {
 	)
 	err = binary.Read(r, binary.LittleEndian, &vOff)
 	if err != nil {
-		return nil, fmt.Errorf("bam: failed to read index stats chunk begin virtual offset: %v", err)
+		return nil, fmt.Errorf("bam: failed to read index stats chunk begin virtual offset: %w", err)
 	}
 	stats.Chunk.Begin = makeOffset(vOff)
 	err = binary.Read(r, binary.LittleEndian, &vOff)
 	if err != nil {
-		return nil, fmt.Errorf("bam: failed to read index stats chunk end virtual offset: %v", err)
+		return nil, fmt.Errorf("bam: failed to read index stats chunk end virtual offset: %w", err)
 	}
 	stats.Chunk.End = makeOffset(vOff)
 	err = binary.Read(r, binary.LittleEndian, &stats.Mapped)
 	if err != nil {
-		return nil, fmt.Errorf("bam: failed to read index stats mapped count: %v", err)
+		return nil, fmt.Errorf("bam: failed to read index stats mapped count: %w", err)
 	}
 	err = binary.Read(r, binary.LittleEndian, &stats.Unmapped)
 	if err != nil {
-		return nil, fmt.Errorf("bam: failed to read index stats unmapped count: %v", err)
+		return nil, fmt.Errorf("bam: failed to read index stats unmapped count: %w", err)
 	}
 	return &stats, nil
 }

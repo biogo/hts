@@ -6,6 +6,7 @@ package bgzf_test
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -47,7 +48,7 @@ func ExampleReader_ReadByte() {
 		n++
 		b, chunk, err := readLine(r)
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			log.Fatal(err)

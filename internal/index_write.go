@@ -51,7 +51,7 @@ func writeBins(w io.Writer, bins []Bin, stats *ReferenceStats, typ string) error
 	for _, b := range bins {
 		err = binary.Write(w, binary.LittleEndian, b.Bin)
 		if err != nil {
-			return fmt.Errorf("%s: failed to write bin number: %v", typ, err)
+			return fmt.Errorf("%s: failed to write bin number: %w", typ, err)
 		}
 		err = writeChunks(w, b.Chunks, typ)
 		if err != nil {
@@ -67,16 +67,16 @@ func writeBins(w io.Writer, bins []Bin, stats *ReferenceStats, typ string) error
 func writeChunks(w io.Writer, chunks []bgzf.Chunk, typ string) error {
 	err := binary.Write(w, binary.LittleEndian, int32(len(chunks)))
 	if err != nil {
-		return fmt.Errorf("%s: failed to write bin count: %v", typ, err)
+		return fmt.Errorf("%s: failed to write bin count: %w", typ, err)
 	}
 	for _, c := range chunks {
 		err = binary.Write(w, binary.LittleEndian, vOffset(c.Begin))
 		if err != nil {
-			return fmt.Errorf("%s: failed to write chunk begin virtual offset: %v", typ, err)
+			return fmt.Errorf("%s: failed to write chunk begin virtual offset: %w", typ, err)
 		}
 		err = binary.Write(w, binary.LittleEndian, vOffset(c.End))
 		if err != nil {
-			return fmt.Errorf("%s: failed to write chunk end virtual offset: %v", typ, err)
+			return fmt.Errorf("%s: failed to write chunk end virtual offset: %w", typ, err)
 		}
 	}
 	return nil
@@ -86,23 +86,23 @@ func writeStats(w io.Writer, stats *ReferenceStats, typ string) error {
 	var err error
 	err = binary.Write(w, binary.LittleEndian, [2]uint32{StatsDummyBin, 2})
 	if err != nil {
-		return fmt.Errorf("%s: failed to write stats bin header: %v", typ, err)
+		return fmt.Errorf("%s: failed to write stats bin header: %w", typ, err)
 	}
 	err = binary.Write(w, binary.LittleEndian, vOffset(stats.Chunk.Begin))
 	if err != nil {
-		return fmt.Errorf("%s: failed to write index stats chunk begin virtual offset: %v", typ, err)
+		return fmt.Errorf("%s: failed to write index stats chunk begin virtual offset: %w", typ, err)
 	}
 	err = binary.Write(w, binary.LittleEndian, vOffset(stats.Chunk.End))
 	if err != nil {
-		return fmt.Errorf("%s: failed to write index stats chunk end virtual offset: %v", typ, err)
+		return fmt.Errorf("%s: failed to write index stats chunk end virtual offset: %w", typ, err)
 	}
 	err = binary.Write(w, binary.LittleEndian, stats.Mapped)
 	if err != nil {
-		return fmt.Errorf("%s: failed to write index stats mapped count: %v", typ, err)
+		return fmt.Errorf("%s: failed to write index stats mapped count: %w", typ, err)
 	}
 	err = binary.Write(w, binary.LittleEndian, stats.Unmapped)
 	if err != nil {
-		return fmt.Errorf("%s: failed to write index stats unmapped count: %v", typ, err)
+		return fmt.Errorf("%s: failed to write index stats unmapped count: %w", typ, err)
 	}
 	return nil
 }
@@ -115,7 +115,7 @@ func writeIntervals(w io.Writer, offsets []bgzf.Offset, typ string) error {
 	for _, o := range offsets {
 		err := binary.Write(w, binary.LittleEndian, vOffset(o))
 		if err != nil {
-			return fmt.Errorf("%s: failed to write tile interval virtual offset: %v", typ, err)
+			return fmt.Errorf("%s: failed to write tile interval virtual offset: %w", typ, err)
 		}
 	}
 	return nil

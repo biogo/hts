@@ -26,7 +26,7 @@ func (r byFunc) Swap(i, j int)      { r.recs[i], r.recs[j] = r.recs[j], r.recs[i
 func sortBAM(r io.Reader, so sam.SortOrder, less func(a, b *sam.Record) bool, fn func(*sam.Record), shard int) error {
 	br, err := NewReader(r, 0)
 	if err != nil {
-		return fmt.Errorf("failed to open bam reader: %v", err)
+		return fmt.Errorf("failed to open bam reader: %w", err)
 	}
 	defer br.Close()
 
@@ -65,12 +65,12 @@ func sortBAM(r io.Reader, so sam.SortOrder, less func(a, b *sam.Record) bool, fn
 		}
 	}
 	if err != nil {
-		return fmt.Errorf("error during bam reading: %v", err)
+		return fmt.Errorf("error during bam reading: %w", err)
 	}
 
 	m, err := NewMerger(less, t...)
 	if err != nil {
-		return fmt.Errorf("failed to create merger: %v", err)
+		return fmt.Errorf("failed to create merger: %w", err)
 	}
 	sorted := sam.NewIterator(m)
 	for sorted.Next() {
@@ -78,7 +78,7 @@ func sortBAM(r io.Reader, so sam.SortOrder, less func(a, b *sam.Record) bool, fn
 	}
 	err = sorted.Error()
 	if err != nil {
-		return fmt.Errorf("error during bam reading: %v", err)
+		return fmt.Errorf("error during bam reading: %w", err)
 	}
 
 	return nil
@@ -93,22 +93,22 @@ func writeSorted(h *sam.Header, recs []*sam.Record, less func(a, b *sam.Record) 
 
 	bw, err := NewWriter(&buf, h, 0)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open bam writer: %v", err)
+		return nil, fmt.Errorf("failed to open bam writer: %w", err)
 	}
 	for _, r := range recs {
 		err = bw.Write(r)
 		if err != nil {
-			return nil, fmt.Errorf("failed to write record: %v", err)
+			return nil, fmt.Errorf("failed to write record: %w", err)
 		}
 	}
 	err = bw.Close()
 	if err != nil {
-		return nil, fmt.Errorf("failed to close bam writer: %v", err)
+		return nil, fmt.Errorf("failed to close bam writer: %w", err)
 	}
 
 	r, err := NewReader(&buf, 0)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open bam writer: %v", err)
+		return nil, fmt.Errorf("failed to open bam writer: %w", err)
 	}
 	return r, err
 }

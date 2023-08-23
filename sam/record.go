@@ -241,43 +241,43 @@ func (r *Record) UnmarshalSAM(h *Header, b []byte) error {
 	// TODO(kortschak): Consider parsing string format flags.
 	flags, err := strconv.ParseUint(string(f[1]), 0, 16)
 	if err != nil {
-		return fmt.Errorf("sam: failed to parse flags: %v", err)
+		return fmt.Errorf("sam: failed to parse flags: %w", err)
 	}
 	r.Flags = Flags(flags)
 	r.Ref, err = referenceForName(h, string(f[2]))
 	if err != nil {
-		return fmt.Errorf("sam: failed to assign reference: %v", err)
+		return fmt.Errorf("sam: failed to assign reference: %w", err)
 	}
 	r.Pos, err = strconv.Atoi(string(f[3]))
 	r.Pos--
 	if err != nil {
-		return fmt.Errorf("sam: failed to parse position: %v", err)
+		return fmt.Errorf("sam: failed to parse position: %w", err)
 	}
 	mapQ, err := strconv.ParseUint(string(f[4]), 10, 8)
 	if err != nil {
-		return fmt.Errorf("sam: failed to parse map quality: %v", err)
+		return fmt.Errorf("sam: failed to parse map quality: %w", err)
 	}
 	r.MapQ = byte(mapQ)
 	r.Cigar, err = ParseCigar(f[5])
 	if err != nil {
-		return fmt.Errorf("sam: failed to parse cigar string: %v", err)
+		return fmt.Errorf("sam: failed to parse cigar string: %w", err)
 	}
 	if bytes.Equal(f[2], f[6]) || bytes.Equal(f[6], []byte{'='}) {
 		r.MateRef = r.Ref
 	} else {
 		r.MateRef, err = referenceForName(h, string(f[6]))
 		if err != nil {
-			return fmt.Errorf("sam: failed to assign mate reference: %v", err)
+			return fmt.Errorf("sam: failed to assign mate reference: %w", err)
 		}
 	}
 	r.MatePos, err = strconv.Atoi(string(f[7]))
 	r.MatePos--
 	if err != nil {
-		return fmt.Errorf("sam: failed to parse mate position: %v", err)
+		return fmt.Errorf("sam: failed to parse mate position: %w", err)
 	}
 	r.TempLen, err = strconv.Atoi(string(f[8]))
 	if err != nil {
-		return fmt.Errorf("sam: failed to parse template length: %v", err)
+		return fmt.Errorf("sam: failed to parse template length: %w", err)
 	}
 	if !bytes.Equal(f[9], []byte{'*'}) {
 		r.Seq = NewSeq(f[9])

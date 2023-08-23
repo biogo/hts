@@ -132,7 +132,7 @@ func (r *Reader) Container() *Container {
 
 // Err returns the most recent error.
 func (r *Reader) Err() error {
-	if r.err == io.EOF {
+	if errors.Is(r.err, io.EOF) {
 		return nil
 	}
 	return r.err
@@ -240,7 +240,7 @@ func (c *Container) Block() *Block {
 
 // Err returns the most recent error.
 func (c *Container) Err() error {
-	if c.err == io.EOF {
+	if errors.Is(c.err, io.EOF) {
 		return nil
 	}
 	return c.err

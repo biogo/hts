@@ -83,7 +83,7 @@ func (r *ChunkReader) Read(p []byte) (int, error) {
 	}
 	n, err := r.r.Read(p[:min(len(p), want-cursor)])
 	if err != nil {
-		if n != 0 && err == io.EOF {
+		if n != 0 && errors.Is(err, io.EOF) {
 			err = nil
 		}
 		return n, err

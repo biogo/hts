@@ -146,7 +146,7 @@ func NewAux(t Tag, value interface{}) (Aux, error) {
 		err := binary.Write(buf, binary.LittleEndian, value)
 		a = buf.Bytes()
 		if err != nil {
-			return nil, fmt.Errorf("sam: failed to encode array: %v", err)
+			return nil, fmt.Errorf("sam: failed to encode array: %w", err)
 		}
 	}
 	return a, nil
@@ -170,7 +170,7 @@ func ParseAux(text []byte) (Aux, error) {
 	case 'i':
 		i, err := strconv.Atoi(string(txt))
 		if err != nil {
-			return nil, fmt.Errorf("sam: invalid aux tag field: %v", err)
+			return nil, fmt.Errorf("sam: invalid aux tag field: %w", err)
 		}
 		if i < 0 {
 			value = i
@@ -180,7 +180,7 @@ func ParseAux(text []byte) (Aux, error) {
 	case 'f':
 		f, err := strconv.ParseFloat(string(txt), 32)
 		if err != nil {
-			return nil, fmt.Errorf("sam: invalid aux tag field: %v", err)
+			return nil, fmt.Errorf("sam: invalid aux tag field: %w", err)
 		}
 		value = float32(f)
 	case 'Z':
@@ -189,7 +189,7 @@ func ParseAux(text []byte) (Aux, error) {
 		b := make([]byte, hex.DecodedLen(len(txt)))
 		_, err := hex.Decode(b, txt)
 		if err != nil {
-			return nil, fmt.Errorf("sam: invalid aux tag field: %v", err)
+			return nil, fmt.Errorf("sam: invalid aux tag field: %w", err)
 		}
 		value = Hex(b)
 	case 'B':
@@ -206,7 +206,7 @@ func ParseAux(text []byte) (Aux, error) {
 			for i, n := range nf {
 				v, err := strconv.ParseInt(string(n), 0, 8)
 				if err != nil {
-					return nil, fmt.Errorf("sam: invalid aux tag field: %v", err)
+					return nil, fmt.Errorf("sam: invalid aux tag field: %w", err)
 				}
 				a[i] = int8(v)
 			}
@@ -216,7 +216,7 @@ func ParseAux(text []byte) (Aux, error) {
 			for i, n := range nf {
 				v, err := strconv.ParseUint(string(n), 0, 8)
 				if err != nil {
-					return nil, fmt.Errorf("sam: invalid aux tag field: %v", err)
+					return nil, fmt.Errorf("sam: invalid aux tag field: %w", err)
 				}
 				a[i] = uint8(v)
 			}
@@ -226,7 +226,7 @@ func ParseAux(text []byte) (Aux, error) {
 			for i, n := range nf {
 				v, err := strconv.ParseInt(string(n), 0, 16)
 				if err != nil {
-					return nil, fmt.Errorf("sam: invalid aux tag field: %v", err)
+					return nil, fmt.Errorf("sam: invalid aux tag field: %w", err)
 				}
 				a[i] = int16(v)
 			}
@@ -236,7 +236,7 @@ func ParseAux(text []byte) (Aux, error) {
 			for i, n := range nf {
 				v, err := strconv.ParseUint(string(n), 0, 16)
 				if err != nil {
-					return nil, fmt.Errorf("sam: invalid aux tag field: %v", err)
+					return nil, fmt.Errorf("sam: invalid aux tag field: %w", err)
 				}
 				a[i] = uint16(v)
 			}
@@ -246,7 +246,7 @@ func ParseAux(text []byte) (Aux, error) {
 			for i, n := range nf {
 				v, err := strconv.ParseInt(string(n), 0, 32)
 				if err != nil {
-					return nil, fmt.Errorf("sam: invalid aux tag field: %v", err)
+					return nil, fmt.Errorf("sam: invalid aux tag field: %w", err)
 				}
 				a[i] = int32(v)
 			}
@@ -256,7 +256,7 @@ func ParseAux(text []byte) (Aux, error) {
 			for i, n := range nf {
 				v, err := strconv.ParseUint(string(n), 0, 32)
 				if err != nil {
-					return nil, fmt.Errorf("sam: invalid aux tag field: %v", err)
+					return nil, fmt.Errorf("sam: invalid aux tag field: %w", err)
 				}
 				a[i] = uint32(v)
 			}
@@ -266,7 +266,7 @@ func ParseAux(text []byte) (Aux, error) {
 			for i, n := range nf {
 				f, err := strconv.ParseFloat(string(n), 32)
 				if err != nil {
-					return nil, fmt.Errorf("sam: invalid aux tag field: %v", err)
+					return nil, fmt.Errorf("sam: invalid aux tag field: %w", err)
 				}
 				a[i] = float32(f)
 			}
@@ -279,7 +279,7 @@ func ParseAux(text []byte) (Aux, error) {
 	}
 	aux, err := NewAux(Tag{text[0], text[1]}, value)
 	if err != nil {
-		return nil, fmt.Errorf("sam: invalid aux tag field: %v", err)
+		return nil, fmt.Errorf("sam: invalid aux tag field: %w", err)
 	}
 	return aux, nil
 }
