@@ -21,9 +21,9 @@ var (
 	// This is the header of the file
 	// ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data/HG00096/alignment/HG00096.unmapped.ILLUMINA.bwa.GBR.low_coverage.20120522.bam
 	//
-	// samtools view HG00096.unmapped.ILLUMINA.bwa.GBR.low_coverage.20120522.bam -H | sed -e 's/ \{7,8\}/\t/g'> HG00096_1000.sam # The sed sub is required due to broken format in original data.
-	// samtools view HG00096.unmapped.ILLUMINA.bwa.GBR.low_coverage.20120522.bam | head -n 1000 >> HG00096_1000.sam
-	// samtools view -Sb HG00096_1000.sam > HG00096_1000.bam
+	//	samtools view HG00096.unmapped.ILLUMINA.bwa.GBR.low_coverage.20120522.bam -H | sed -e 's/ \{7,8\}/\t/g'> HG00096_1000.sam # The sed sub is required due to broken format in original data.
+	//	samtools view HG00096.unmapped.ILLUMINA.bwa.GBR.low_coverage.20120522.bam | head -n 1000 >> HG00096_1000.sam
+	//	samtools view -Sb HG00096_1000.sam > HG00096_1000.bam
 	headerHG00096_1000 = &Header{
 		Version:   "1.0",
 		SortOrder: 3,

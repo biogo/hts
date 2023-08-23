@@ -441,27 +441,27 @@ func mustAux(a sam.Aux, err error) sam.Aux {
 
 // The following data is the BAM file created from the following SAM using:
 //
-// samtools view -Sb spec-example.sam > spec-example.bam
+//	samtools view -Sb spec-example.sam > spec-example.bam
 //
-// @HD	VN:1.5	SO:coordinate
-// @SQ	SN:ref	LN:45
-// @CO	--------------------------------------------------------
-// @CO	Coor     12345678901234  5678901234567890123456789012345
-// @CO	ref      AGCATGTTAGATAA**GATAGCTGTGCTAGTAGGCAGTCAGCGCCAT
-// @CO	--------------------------------------------------------
-// @CO	+r001/1        TTAGATAAAGGATA*CTG
-// @CO	+r002         aaaAGATAA*GGATA
-// @CO	+r003       gcctaAGCTAA
-// @CO	+r004                     ATAGCT..............TCAGC
-// @CO	-r003                            ttagctTAGGC
-// @CO	-r001/2                                        CAGCGGCAT
-// @CO	--------------------------------------------------------
-// r001	99	ref	7	30	8M2I4M1D3M	=	37	39	TTAGATAAAGGATACTG	*
-// r002	0	ref	9	30	3S6M1P1I4M	*	0	0	AAAAGATAAGGATA	*
-// r003	0	ref	9	30	5S6M	*	0	0	GCCTAAGCTAA	*	SA:Z:ref,29,-,6H5M,17,0;
-// r004	0	ref	16	30	6M14N5M	*	0	0	ATAGCTTCAGC	*
-// r003	2064	ref	29	17	6H5M	*	0	0	TAGGC	*	SA:Z:ref,9,+,5S6M,30,1;
-// r001	147	ref	37	30	9M	=	7	-39	CAGCGGCAT	*	NM:i:1
+//	@HD	VN:1.5	SO:coordinate
+//	@SQ	SN:ref	LN:45
+//	@CO	--------------------------------------------------------
+//	@CO	Coor     12345678901234  5678901234567890123456789012345
+//	@CO	ref      AGCATGTTAGATAA**GATAGCTGTGCTAGTAGGCAGTCAGCGCCAT
+//	@CO	--------------------------------------------------------
+//	@CO	+r001/1        TTAGATAAAGGATA*CTG
+//	@CO	+r002         aaaAGATAA*GGATA
+//	@CO	+r003       gcctaAGCTAA
+//	@CO	+r004                     ATAGCT..............TCAGC
+//	@CO	-r003                            ttagctTAGGC
+//	@CO	-r001/2                                        CAGCGGCAT
+//	@CO	--------------------------------------------------------
+//	r001	99	ref	7	30	8M2I4M1D3M	=	37	39	TTAGATAAAGGATACTG	*
+//	r002	0	ref	9	30	3S6M1P1I4M	*	0	0	AAAAGATAAGGATA	*
+//	r003	0	ref	9	30	5S6M	*	0	0	GCCTAAGCTAA	*	SA:Z:ref,29,-,6H5M,17,0;
+//	r004	0	ref	16	30	6M14N5M	*	0	0	ATAGCTTCAGC	*
+//	r003	2064	ref	29	17	6H5M	*	0	0	TAGGC	*	SA:Z:ref,9,+,5S6M,30,1;
+//	r001	147	ref	37	30	9M	=	7	-39	CAGCGGCAT	*	NM:i:1
 var specExamples = struct {
 	ref      string
 	data     []byte
@@ -694,7 +694,7 @@ func (s *S) TestIssue3(c *check.C) {
 var issue3 = [][]byte{
 	// Specific case posted at https://code.google.com/p/biogo/issues/detail?id=3#c6
 	// edited to a minimal reproducer.
-	[]byte{
+	{
 		0x1f, 0x8b, 0x08, 0x04, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0xff, 0x06, 0x00, 0x42, 0x43, 0x02, 0x00,
 		0x61, 0x00, 0x73, 0x72, 0xf4, 0x65, 0x34, 0x62,
@@ -735,7 +735,7 @@ var issue3 = [][]byte{
 	},
 
 	// More general testing: sequence lengths range from 19 to 26 inclusive.
-	[]byte{
+	{
 		0x1f, 0x8b, 0x08, 0x04, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0xff, 0x06, 0x00, 0x42, 0x43, 0x02, 0x00,
 		0x61, 0x00, 0x73, 0x72, 0xf4, 0x65, 0x34, 0x62,
@@ -1209,9 +1209,9 @@ func (s *S) TestIssue13(c *check.C) {
 // This is BAM data provided in issue 12 [sic] from SAM file in comment 4.
 // Issue 12 as described is working as intended.
 //
-// @HD	VN:1.0	SO:coordinate
-// @SQ	SN:Zv9_NA129	LN:9079
-// 10	0	Zv9_NA129	4272	50	40M75N5M	*	0	0	TGACGCAGAGGTGCGCAAGACCTCCAAGAAGCAGCTGAAGGACAC	DDDDHGHHHJI<ABGGIHGIGGHIJEEEGGGCBFCEHIIFFHECI	AS:i:-3	XN:i:0	XM:i:1	XO:i:0	XG:i:0	NM:i:1	MD:Z:0C44	YT:Z:UU	XS:A:+	NH:i:1
+//	@HD	VN:1.0	SO:coordinate
+//	@SQ	SN:Zv9_NA129	LN:9079
+//	10	0	Zv9_NA129	4272	50	40M75N5M	*	0	0	TGACGCAGAGGTGCGCAAGACCTCCAAGAAGCAGCTGAAGGACAC	DDDDHGHHHJI<ABGGIHGIGGHIJEEEGGGCBFCEHIIFFHECI	AS:i:-3	XN:i:0	XM:i:1	XO:i:0	XG:i:0	NM:i:1	MD:Z:0C44	YT:Z:UU	XS:A:+	NH:i:1
 var issue13 = []byte{
 	0x1f, 0x8b, 0x08, 0x04, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0xff, 0x06, 0x00, 0x42, 0x43, 0x02, 0x00,
@@ -1265,10 +1265,10 @@ func (s *S) TestIssueDate(c *check.C) {
 
 // This is BAM data from the following SAM.
 //
-// @HD	VN:1.0
-// @SQ	SN:ref	LN:1
-// @RG	ID:rg	DT:2014-03-25T12:26:51-0700
-// r1	125	ref	-1	0	*	=	-1	0	A	B	RG:Z:rg
+//	@HD	VN:1.0
+//	@SQ	SN:ref	LN:1
+//	@RG	ID:rg	DT:2014-03-25T12:26:51-0700
+//	r1	125	ref	-1	0	*	=	-1	0	A	B	RG:Z:rg
 var issueDate = []byte{
 	0x1f, 0x8b, 0x08, 0x04, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0xff, 0x06, 0x00, 0x42, 0x43, 0x02, 0x00,
@@ -2413,7 +2413,7 @@ var fuzzCrashers = []string{
 	"BAM\x01\x00\x00\x00\x000000\x00\x00\x00\x000",
 	"BAM\x01\x00\x00\x00\x00000\xbf",
 
-	//reader.go 412
+	// reader.go 412
 	"BAM\x01\xbf\xbdC_t\x0efRRUAe\x80t.V",
 	"BAM\x01\x00\x00\x00\x00\x00\x00\x00\x00000\xbf" +
 		"e.Ce&Cell",

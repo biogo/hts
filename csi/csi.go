@@ -289,7 +289,7 @@ func (c byBeginOffset) Len() int           { return len(c) }
 func (c byBeginOffset) Less(i, j int) bool { return vOffset(c[i].Begin) < vOffset(c[j].Begin) }
 func (c byBeginOffset) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
 
-// calculate bin given an alignment covering [beg,end) (zero-based, half-close-half-open)
+// calculate bin given an alignment covering [beg,end) (zero-based, half-close-half-open).
 func reg2bin(beg, end int64, minShift, depth uint32) uint32 {
 	end--
 	s := minShift
@@ -305,7 +305,7 @@ func reg2bin(beg, end int64, minShift, depth uint32) uint32 {
 	return 0
 }
 
-// calculate the list of bins that may overlap with region [beg,end) (zero-based)
+// calculate the list of bins that may overlap with region [beg,end) (zero-based).
 func reg2bins(beg, end int64, minShift, depth uint32) []uint32 {
 	end--
 	var list []uint32
