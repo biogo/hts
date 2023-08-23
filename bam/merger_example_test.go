@@ -7,7 +7,6 @@ package bam_test
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"sort"
@@ -43,7 +42,7 @@ func ExampleMerger_sortByCoordinate() {
 
 	// Create file system workspace and prepare
 	// for clean up.
-	dir, err := ioutil.TempDir("", "")
+	dir, err := os.MkdirTemp("", "")
 	if err != nil {
 		log.Fatalf("failed to create temp directory: %v", err)
 	}
@@ -120,7 +119,7 @@ func ExampleMerger_sortByCoordinate() {
 func writeChunk(dir string, h *sam.Header, recs []*sam.Record) (*bam.Reader, error) {
 	sort.Sort(byCoordinate(recs))
 
-	f, err := ioutil.TempFile(dir, "")
+	f, err := os.CreateTemp(dir, "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create temp file in %q: %v", dir, err)
 	}
@@ -145,7 +144,7 @@ func writeChunk(dir string, h *sam.Header, recs []*sam.Record) (*bam.Reader, err
 	}
 
 	// Make a reader of the written data.
-	_, err = f.Seek(0, os.SEEK_SET)
+	_, err = f.Seek(0, io.SeekStart)
 	if err != nil {
 		return nil, fmt.Errorf("failed to seek to start: %v", err)
 	}

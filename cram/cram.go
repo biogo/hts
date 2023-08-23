@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io"
-	"io/ioutil"
 	"os"
 	"reflect"
 
@@ -117,7 +116,7 @@ func (r *Reader) Next() bool {
 		return false
 	}
 	if r.c != nil {
-		io.Copy(ioutil.Discard, r.c.blockData)
+		io.Copy(io.Discard, r.c.blockData)
 	}
 	var c Container
 	r.err = c.readFrom(r.r)
@@ -362,15 +361,15 @@ func (b *Block) expandBlockdata() ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		return ioutil.ReadAll(gz)
+		return io.ReadAll(gz)
 	case bzip2Method:
-		return ioutil.ReadAll(bzip2.NewReader(bytes.NewReader(b.blockData)))
+		return io.ReadAll(bzip2.NewReader(bytes.NewReader(b.blockData)))
 	case lzmaMethod:
 		lz, err := lzma.NewReader(bytes.NewReader(b.blockData))
 		if err != nil {
 			return nil, err
 		}
-		return ioutil.ReadAll(lz)
+		return io.ReadAll(lz)
 	case ransMethod:
 		// Unimplemented.
 		// BUG(kortschak): The rANS method is not implemented.
@@ -412,7 +411,7 @@ func (s *Slice) readFrom(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	s.tags, err = ioutil.ReadAll(&er)
+	s.tags, err = io.ReadAll(&er)
 	return err
 }
 

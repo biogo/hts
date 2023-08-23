@@ -285,11 +285,15 @@ NODE_44676_length_185_cov_1.421622	205	5345	60	61
 NODE_53327_length_192_cov_1.854167	212	5590	60	61
 `,
 			idx: nil,
-			err: parseError(8, 3, &strconv.NumError{"ParseInt", "sixty", strconv.ErrSyntax}),
+			err: parseError(8, 3, &strconv.NumError{
+				Func: "ParseInt",
+				Num:  "sixty",
+				Err:  strconv.ErrSyntax,
+			}),
 		},
 	} {
 		got, err := ReadFrom(strings.NewReader(test.in))
-		if !reflect.DeepEqual(err, dropCSVColumn(test.err)) {
+		if !reflect.DeepEqual(err, test.err) {
 			t.Errorf("unexpected error for test %d: got:%#v want:%#v", i, err, test.err)
 		}
 		if !reflect.DeepEqual(got, test.idx) {

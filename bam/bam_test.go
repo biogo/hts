@@ -10,7 +10,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"reflect"
 	"testing"
@@ -222,7 +221,7 @@ func BenchmarkReadIndex(b *testing.B) {
 	if *findex == "" {
 		b.Skip("no index file specified")
 	}
-	buf, err := ioutil.ReadFile(*findex)
+	buf, err := os.ReadFile(*findex)
 	if err != nil {
 		b.Fatalf("Index read failed: %v", err)
 	}
@@ -230,7 +229,7 @@ func BenchmarkReadIndex(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		r.Seek(0, os.SEEK_SET)
+		r.Seek(0, io.SeekStart)
 		_, err = ReadIndex(r)
 		if err != nil {
 			b.Fatal(err)
@@ -302,7 +301,7 @@ func BenchmarkWrite(b *testing.B) {
 	if err != nil {
 		b.Fatalf("Read failed: %v", err)
 	}
-	bw, err := NewWriter(ioutil.Discard, br.Header().Clone(), *conc)
+	bw, err := NewWriter(io.Discard, br.Header().Clone(), *conc)
 	if err != nil {
 		b.Fatalf("NewWriter failed: %v", err)
 	}
@@ -355,7 +354,7 @@ func BenchmarkRoundtripFile(b *testing.B) {
 		if err != nil {
 			b.Fatalf("NewReader failed: %v", err)
 		}
-		bw, err := NewWriter(ioutil.Discard, br.Header().Clone(), *conc)
+		bw, err := NewWriter(io.Discard, br.Header().Clone(), *conc)
 		if err != nil {
 			b.Fatalf("NewWriter failed: %v", err)
 		}

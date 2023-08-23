@@ -7,7 +7,6 @@ package fai
 import (
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -31,7 +30,7 @@ func TestFile(t *testing.T) {
 			continue
 		}
 
-		b, err := ioutil.ReadFile(p + ".json")
+		b, err := os.ReadFile(p + ".json")
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 			continue
