@@ -79,16 +79,16 @@ func writeBins(w io.Writer, version byte, bins []bin, stats *index.ReferenceStat
 	for _, b := range bins {
 		err = binary.Write(w, binary.LittleEndian, b.bin)
 		if err != nil {
-			return fmt.Errorf("csi: failed to write bin number: %v", err)
+			return fmt.Errorf("csi: failed to write bin number: %w", err)
 		}
 		err = binary.Write(w, binary.LittleEndian, vOffset(b.left))
 		if err != nil {
-			return fmt.Errorf("csi: failed to write left virtual offset: %v", err)
+			return fmt.Errorf("csi: failed to write left virtual offset: %w", err)
 		}
 		if version == 0x2 {
 			err = binary.Write(w, binary.LittleEndian, b.records)
 			if err != nil {
-				return fmt.Errorf("csi: failed to write record count: %v", err)
+				return fmt.Errorf("csi: failed to write record count: %w", err)
 			}
 		}
 		err = writeChunks(w, b.chunks)
@@ -105,16 +105,16 @@ func writeBins(w io.Writer, version byte, bins []bin, stats *index.ReferenceStat
 func writeChunks(w io.Writer, chunks []bgzf.Chunk) error {
 	err := binary.Write(w, binary.LittleEndian, int32(len(chunks)))
 	if err != nil {
-		return fmt.Errorf("csi: failed to write bin count: %v", err)
+		return fmt.Errorf("csi: failed to write bin count: %w", err)
 	}
 	for _, c := range chunks {
 		err = binary.Write(w, binary.LittleEndian, vOffset(c.Begin))
 		if err != nil {
-			return fmt.Errorf("csi: failed to write chunk begin virtual offset: %v", err)
+			return fmt.Errorf("csi: failed to write chunk begin virtual offset: %w", err)
 		}
 		err = binary.Write(w, binary.LittleEndian, vOffset(c.End))
 		if err != nil {
-			return fmt.Errorf("csi: failed to write chunk end virtual offset: %v", err)
+			return fmt.Errorf("csi: failed to write chunk end virtual offset: %w", err)
 		}
 	}
 	return nil
@@ -130,23 +130,23 @@ func writeStats(w io.Writer, version byte, stats *index.ReferenceStats, binLimit
 		err = binary.Write(w, binary.LittleEndian, [6]uint32{statsDummyBin, 0, 0, 0, 0, 2})
 	}
 	if err != nil {
-		return fmt.Errorf("csi: failed to write stats bin header: %v", err)
+		return fmt.Errorf("csi: failed to write stats bin header: %w", err)
 	}
 	err = binary.Write(w, binary.LittleEndian, vOffset(stats.Chunk.Begin))
 	if err != nil {
-		return fmt.Errorf("csi: failed to write index stats chunk begin virtual offset: %v", err)
+		return fmt.Errorf("csi: failed to write index stats chunk begin virtual offset: %w", err)
 	}
 	err = binary.Write(w, binary.LittleEndian, vOffset(stats.Chunk.End))
 	if err != nil {
-		return fmt.Errorf("csi: failed to write index stats chunk end virtual offset: %v", err)
+		return fmt.Errorf("csi: failed to write index stats chunk end virtual offset: %w", err)
 	}
 	err = binary.Write(w, binary.LittleEndian, stats.Mapped)
 	if err != nil {
-		return fmt.Errorf("csi: failed to write index stats mapped count: %v", err)
+		return fmt.Errorf("csi: failed to write index stats mapped count: %w", err)
 	}
 	err = binary.Write(w, binary.LittleEndian, stats.Unmapped)
 	if err != nil {
-		return fmt.Errorf("csi: failed to write index stats unmapped count: %v", err)
+		return fmt.Errorf("csi: failed to write index stats unmapped count: %w", err)
 	}
 	return nil
 }

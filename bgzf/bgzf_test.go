@@ -136,7 +136,7 @@ func TestEOF(t *testing.T) {
 	}
 
 	ok, err = HasEOF(crippledReaderAt{bytes.NewReader(buf.Bytes())})
-	if err != ErrNoEnd {
+	if !errors.Is(err, ErrNoEnd) {
 		t.Errorf("Expected error:%s got:%v", ErrNoEnd, err)
 	}
 	if ok {
@@ -232,7 +232,7 @@ func readAllByByte(r *Reader) ([]byte, error) {
 		}
 		buf = append(buf, b)
 	}
-	if err == io.EOF {
+	if errors.Is(err, io.EOF) {
 		err = nil
 	}
 	return buf, err
@@ -320,7 +320,7 @@ func TestRoundTripMulti(t *testing.T) {
 		if string(b[:n]) != "" {
 			t.Errorf("%s payload is %q, want %q", reader.name, string(b[:n]), "")
 		}
-		if err != io.EOF {
+		if !errors.Is(err, io.EOF) {
 			t.Errorf("%s read: %v", reader.name, err)
 		}
 		r.Close()
@@ -435,7 +435,7 @@ func TestRoundTripMultiSeek(t *testing.T) {
 	}
 	b = make([]byte, len("payload1payloadTwo")+1)
 	n, err = r.Read(b)
-	if err != io.EOF {
+	if !errors.Is(err, io.EOF) {
 		t.Errorf("Read: %v", err)
 	}
 	if bl := ExpectedMemberSize(r.Header); bl != len(MagicBlock) {
@@ -451,7 +451,7 @@ func TestRoundTripMultiSeek(t *testing.T) {
 		t.Errorf("Seek: %v", err)
 	}
 	n, err = r.Read(b)
-	if err != io.EOF {
+	if !errors.Is(err, io.EOF) {
 		t.Errorf("Read: %v", err)
 	}
 	if string(b[:n]) != "payload1payloadTwo" {
@@ -466,7 +466,7 @@ func TestRoundTripMultiSeek(t *testing.T) {
 	}
 	b = make([]byte, bl+1)
 	n, err = r.Read(b)
-	if err != io.EOF {
+	if !errors.Is(err, io.EOF) {
 		t.Errorf("Read: %v", err)
 	}
 	r.Close()
@@ -1061,7 +1061,7 @@ func TestBlocked(t *testing.T) {
 			n, err := r.Read(p)
 			got = append(got, p[:n]...)
 			if err != nil {
-				if err == io.EOF && n != 0 {
+				if errors.Is(err, io.EOF) && n != 0 {
 					gotBlocks++
 					continue
 				}
@@ -1123,14 +1123,15 @@ func TestFuzzCrashers(t *testing.T) {
 				}
 			}()
 			r, err := NewReader(strings.NewReader(test), 0)
-			switch err {
-			case nil:
-				// Pass through.
-			case io.EOF, io.ErrUnexpectedEOF, ErrCorrupt:
-				return
-			default:
+			if err != nil {
+				if errors.Is(err, io.EOF) ||
+					errors.Is(err, io.ErrUnexpectedEOF) ||
+					errors.Is(err, ErrCorrupt) {
+					return
+				}
 				t.Fatalf("unexpected error creating reader: %v", err)
 			}
+
 			tmp := make([]byte, 1024)
 			for {
 				_, err := r.Read(tmp)
@@ -1261,7 +1262,7 @@ func BenchmarkRead(b *testing.B) {
 		}
 		for {
 			_, err = bg.Read(buf)
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			if err != nil {

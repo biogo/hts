@@ -121,36 +121,36 @@ func writeChunk(dir string, h *sam.Header, recs []*sam.Record) (*bam.Reader, err
 
 	f, err := os.CreateTemp(dir, "")
 	if err != nil {
-		return nil, fmt.Errorf("failed to create temp file in %q: %v", dir, err)
+		return nil, fmt.Errorf("failed to create temp file in %q: %w", dir, err)
 	}
 
 	bw, err := bam.NewWriter(f, h, 0)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open bam writer: %v", err)
+		return nil, fmt.Errorf("failed to open bam writer: %w", err)
 	}
 	for _, r := range recs {
 		err = bw.Write(r)
 		if err != nil {
-			return nil, fmt.Errorf("failed to write record: %v", err)
+			return nil, fmt.Errorf("failed to write record: %w", err)
 		}
 	}
 	err = bw.Close()
 	if err != nil {
-		return nil, fmt.Errorf("failed to close bam writer: %v", err)
+		return nil, fmt.Errorf("failed to close bam writer: %w", err)
 	}
 	err = f.Sync()
 	if err != nil {
-		return nil, fmt.Errorf("failed to sync file: %v", err)
+		return nil, fmt.Errorf("failed to sync file: %w", err)
 	}
 
 	// Make a reader of the written data.
 	_, err = f.Seek(0, io.SeekStart)
 	if err != nil {
-		return nil, fmt.Errorf("failed to seek to start: %v", err)
+		return nil, fmt.Errorf("failed to seek to start: %w", err)
 	}
 	r, err := bam.NewReader(f, 0)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open bam writer: %v", err)
+		return nil, fmt.Errorf("failed to open bam writer: %w", err)
 	}
 	return r, err
 }

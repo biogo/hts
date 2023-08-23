@@ -166,7 +166,7 @@ func (bh *Header) UnmarshalText(text []byte) error {
 			return errBadHeader
 		}
 		if err != nil {
-			return fmt.Errorf("%v: line %d: %q", err, i+1, l)
+			return fmt.Errorf("%w: line %d: %q", err, i+1, l)
 		}
 	}
 

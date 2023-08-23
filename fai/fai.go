@@ -184,7 +184,7 @@ func ReadFrom(r io.Reader) (idx Index, err error) {
 	}()
 	for line := 1; ; line++ {
 		rec, err := tr.Read()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return idx, nil
 		}
 		if err != nil {
