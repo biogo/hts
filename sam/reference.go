@@ -42,7 +42,7 @@ func NewReference(name, assemID, species string, length int, md5 []byte, uri *ur
 		if len(md5) != 16 {
 			return nil, errors.New("sam: invalid md5 sum length")
 		}
-		h = string(md5[:])
+		h = string(md5)
 	}
 	return &Reference{
 		id:      -1, // This is altered by a Header when added.
@@ -268,7 +268,7 @@ func (r *Reference) Set(t Tag, value string) error {
 }
 
 // String returns a string representation of the Reference according to the
-// SAM specification section 1.3,
+// SAM specification section 1.3.
 func (r *Reference) String() string {
 	var buf bytes.Buffer
 	fmt.Fprintf(&buf, "@SQ\tSN:%s\tLN:%d", r.name, r.lRef)

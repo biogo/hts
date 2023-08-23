@@ -272,7 +272,7 @@ func (r *ReadGroup) Set(t Tag, value string) error {
 }
 
 // String returns a string representation of the read group according to the
-// SAM specification section 1.3,
+// SAM specification section 1.3.
 func (r *ReadGroup) String() string {
 	var buf bytes.Buffer
 	fmt.Fprintf(&buf, "@RG\tID:%s", r.name)

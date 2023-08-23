@@ -202,7 +202,7 @@ func (p *Program) Set(t Tag, value string) error {
 }
 
 // String returns a string representation of the program according to the
-// SAM specification section 1.3,
+// SAM specification section 1.3.
 func (p *Program) String() string {
 	var buf bytes.Buffer
 	fmt.Fprintf(&buf, "@PG\tID:%s", p.uid)

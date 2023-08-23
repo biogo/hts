@@ -84,7 +84,7 @@ func (co CigarOp) Type() CigarOpType { return CigarOpType(co & 0xf) }
 // Len returns the number of positions affected by the CigarOp CIGAR operation.
 func (co CigarOp) Len() int { return int(co >> 4) }
 
-// String returns the string representation of the CigarOp
+// String returns the string representation of the CigarOp.
 func (co CigarOp) String() string { return fmt.Sprintf("%d%s", co.Len(), co.Type().String()) }
 
 // A CigarOpType represents the type of operation described by a CigarOp.
