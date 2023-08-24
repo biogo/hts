@@ -6,7 +6,6 @@ package index
 
 import (
 	"bytes"
-	"errors"
 	"flag"
 	"io"
 	"strings"
@@ -109,7 +108,7 @@ func (s *S) TestIssue8(c *check.C) {
 		}
 		last = p
 		if err != nil {
-			if errors.Is(err, io.EOF) {
+			if err == io.EOF {
 				break
 			}
 			c.Fatalf("unexpected error: %v", err)

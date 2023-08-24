@@ -9,7 +9,6 @@ import (
 	"bytes"
 	"compress/flate"
 	"compress/gzip"
-	"errors"
 	"io"
 	"runtime"
 	"sync"
@@ -524,7 +523,7 @@ func (bg *Reader) Close() error {
 		close(bg.waiting)
 		<-bg.done
 	}
-	if errors.Is(bg.err, io.EOF) {
+	if bg.err == io.EOF {
 		return nil
 	}
 	return bg.err
@@ -553,7 +552,7 @@ func (bg *Reader) Read(p []byte) (int, error) {
 		var _n int
 		_n, bg.err = bg.current.Read(p[n:])
 		n += _n
-		if errors.Is(bg.err, io.EOF) {
+		if bg.err == io.EOF {
 			if n == len(p) {
 				bg.err = nil
 				break
@@ -596,7 +595,7 @@ func (bg *Reader) ReadByte() (byte, error) {
 
 	var b byte
 	b, bg.err = bg.current.ReadByte()
-	if errors.Is(bg.err, io.EOF) {
+	if bg.err == io.EOF {
 		if bg.Blocked {
 			bg.err = nil
 			bg.lastChunk.End = bg.current.txOffset()

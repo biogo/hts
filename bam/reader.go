@@ -277,7 +277,7 @@ func (i *Iterator) Next() bool {
 		return false
 	}
 	i.rec, i.err = i.r.Read()
-	if len(i.chunks) != 0 && errors.Is(i.err, io.EOF) {
+	if len(i.chunks) != 0 && i.err == io.EOF {
 		i.err = i.r.SetChunk(&i.chunks[0])
 		i.chunks = i.chunks[1:]
 		return i.Next()
@@ -287,7 +287,7 @@ func (i *Iterator) Next() bool {
 
 // Error returns the first non-EOF error that was encountered by the Iterator.
 func (i *Iterator) Error() error {
-	if errors.Is(i.err, io.EOF) {
+	if i.err == io.EOF {
 		return nil
 	}
 	return i.err

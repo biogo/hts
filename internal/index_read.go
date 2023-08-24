@@ -6,7 +6,6 @@ package internal
 
 import (
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"io"
 	"sort"
@@ -28,7 +27,7 @@ func ReadIndex(r io.Reader, n int32, typ string) (Index, error) {
 	err = binary.Read(r, binary.LittleEndian, &nUnmapped)
 	if err == nil {
 		idx.Unmapped = &nUnmapped
-	} else if !errors.Is(err, io.EOF) {
+	} else if err != io.EOF {
 		return idx, err
 	}
 	idx.IsSorted = true

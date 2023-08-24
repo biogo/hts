@@ -6,7 +6,6 @@ package fai
 
 import (
 	"encoding/json"
-	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -74,7 +73,7 @@ func TestFile(t *testing.T) {
 					n, err := s.Read(buf)
 					got = append(got, buf[:n]...)
 					if err != nil {
-						if errors.Is(err, io.EOF) {
+						if err == io.EOF {
 							break
 						}
 						t.Errorf("unexpected error: %v", err)

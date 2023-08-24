@@ -126,7 +126,7 @@ func (m *Merger) Read() (rec *sam.Record, err error) {
 func (m *Merger) cat() (rec *sam.Record, err error) {
 	id := m.readers[0].id
 	rec, err = m.readers[0].r.Read()
-	if errors.Is(err, io.EOF) && len(m.readers) != 0 {
+	if err == io.EOF && len(m.readers) != 0 {
 		m.readers = m.readers[1:]
 		err = nil
 	}
@@ -147,7 +147,7 @@ func (m *Merger) nextBySortOrder() (rec *sam.Record, err error) {
 	if rec == nil {
 		return m.Read()
 	}
-	if errors.Is(err, io.EOF) {
+	if err == io.EOF {
 		err = nil
 	}
 	m.reassignReference(reader.id, rec)
