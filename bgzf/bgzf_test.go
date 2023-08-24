@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -76,8 +77,7 @@ func (r crippledReaderAt) ReadAt(b []byte, off int64) (int, error) {
 
 // TestEOF tests HasEOF can find the EOF magic block.
 func TestEOF(t *testing.T) {
-	// os.File cases
-	f, err := os.CreateTemp("", "bgzf_EOF_test_*")
+	f, err := os.Create(filepath.Join(t.TempDir(), "data"))
 	if err != nil {
 		t.Fatalf("Create temp file: %v", err)
 	}
@@ -85,6 +85,10 @@ func TestEOF(t *testing.T) {
 
 	if err := NewWriter(f, *conc).Close(); err != nil {
 		t.Fatalf("Writer.Close: %v", err)
+	}
+
+	if err := f.Close(); err != nil {
+		t.Fatalf("f.Close: %v", err)
 	}
 
 	f, err = os.Open(fname)
@@ -98,19 +102,26 @@ func TestEOF(t *testing.T) {
 	if !ok {
 		t.Error("Expected EOF in os.File: not found.")
 	}
-
-	os.Remove(fname)
-
-	f, err = os.Open(os.TempDir())
-	if err != nil {
-		t.Fatalf("Open temp dir: %v", err)
+	if err := f.Close(); err != nil {
+		t.Fatalf("f.Close: %v", err)
 	}
-	ok, err = HasEOF(f)
-	if want := "read " + os.TempDir() + ": is a directory"; err.Error() != want {
-		t.Errorf("Expected error:%s got:%v", want, err)
-	}
-	if ok {
-		t.Error("Unexpected EOF in os.File IsDir: found.")
+
+	if runtime.GOOS != "windows" {
+		// NOTE: on Windows, os.Open is not allowed for directories.
+		f, err = os.Open(t.TempDir())
+		if err != nil {
+			t.Fatalf("Open temp dir: %v", err)
+		}
+		ok, err = HasEOF(f)
+		if want := "read " + t.TempDir() + ": is a directory"; err.Error() != want {
+			t.Errorf("Expected error:%s got:%v", want, err)
+		}
+		if ok {
+			t.Error("Unexpected EOF in os.File IsDir: found.")
+		}
+		if err := f.Close(); err != nil {
+			t.Fatalf("f.Close: %v", err)
+		}
 	}
 
 	// {bytes,strings}.Reader cases
@@ -364,7 +375,7 @@ func TestHeaderIssue57(t *testing.T) {
 // TestRoundTripMultiSeek tests that bgzipping and then bgunzipping is the identity
 // function for a multiple member bgzf with an underlying Seeker.
 func TestRoundTripMultiSeek(t *testing.T) {
-	f, err := os.CreateTemp("", "bgzf_test_*")
+	f, err := os.Create(filepath.Join(t.TempDir(), "data"))
 	if err != nil {
 		t.Fatalf("Create temp file: %v", err)
 	}
@@ -469,11 +480,15 @@ func TestRoundTripMultiSeek(t *testing.T) {
 	if !errors.Is(err, io.EOF) {
 		t.Errorf("Read: %v", err)
 	}
-	r.Close()
+	if err := r.Close(); err != nil {
+		t.Errorf("r.Close: %v", err)
+	}
+	if err := f.Close(); err != nil {
+		t.Errorf("f.Close: %v", err)
+	}
 	if string(b[:n]) != "payloadTwo" {
 		t.Errorf("payload is %q, want %q", string(b[:n]), "payloadTwo")
 	}
-	os.Remove(fname)
 }
 
 type errorReadSeeker struct {
