@@ -164,7 +164,7 @@ func (i *Iterator) Next() bool {
 
 // Error returns the first non-EOF error that was encountered by the Iterator.
 func (i *Iterator) Error() error {
-	if errors.Is(i.err, io.EOF) {
+	if i.err == io.EOF {
 		return nil
 	}
 	return i.err

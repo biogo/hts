@@ -75,7 +75,7 @@ func ReadFrom(r io.Reader) (*Index, error) {
 	err = binary.Read(r, binary.LittleEndian, &nUnmapped)
 	if err == nil {
 		idx.unmapped = &nUnmapped
-	} else if !errors.Is(err, io.EOF) {
+	} else if err != io.EOF {
 		return nil, err
 	}
 	idx.isSorted = true
