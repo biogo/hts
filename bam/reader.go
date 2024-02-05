@@ -116,7 +116,7 @@ const (
 // The sam.Record returned will not contain the sequence, quality or
 // auxiliary tag data if Omit(AllVariableLengthData) has been called
 // prior to the Read call and will not contain the auxiliary tag data
-// is Omit(AuxTags) has been called.
+// if Omit(AuxTags) has been called.
 func (br *Reader) Read() (*sam.Record, error) {
 	if br.c != nil && vOffset(br.r.LastChunk().End) >= vOffset(br.c.End) {
 		return nil, io.EOF
