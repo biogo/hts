@@ -499,6 +499,9 @@ func (bh *Header) AddReference(r *Reference) error {
 		if r.uri == nil {
 			r.uri = er.uri
 		}
+		if r.otherTags == nil {
+			r.otherTags = er.otherTags
+		}
 		bh.refs[dupID] = r
 		return nil
 	}
