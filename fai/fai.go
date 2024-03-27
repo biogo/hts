@@ -57,6 +57,9 @@ func NewIndex(fasta io.Reader) (Index, error) {
 		if len(b) == 0 {
 			continue
 		}
+		if bytes.Equal(bytes.TrimRight(b, " "), []byte{'>'}) {
+			return nil, fmt.Errorf("fai: missing sequence name at %d", offset)
+		}
 		if b[0] == '>' {
 			if rec.Name != "" {
 				idx[rec.Name] = rec
@@ -214,7 +217,7 @@ func parseError(line, column int, err error) *csv.ParseError {
 	}
 }
 
-// WriteTo writes the the given index to w in order of ascending start position.
+// WriteTo writes the given index to w in order of ascending start position.
 func WriteTo(w io.Writer, idx Index) error {
 	recs := make([]Record, 0, len(idx))
 	for _, r := range idx {
