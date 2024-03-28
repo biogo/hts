@@ -108,13 +108,12 @@ func TestEOF(t *testing.T) {
 
 	if runtime.GOOS != "windows" {
 		// NOTE: on Windows, os.Open is not allowed for directories.
-		dir := t.TempDir()
-		f, err = os.Open(dir)
+		f, err = os.Open(t.TempDir())
 		if err != nil {
 			t.Fatalf("Open temp dir: %v", err)
 		}
 		ok, err = HasEOF(f)
-		if want := "read " + dir + ": is a directory"; err.Error() != want {
+		if want := "read " + t.TempDir() + ": is a directory"; err.Error() != want {
 			t.Errorf("Expected error:%s got:%v", want, err)
 		}
 		if ok {
