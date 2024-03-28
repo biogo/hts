@@ -57,7 +57,7 @@ func NewIndex(fasta io.Reader) (Index, error) {
 		if len(b) == 0 {
 			continue
 		}
-		if bytes.Equal(bytes.TrimRight(b, " "), []byte{'>'}) {
+		if bytes.Equal(b, []byte{'>'}) {
 			return nil, fmt.Errorf("fai: missing sequence name at %d", offset)
 		}
 		if b[0] == '>' {
